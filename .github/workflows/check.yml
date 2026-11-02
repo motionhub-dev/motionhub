@@ -15,10 +15,10 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
       - name: The checker's tests
@@ -42,8 +42,9 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          missing=$(git log --format='%H %s%n%b%n--end--' "$BASE"..HEAD | awk '/^[0-9a-f]{40} /{c=$1; s=0} /^Signed-off-by: /{s=1} /^--end--$/{if(!s) print c}')
+          missing=$(git log --no-merges --format='%H %s%n%b%n--end--' "$BASE".."$HEAD_SHA" | awk '/^[0-9a-f]{40} /{c=$1; s=0} /^Signed-off-by: /{s=1} /^--end--$/{if(!s) print c}')
           if [ -n "$missing" ]; then
             echo "These commits have no Signed-off-by line (git commit -s):"; echo "$missing"; exit 1
           fi
