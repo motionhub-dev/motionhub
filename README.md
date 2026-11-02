@@ -23,8 +23,9 @@ Any agent can read a motion's `MOTION.md` and `tokens.json` and follow them in i
 ## Checking a motion
 
 ```sh
-node tools/check.mjs motions/<slug>    # one motion
-node tools/check.mjs                   # all of them
+npx @motionhub/cli check path/to/<slug>   # one motion, anywhere, with the published checker
+node tools/check.mjs motions/<slug>       # one motion, in this repository
+node tools/check.mjs                      # all of them
 node tools/build.mjs                   # the files motionhub.dev serves, into dist/
 ```
 

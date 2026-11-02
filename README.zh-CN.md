@@ -27,8 +27,9 @@ motions/<slug>/
 ## 检查 motion
 
 ```sh
-node tools/check.mjs motions/<slug>    # 检查一个
-node tools/check.mjs                   # 检查全部
+npx @motionhub/cli check path/to/<slug>   # 用发布到 npm 的检查器，检查任意位置的一个 motion
+node tools/check.mjs motions/<slug>       # 在本仓库里检查一个
+node tools/check.mjs                      # 检查全部
 node tools/build.mjs                   # 生成 motionhub.dev 要发布的文件，放在 dist/
 ```
 

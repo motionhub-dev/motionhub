@@ -4,7 +4,9 @@ import assert from 'node:assert/strict';
 import {mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {checkMotion, spdx, jpegSize} from '../tools/check.mjs';
+import {checkMotion, compareVersions, spdx, jpegSize} from '../tools/check.mjs';
+import {execFileSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 
 /** The smallest JPEG the checker reads: a start-of-frame marker with its size, and nothing to decode. */
 function jpeg(width, height) {
@@ -135,4 +137,28 @@ test('the hub\'s rules: licences, author, size, media and unsafe code', () => {
   assert.deepEqual(code('import {useMemo} from "react";\nexport const A = () => null;\n'), []);
   assert.ok(hub({extra: {'visotalk/icon.svg': '<svg><script>alert(1)</script></svg>'}}).includes('hub.code'));
   assert.deepEqual(codes(motion({manifest: {...MANIFEST, license: {text: 'CC-BY-NC-4.0'}}}), {hub: false}), []);
+});
+
+test('a change to a published motion comes from one of its authors, with a higher version', () => {
+  const was = {...MANIFEST, version: '1.2.0', authors: [{name: 'Tester', github: 'tester'}]};
+  const update = (version, author) => codes(motion({manifest: {...MANIFEST, version, authors: [{name: 'Tester', github: 'tester'}, {name: 'New', github: 'newcomer'}]}}), {author, was});
+  assert.deepEqual(update('1.2.1', 'Tester'), []);
+  assert.ok(update('1.2.1', 'newcomer').includes('hub.owner'), 'adding yourself to the authors does not make the motion yours');
+  assert.ok(update('1.2.0', 'tester').includes('hub.version'));
+  assert.ok(update('1.1.9', 'tester').includes('hub.version'));
+  assert.deepEqual(codes(motion({manifest: {...MANIFEST, version: '1.0.0'}}), {hub: false, was}), [], 'the format alone knows nothing of what is published');
+});
+
+test('semantic versions compare by precedence', () => {
+  const order = ['1.0.0-alpha', '1.0.0-alpha.1', '1.0.0-alpha.beta', '1.0.0-beta', '1.0.0-beta.2', '1.0.0-beta.11', '1.0.0-rc.1', '1.0.0', '1.0.1', '1.1.0', '2.0.0'];
+  for (let i = 1; i < order.length; i++) assert.ok(compareVersions(order[i], order[i - 1]) > 0, `${order[i]} > ${order[i - 1]}`);
+  assert.equal(compareVersions('1.0.0+build.1', '1.0.0'), 0);
+});
+
+test('the motionhub command checks the current motion, and says how it is used', () => {
+  const bin = fileURLToPath(new URL('../bin/motionhub.mjs', import.meta.url));
+  const dir = motion();
+  assert.match(execFileSync(process.execPath, [bin, 'check'], {cwd: dir, encoding: 'utf8'}), /1 motion\(s\), 0 issue\(s\)/);
+  assert.match(execFileSync(process.execPath, [bin, '--help'], {encoding: 'utf8'}), /usage: motionhub check/);
+  assert.throws(() => execFileSync(process.execPath, [bin, 'check', '--author', 'someone-else'], {cwd: dir, stdio: 'pipe'}));
 });

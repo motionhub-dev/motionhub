@@ -2,11 +2,14 @@
 // The motion checker: the rules of SPEC.md (code `format.*` and the rest without a `hub.` prefix) and the hub's
 // acceptance rules of CONTRIBUTING.md (`hub.*`), with no dependencies.
 //
-//   node tools/check.mjs [dir ...] [--format-only] [--author <github-login>]
+//   node tools/check.mjs [dir ...] [--format-only] [--author <github-login>] [--was <motion.json>]
+//   npx @motionhub/cli check ...                  the same, from the published package (bin/motionhub.mjs)
 //
-// With no directory it checks every motion under motions/. `--format-only` skips the hub's rules (a tool checking a
-// motion it did not get from this repository wants only the format). `--author` also requires that login among the
-// motion's authors (the pull request's checks pass the opener's login). Exit status 1 when any issue is found.
+// With no directory it checks the current directory when it is a motion, else every motion under ./motions/.
+// `--format-only` skips the hub's rules (a tool checking a motion it did not get from this repository wants only the
+// format). `--author` also requires that login among the motion's authors (the pull request's checks pass the opener's
+// login). `--was` names the motion.json already published for this slug: a change must then come from one of its
+// authors and carry a higher version (SPEC.md §9). Exit status 1 when any issue is found.
 
 import {readFileSync, readdirSync, statSync, existsSync} from 'node:fs';
 import {join, basename, resolve, relative, extname} from 'node:path';
@@ -47,7 +50,7 @@ const UNSAFE = [
 ];
 
 /** Check one motion directory; returns its issues, each `{code, at, message}` with `at` relative to the directory. */
-export function checkMotion(dir, {hub = true, author} = {}) {
+export function checkMotion(dir, {hub = true, author, was} = {}) {
   const issues = [];
   const add = (code, at, message) => issues.push({code, at, message});
   if (!existsSync(dir) || !statSync(dir).isDirectory()) return add('format.dir', '.', 'not a directory'), issues;
@@ -73,6 +76,7 @@ export function checkMotion(dir, {hub = true, author} = {}) {
   }
 
   if (hub) checkHub(dir, manifest, {author}, add);
+  if (hub && was) checkUpdate(manifest, was, author, add);
   return issues;
 }
 
@@ -235,6 +239,35 @@ function walk(dir, prefix = '') {
   return out;
 }
 
+/** `a` compared with `b`, two valid semantic versions: negative, zero or positive. Build metadata is ignored. */
+export function compareVersions(a, b) {
+  const parse = (v) => { const [core, pre] = v.split('+')[0].split(/-(.*)/s); return {core: core.split('.').map(Number), pre: pre?.split('.') ?? []}; };
+  const x = parse(a), y = parse(b);
+  for (let i = 0; i < 3; i++) if (x.core[i] !== y.core[i]) return x.core[i] - y.core[i];
+  if (!x.pre.length || !y.pre.length) return y.pre.length - x.pre.length;
+  for (let i = 0; i < Math.max(x.pre.length, y.pre.length); i++) {
+    const p = x.pre[i], q = y.pre[i];
+    if (p === undefined || q === undefined) return p === undefined ? -1 : 1;
+    if (p === q) continue;
+    const pn = /^\d+$/.test(p), qn = /^\d+$/.test(q);
+    if (pn && qn) return Number(p) - Number(q);
+    if (pn !== qn) return pn ? -1 : 1;
+    return p < q ? -1 : 1;
+  }
+  return 0;
+}
+
+/** A change to a published motion: only one of its authors makes it, and it is a new, higher version. */
+function checkUpdate(manifest, was, author, add) {
+  const github = (list) => (Array.isArray(list) ? list : []).map((a) => String(a?.github ?? '').toLowerCase());
+  if (author && !github(was.authors).includes(author.toLowerCase())) {
+    add('hub.owner', 'motion.json', `this motion is published by ${github(was.authors).join(', ') || 'nobody'}; only one of them may change it (make your own under a new slug and credit it in CREDITS.md)`);
+  }
+  if (typeof manifest?.version === 'string' && SEMVER.test(manifest.version) && typeof was.version === 'string' && SEMVER.test(was.version) && compareVersions(manifest.version, was.version) <= 0) {
+    add('hub.version', 'motion.json', `version ${manifest.version} is not above the published ${was.version}: a published version never changes`);
+  }
+}
+
 function checkHub(dir, manifest, {author}, add) {
   if (manifest?.license && typeof manifest.license === 'object') {
     if (spdx(manifest.license.text) && !spdxIds(manifest.license.text).every((id) => TEXT_LICENSES.has(id))) add('hub.license', 'motion.json', `license.text must be one of ${[...TEXT_LICENSES].join(', ')}`);
@@ -267,19 +300,20 @@ function checkHub(dir, manifest, {author}, add) {
   if (total > MOTION_BYTES) add('hub.size', '.', `${total} bytes: a motion is at most ${MOTION_BYTES}`);
 }
 
-function main(argv) {
-  const args = argv.slice(2);
+/** The command line: `args` as after `node tools/check.mjs`. Returns the exit status. */
+export function main(args) {
   const hub = !args.includes('--format-only');
-  const ai = args.indexOf('--author');
-  const author = ai >= 0 ? args[ai + 1] : undefined;
-  let dirs = args.filter((a, i) => !a.startsWith('--') && !(ai >= 0 && i === ai + 1));
+  const value = (flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : undefined; };
+  const author = value('--author'), wasPath = value('--was');
+  const was = wasPath ? JSON.parse(readFileSync(wasPath, 'utf8')) : undefined;
+  let dirs = args.filter((a, i) => !a.startsWith('--') && !['--author', '--was'].includes(args[i - 1]));
   if (!dirs.length) {
-    const root = resolve(fileURLToPath(import.meta.url), '../../motions');
-    dirs = existsSync(root) ? readdirSync(root, {withFileTypes: true}).filter((e) => e.isDirectory()).map((e) => join(root, e.name)) : [];
+    const root = resolve('motions');
+    dirs = existsSync('motion.json') ? ['.'] : existsSync(root) ? readdirSync(root, {withFileTypes: true}).filter((e) => e.isDirectory()).map((e) => join(root, e.name)) : [];
   }
   let count = 0;
   for (const dir of dirs) {
-    const issues = checkMotion(dir, {hub, author});
+    const issues = checkMotion(dir, {hub, author, was});
     const name = relative(process.cwd(), resolve(dir)) || '.';
     for (const i of issues) console.log(`${name}/${i.at}  ${i.code}  ${i.message}`);
     if (!issues.length) console.log(`${name}  ok`);
@@ -290,4 +324,4 @@ function main(argv) {
   return count ? 1 : 0;
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) process.exitCode = main(process.argv);
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) process.exitCode = main(process.argv.slice(2));
