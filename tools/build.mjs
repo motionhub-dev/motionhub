@@ -9,6 +9,9 @@
 //   m/<slug>/<file>                  the newest version's motion.json, MOTION*.md, tokens.json, CREDITS.md, poster.jpg
 //   m/<slug>/<version>.tgz           the whole motion, its paths under <slug>/; the same files always give the same bytes
 //   llms.txt                         the generic skill, for agents (skills/motionhub/SKILL.md without its front matter)
+//   index.html, m/<slug>/index.html  the gallery and a page per motion, with 404.html, site.css, icon.svg, _headers,
+//                                    robots.txt and sitemap.xml (tools/site.mjs)
+//   .assetsignore                    keeps the packages out of the deployed assets: the Worker serves them from R2
 // It refuses to build while any motion has an issue (tools/check.mjs). Publishing must never replace a package that is
 // already at its URL (HUB.md): that is the deploy's rule, since this build only knows the newest versions.
 
@@ -18,6 +21,7 @@ import {dirname, join, relative, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {gzipSync} from 'node:zlib';
 import {SPEC, checkMotion} from './check.mjs';
+import {writeSite} from './site.mjs';
 
 const ROOT = resolve(fileURLToPath(import.meta.url), '../..');
 const SERVED = /^(motion\.json|MOTION(\.[A-Za-z0-9-]+)?\.md|tokens\.json|CREDITS\.md|poster\.jpg)$/;
@@ -100,6 +104,8 @@ export function build(out, root = ROOT) {
   writeFileSync(join(out, 'api/motions.json'), JSON.stringify({spec: SPEC, motions: rows}, null, 2) + '\n');
   const skill = readFileSync(join(root, 'skills/motionhub/SKILL.md'), 'utf8');
   writeFileSync(join(out, 'llms.txt'), skill.replace(/^---\n[\s\S]*?\n---\n+/, ''));
+  writeSite(out, rows, motions, readFileSync(join(ROOT, 'tools/site.css'), 'utf8'));
+  writeFileSync(join(out, '.assetsignore'), '*.tgz\n');
   return rows;
 }
 

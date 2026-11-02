@@ -1,6 +1,6 @@
 # The hub
 
-> **Status:** Plan — the build and the generic skill are written; the site is not deployed yet
+> **Status:** Plan — the build, the site, the generic skill and the deploy are written; sample videos, listing levels and votes are not
 
 How this repository is published at [motionhub.dev](https://motionhub.dev): the catalogue, the files a tool or an agent fetches, sample videos and the levels a motion is listed at. This is the hub's policy and distribution, not the motion format: the format is [SPEC.md](SPEC.md), and nothing here changes it.
 
@@ -11,6 +11,9 @@ How this repository is published at [motionhub.dev](https://motionhub.dev): the 
 | `motions/<slug>/` | One motion, in the [format](SPEC.md). The newest version is the one in the main branch |
 | `tools/check.mjs` | The checker every pull request runs, with no dependencies: the one place the rules are written as code |
 | `tools/build.mjs` | Builds the files below into `dist/` from `motions/` and the skill, refusing while any motion has an issue |
+| `tools/site.mjs`, `tools/site.css` | The site's pages: the gallery, a page per motion, the 404 page, `_headers`, `robots.txt` and `sitemap.xml` |
+| `site/worker.mjs`, `wrangler.jsonc` | The Cloudflare Worker: it serves the build as static assets and the packages from the R2 bucket `motionhub` |
+| `.github/workflows/deploy.yml` | Builds, publishes each new package to R2 and deploys, on every push to the main branch and every six hours. It refuses to replace a published package |
 | `skills/motionhub/SKILL.md` | The generic skill: how any agent chooses a motion, fetches it and makes a film in it. `/llms.txt` is the same text |
 
 The repository keeps text, code and posters only. Sample videos are not committed (below).
