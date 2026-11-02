@@ -1,0 +1,10 @@
+{
+  "name": "motionhub-motions",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "check": "node tools/check.mjs",
+    "test": "node --test \"tests/*.test.mjs\""
+  }
+}

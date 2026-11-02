@@ -1,0 +1,138 @@
+// The checker against motions built in a temporary directory: one valid motion, then one change at a time.
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {checkMotion, spdx, jpegSize} from '../tools/check.mjs';
+
+/** The smallest JPEG the checker reads: a start-of-frame marker with its size, and nothing to decode. */
+function jpeg(width, height) {
+  const sof = Buffer.from([0xff, 0xc0, 0x00, 0x11, 0x08, height >> 8, height & 255, width >> 8, width & 255, 0x03, 1, 0x22, 0, 2, 0x11, 1, 3, 0x11, 1]);
+  return Buffer.concat([Buffer.from([0xff, 0xd8]), sof, Buffer.from([0xff, 0xd9])]);
+}
+
+const color = (hex) => ({colorSpace: 'srgb', components: [0.5, 0.5, 0.5], hex});
+const MANIFEST = {
+  spec: 'motion/0.1', slug: 'test-motion', version: '1.0.0',
+  name: {en: 'Test Motion', 'zh-CN': '测试风格'}, line: {en: 'A plain motion for the checker\'s tests.'},
+  authors: [{name: 'Tester', github: 'tester'}], license: {text: 'CC-BY-4.0'}, tags: ['light'],
+};
+const TOKENS = {
+  color: {$type: 'color', ground: {$value: color('#FFFFFF')}, ink: {$value: color('#000000')}, accent: {$value: '{color.ink}'}},
+  font: {$type: 'fontFamily', sans: {$value: ['Inter', 'sans-serif']}},
+  duration: {$type: 'duration', enter: {$value: {value: 0.6, unit: 's'}}},
+  easing: {$type: 'cubicBezier', arrive: {$value: [0.22, 1, 0.36, 1]}},
+};
+const DOC = '# Test Motion\n\n## Essence\nPlain.\n\n## Colour roles\nInk on white.\n\n## Type\nOne face.\n\n## Motion 动法\nFade.\n\n## Avoid\nClutter.\n';
+
+let root;
+/** A file's content: the change's when it names one (null leaves the file out), else the default. */
+const pick = (change, key, fallback, encode = (v) => v) => key in change ? (change[key] === null ? null : encode(change[key])) : encode(fallback);
+function motion(change = {}) {
+  root ??= mkdtempSync(join(tmpdir(), 'motions-'));
+  const dir = join(root, change.dir ?? 'test-motion');
+  rmSync(dir, {recursive: true, force: true});
+  mkdirSync(dir, {recursive: true});
+  const files = {
+    'motion.json': pick(change, 'manifest', MANIFEST, JSON.stringify),
+    'MOTION.md': pick(change, 'doc', DOC),
+    'tokens.json': pick(change, 'tokens', TOKENS, JSON.stringify),
+    'poster.jpg': pick(change, 'poster', jpeg(1920, 1080)),
+    'CREDITS.md': pick(change, 'credits', 'No assets.\n'),
+    ...change.extra,
+  };
+  for (const [name, content] of Object.entries(files)) {
+    if (content === null) continue;
+    mkdirSync(join(dir, name, '..'), {recursive: true});
+    writeFileSync(join(dir, name), content);
+  }
+  return dir;
+}
+const codes = (dir, options) => checkMotion(dir, options).map((i) => i.code);
+
+test('a complete motion has no issues', () => {
+  assert.deepEqual(checkMotion(motion()), []);
+});
+
+test('each required file is reported when missing', () => {
+  for (const file of ['motion.json', 'MOTION.md', 'tokens.json', 'poster.jpg', 'CREDITS.md']) {
+    assert.ok(codes(motion({[{'motion.json': 'manifest', 'MOTION.md': 'doc', 'tokens.json': 'tokens', 'poster.jpg': 'poster', 'CREDITS.md': 'credits'}[file]]: null})).includes('format.missing'), file);
+  }
+});
+
+test('only the format\'s files, translations and tool directories sit at the top', () => {
+  assert.deepEqual(codes(motion({extra: {'MOTION.zh-CN.md': DOC, 'visotalk/parts/frame.tsx': 'export const Frame = () => null;\n'}, manifest: {...MANIFEST, license: {text: 'CC-BY-4.0', code: 'MIT'}}})), []);
+  assert.ok(codes(motion({extra: {'notes.txt': 'hi'}})).includes('format.extra'));
+  assert.ok(codes(motion({extra: {'Visotalk/a.txt': 'hi'}})).includes('format.extra'));
+});
+
+test('the manifest\'s members, slug, version, localized strings and licence', () => {
+  const bad = (manifest) => codes(motion({manifest: {...MANIFEST, ...manifest}}), {hub: false});
+  assert.ok(bad({spec: 'motion/0.2'}).includes('manifest.spec'));
+  assert.ok(bad({slug: 'other-name'}).includes('manifest.slug'));
+  assert.ok(bad({version: '1.0'}).includes('manifest.version'));
+  assert.ok(bad({name: {'zh-CN': '只有中文'}}).includes('manifest.name'));
+  assert.ok(bad({line: {en: 'x'.repeat(161)}}).includes('manifest.line'));
+  assert.ok(bad({authors: [{name: 'A', github: '-bad-'}]}).includes('manifest.authors'));
+  assert.ok(bad({license: {text: 'CC BY'}}).includes('manifest.license'));
+  assert.ok(bad({lang: 'chinese simplified'}).includes('manifest.lang'));
+  assert.ok(bad({tags: ['Hand Drawn']}).includes('manifest.tags'));
+  assert.ok(bad({official: true}).includes('manifest.member'));
+  assert.deepEqual(bad({'x-visotalk': {pacing: {lead: 0.4}}, lang: 'zh-CN'}), []);
+});
+
+test('code in a tool directory needs license.code', () => {
+  assert.ok(codes(motion({extra: {'visotalk/parts/frame.tsx': 'export const Frame = () => null;\n'}})).includes('format.license.code'));
+});
+
+test('tokens follow DTCG: required groups, types, values, aliases and no URLs', () => {
+  const bad = (tokens) => codes(motion({tokens}), {hub: false});
+  assert.ok(bad({...TOKENS, font: undefined}).includes('tokens.required'));
+  assert.ok(bad({...TOKENS, color: {$type: 'color', ink: {$value: '#000000'}}}).includes('tokens.value'));
+  assert.ok(bad({...TOKENS, color: {...TOKENS.color, link: {$value: '{color.missing}'}}}).includes('tokens.alias'));
+  assert.ok(bad({...TOKENS, easing: {$type: 'cubicBezier', arrive: {$value: [1.5, 0, 0, 1]}}}).includes('tokens.value'));
+  assert.ok(bad({...TOKENS, duration: {$type: 'duration', enter: {$value: 600}}}).includes('tokens.value'));
+  assert.ok(bad({...TOKENS, font: {$type: 'fontFamily', sans: {$value: 'https://example.com/font.woff2'}}}).includes('tokens.url'));
+  assert.ok(bad({...TOKENS, 'brand.colour': {$type: 'color', a: {$value: color('#000000')}}}).includes('tokens.name'));
+});
+
+test('MOTION.md needs its five headings, in any language after the English word', () => {
+  assert.ok(codes(motion({doc: '## Essence\n## Colour\n## Type\n## Motion\n'}), {hub: false}).includes('doc.heading'));
+  assert.deepEqual(codes(motion({doc: '## Essence 本质\n## Color\n## Type 字体\n## Motion\n## Avoid 避免\n'}), {hub: false}), []);
+  assert.ok(codes(motion({doc: '```\n## Avoid\n```\n## Essence\n## Colour\n## Type\n## Motion\n'}), {hub: false}).includes('doc.heading'));
+  assert.ok(codes(motion({doc: DOC + 'x'.repeat(17000)}), {hub: false}).includes('doc.size'));
+  assert.ok(codes(motion({extra: {'MOTION.zh-CN.md': '## 本质\n'}}), {hub: false}).includes('doc.heading'));
+});
+
+test('the poster is a JPEG of a sensible width and size', () => {
+  assert.deepEqual(jpegSize(jpeg(1920, 1080)), {width: 1920, height: 1080});
+  assert.ok(codes(motion({poster: Buffer.from('not a jpeg')}), {hub: false}).includes('poster.format'));
+  assert.ok(codes(motion({poster: jpeg(640, 360)}), {hub: false}).includes('poster.size'));
+});
+
+test('an empty CREDITS.md is reported', () => {
+  assert.ok(codes(motion({credits: '  \n'}), {hub: false}).includes('format.credits'));
+});
+
+test('SPDX expressions', () => {
+  for (const ok of ['MIT', 'CC-BY-4.0', 'MIT OR Apache-2.0', '(MIT AND CC-BY-4.0)', 'GPL-2.0+ WITH Classpath-exception-2.0', 'LicenseRef-Own']) assert.ok(spdx(ok), ok);
+  for (const bad of ['', 'MIT OR', 'MIT AND (CC0-1.0', 'CC BY', 'AND']) assert.ok(!spdx(bad), bad);
+});
+
+test('the hub\'s rules: licences, author, size, media and unsafe code', () => {
+  const hub = (change, options) => codes(motion(change), options);
+  assert.ok(hub({manifest: {...MANIFEST, license: {text: 'CC-BY-NC-4.0'}}}).includes('hub.license'));
+  assert.ok(hub({}, {author: 'someone-else'}).includes('hub.author'));
+  assert.deepEqual(hub({}, {author: 'Tester'}), []);
+  assert.ok(hub({extra: {'visotalk/demo/clip.mp4': 'x'}}).includes('hub.video'));
+  assert.ok(hub({extra: {'visotalk/node_modules/a.js': ''}, manifest: {...MANIFEST, license: {text: 'CC-BY-4.0', code: 'MIT'}}}).includes('hub.build'));
+  assert.ok(hub({extra: {'visotalk/big.bin': Buffer.alloc(1024 * 1024 + 1)}}).includes('hub.size'));
+  const code = (src) => hub({extra: {'visotalk/parts/a.tsx': src}, manifest: {...MANIFEST, license: {text: 'CC-BY-4.0', code: 'MIT'}}});
+  for (const src of ['fetch("/x")', 'new WebSocket(u)', 'eval(s)', 'new Function("a")', 'setTimeout("go()", 1)', 'await import("./x")', 'document.cookie', 'localStorage.setItem(a, b)']) {
+    assert.ok(code(src).includes('hub.code'), src);
+  }
+  assert.deepEqual(code('import {useMemo} from "react";\nexport const A = () => null;\n'), []);
+  assert.ok(hub({extra: {'visotalk/icon.svg': '<svg><script>alert(1)</script></svg>'}}).includes('hub.code'));
+  assert.deepEqual(codes(motion({manifest: {...MANIFEST, license: {text: 'CC-BY-NC-4.0'}}}), {hub: false}), []);
+});
