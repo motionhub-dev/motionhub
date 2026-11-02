@@ -1,5 +1,7 @@
 # motionhub
 
+**English** | [简体中文](README.zh-CN.md)
+
 Motions are reusable looks for narrated and explanatory video: how a film looks and how it moves, written so that a person or an agent can make a new film in it with any engine. This repository is the open format and the public catalogue behind [motionhub.dev](https://motionhub.dev).
 
 - **[SPEC.md](SPEC.md)**: the motion format, `motion/0.1`. Five files: `motion.json`, `MOTION.md`, `tokens.json` (W3C DTCG), `poster.jpg`, `CREDITS.md`, and a directory for each tool that wants one.
