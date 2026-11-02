@@ -5,7 +5,7 @@ A motion arrives as a pull request that adds `motions/<slug>/` in the [format](S
 ## Before you open it
 
 ```sh
-node tools/check.mjs motions/<slug>
+npx @motionhub/cli check motions/<slug>     # or, in a clone of this repository: node tools/check.mjs motions/<slug>
 ```
 
 The checker has no dependencies (Node 20 or later). It runs the same rules as the pull request's checks: the format, then the rules below.
@@ -46,4 +46,8 @@ A tool may add rules of its own for its directory.
 2. A reviewer agent reads the motion for originality, safety and whether `MOTION.md` lets someone make a film in it, and leaves its notes as a comment. It advises; it does not merge.
 3. A maintainer merges. A first-time contributor's pull request always waits for a person.
 
-The newest version replaces the previous one in `motions/<slug>/`; published packages of earlier versions stay where they are ([HUB.md](HUB.md)).
+## Changing a published motion
+
+Only one of a motion's published authors may change it: the checks compare the pull request's author with the authors of the version on the main branch, so adding yourself to `authors` does not make a motion yours. To build on someone else's motion, publish your own under a new slug and credit theirs in `CREDITS.md`.
+
+A change carries a higher `version` than the published one, since a published version never changes ([SPEC.md](SPEC.md) §9). The newest version replaces the previous one in `motions/<slug>/`; published packages of earlier versions stay where they are ([HUB.md](HUB.md)).

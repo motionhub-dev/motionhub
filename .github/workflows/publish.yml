@@ -1,0 +1,30 @@
+# By hand, after package.json's version moves: test, then publish @motionhub/cli to npm with provenance, unless that
+# version is already published. Needs the repository secret NPM_TOKEN, a token that may publish in the @motionhub org.
+name: publish
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - run: npm test
+      - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if npm view "@motionhub/cli@$version" version >/dev/null 2>&1; then
+            echo "@motionhub/cli@$version is already published"; exit 0
+          fi
+          npm publish

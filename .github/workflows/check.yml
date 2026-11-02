@@ -1,6 +1,6 @@
 # Every pull request and every push to main: the tools' own tests, every motion against SPEC.md and CONTRIBUTING.md, the hub's build,
-# the motions a pull request changes against its author, and a sign-off on each of its commits. It runs the pull
-# request's own code, so it has no secrets and can only read.
+# the motions a pull request adds or changes against its author (and a change against the version on main), and a
+# sign-off on each of its commits. It runs the pull request's own code, so it has no secrets and can only read.
 name: check
 
 on:
@@ -27,7 +27,7 @@ jobs:
         run: node tools/check.mjs
       - name: The hub builds
         run: node tools/build.mjs
-      - name: The motions this pull request changes, against its author
+      - name: The motions this pull request adds or changes, against its author and what is published
         if: github.event_name == 'pull_request'
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
@@ -37,7 +37,12 @@ jobs:
           status=0
           for d in $dirs; do
             [ -d "motions/$d" ] || continue
-            node tools/check.mjs "motions/$d" --author "$AUTHOR" || status=1
+            if git cat-file -e "$BASE:motions/$d/motion.json" 2>/dev/null; then
+              git show "$BASE:motions/$d/motion.json" > "$RUNNER_TEMP/was.json"
+              node tools/check.mjs "motions/$d" --author "$AUTHOR" --was "$RUNNER_TEMP/was.json" || status=1
+            else
+              node tools/check.mjs "motions/$d" --author "$AUTHOR" || status=1
+            fi
           done
           exit $status
       - name: Every commit is signed off
