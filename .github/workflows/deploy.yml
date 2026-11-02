@@ -1,0 +1,49 @@
+# Every push to main, every six hours and by hand: build motionhub.dev, publish each motion's newest package to R2
+# unless it is already there, and deploy the site. A package already published is never replaced: if a version's
+# package differs from the one at its URL, the motion changed without a new version (SPEC.md §9) and nothing deploys.
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WRANGLER: npx --yes wrangler@4.154.0
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Build
+        run: node tools/build.mjs
+      - name: Publish new packages
+        run: |
+          for f in dist/m/*/*.tgz; do
+            key=${f#dist/}
+            if $WRANGLER r2 object get "motionhub/$key" --remote --file /tmp/published.tgz >/dev/null 2>&1; then
+              if ! cmp -s "$f" /tmp/published.tgz; then
+                echo "::error::$key is already published with different contents: give the motion a new version"; exit 1
+              fi
+              echo "kept $key"
+            else
+              $WRANGLER r2 object put "motionhub/$key" --remote --file "$f" --content-type application/gzip >/dev/null
+              echo "published $key"
+            fi
+          done
+      - name: Deploy the site
+        run: $WRANGLER deploy

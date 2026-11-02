@@ -1,0 +1,16 @@
+// motionhub.dev: the static build in dist/ (node tools/build.mjs) and a Worker that serves packages from R2.
+// Deployed by .github/workflows/deploy.yml on every push to main.
+{
+  "name": "motionhub",
+  "main": "site/worker.mjs",
+  "compatibility_date": "2026-10-13",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "run_worker_first": ["/m/*"]
+  },
+  "r2_buckets": [{"binding": "PACKAGES", "bucket_name": "motionhub"}],
+  "routes": [{"pattern": "motionhub.dev", "custom_domain": true}],
+  "observability": {"enabled": true}
+}
