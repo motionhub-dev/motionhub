@@ -1,0 +1,50 @@
+# Every pull request and every push to main: the checker's own tests, every motion against SPEC.md and CONTRIBUTING.md,
+# the motions a pull request changes against its author, and a sign-off on each of its commits. It runs the pull
+# request's own code, so it has no secrets and can only read.
+name: check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: The checker's tests
+        run: npm test
+      - name: Every motion
+        run: node tools/check.mjs
+      - name: The motions this pull request changes, against its author
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          dirs=$(git diff --name-only "$BASE"...HEAD -- motions | cut -d/ -f2 | sort -u)
+          status=0
+          for d in $dirs; do
+            [ -d "motions/$d" ] || continue
+            node tools/check.mjs "motions/$d" --author "$AUTHOR" || status=1
+          done
+          exit $status
+      - name: Every commit is signed off
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          missing=$(git log --no-merges --format='%H %s%n%b%n--end--' "$BASE".."$HEAD_SHA" | awk '/^[0-9a-f]{40} /{c=$1; s=0} /^Signed-off-by: /{s=1} /^--end--$/{if(!s) print c}')
+          if [ -n "$missing" ]; then
+            echo "These commits have no Signed-off-by line (git commit -s):"; echo "$missing"; exit 1
+          fi
