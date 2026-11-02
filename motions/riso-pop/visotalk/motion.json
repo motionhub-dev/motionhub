@@ -1,0 +1,87 @@
+{
+  "slug": "riso-pop",
+  "version": "1",
+  "name": {
+    "en": "Riso Pop",
+    "zh-CN": "孔版双色"
+  },
+  "line": "A two-ink risograph print on warm off-white paper: flat shapes in blue and pink, halftone dots for tone, violet wherever one ink is printed over the other, and plates that knock out of register on an accent and snap back.",
+  "scenarios": [
+    "science",
+    "product"
+  ],
+  "tags": [
+    "print",
+    "retro",
+    "playful",
+    "light"
+  ],
+  "uses": [
+    "ideas and how things work, for a general audience",
+    "product and brand stories with personality",
+    "culture, food and design topics",
+    "two things that meet, mix or react"
+  ],
+  "basedOn": null,
+  "theme": {
+    "id": "visotalk/light",
+    "tokens": {
+      "colors": {
+        "bg": "#F3EEE3",
+        "panel": "#FBF8F1",
+        "panel2": "#E9E2D3",
+        "border": "#DCD3C2",
+        "text": "#2B50C0",
+        "muted": "#6B7FC4",
+        "faint": "#D8D0BF",
+        "data": "#2B50C0",
+        "grad": "#FF4E95",
+        "op": "#2B1870",
+        "good": "#2B50C0",
+        "bad": "#FF4E95",
+        "warn": "#FF4E95"
+      },
+      "fonts": {
+        "sans": "\"Hanken Grotesk\", \"Noto Sans SC\", sans-serif",
+        "mono": "\"JetBrains Mono\", monospace",
+        "display": "\"Fraunces\", \"Noto Sans SC\", serif"
+      },
+      "caption": {
+        "font": "sans",
+        "size": 36,
+        "weight": 600,
+        "color": "#2B50C0",
+        "background": "rgba(251, 248, 241, 0.97)",
+        "radius": 2,
+        "padding": [
+          10,
+          26
+        ],
+        "bottom": 56,
+        "rule": "#FF4E95",
+        "ruleSide": "left"
+      }
+    }
+  },
+  "pacing": {
+    "lead": 0.4,
+    "hold": 0.45,
+    "tail": 1
+  },
+  "exports": {
+    "captions": "burned"
+  },
+  "canvas": {
+    "presets": [
+      {
+        "id": "16x9",
+        "width": 1920,
+        "height": 1080
+      }
+    ]
+  },
+  "locked": [
+    "theme.tokens.fonts",
+    "theme.tokens.colors"
+  ]
+}

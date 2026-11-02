@@ -1,0 +1,75 @@
+{
+  "slug": "red-pencil",
+  "version": "1",
+  "name": {
+    "en": "Red Pencil",
+    "zh-CN": "红笔批注"
+  },
+  "line": "A printed page marked up in red as it is read: figures circled, wrong sums struck and corrected, verdicts written in the margin.",
+  "scenarios": ["report", "lesson"],
+  "tags": ["hand-drawn", "light"],
+  "uses": [
+    "money, prices and fees",
+    "checking a claim or a calculation",
+    "rules, contracts and fine print",
+    "economics for a general audience"
+  ],
+  "basedOn": null,
+  "theme": {
+    "id": "visotalk/light",
+    "tokens": {
+      "colors": {
+        "bg": "#E7E1D4",
+        "panel": "#FBF8F1",
+        "panel2": "#F1EBDF",
+        "border": "#D6CDBB",
+        "text": "#211F1B",
+        "muted": "#6F685C",
+        "faint": "#B9AF9C",
+        "data": "#24456B",
+        "grad": "#C8352A",
+        "op": "#5E6B4E",
+        "good": "#2F6A45",
+        "bad": "#C8352A",
+        "warn": "#F0CF4F"
+      },
+      "fonts": {
+        "sans": "\"Newsreader\", \"Noto Serif SC\", serif",
+        "mono": "\"JetBrains Mono\", monospace",
+        "display": "\"Caveat\", \"LXGW WenKai\", cursive"
+      },
+      "caption": {
+        "font": "sans",
+        "size": 36,
+        "color": "#211F1B",
+        "background": "rgba(251, 248, 241, 0.96)",
+        "radius": 2,
+        "padding": [10, 28],
+        "bottom": 60,
+        "rule": "#C8352A",
+        "ruleSide": "left"
+      }
+    }
+  },
+  "pacing": {
+    "lead": 0.4,
+    "hold": 0.5,
+    "tail": 1
+  },
+  "exports": {
+    "captions": "burned"
+  },
+  "canvas": {
+    "presets": [
+      {
+        "id": "16x9",
+        "width": 1920,
+        "height": 1080
+      }
+    ]
+  },
+  "locked": [
+    "theme.tokens.fonts",
+    "theme.tokens.colors"
+  ]
+}

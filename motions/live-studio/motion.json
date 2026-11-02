@@ -1,0 +1,28 @@
+{
+  "spec": "motion/0.1",
+  "slug": "live-studio",
+  "version": "1.0.0",
+  "name": {
+    "en": "Live Studio",
+    "zh-CN": "演播台"
+  },
+  "line": {
+    "en": "A broadcast package laid over the person's own footage."
+  },
+  "authors": [
+    {
+      "name": "VisoTalk",
+      "github": "iamsuosi"
+    }
+  ],
+  "license": {
+    "text": "CC-BY-4.0",
+    "code": "MIT"
+  },
+  "lang": "en",
+  "tags": [
+    "footage",
+    "modern",
+    "dark"
+  ]
+}

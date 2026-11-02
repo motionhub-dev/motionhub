@@ -1,0 +1,61 @@
+{
+  "slug": "marker-margin",
+  "version": "1",
+  "name": {
+    "en": "Marker Margin",
+    "zh-CN": "马克笔批注"
+  },
+  "line": "A felt-tip marker on the glass in front of the person's own footage or screen recording: things looped as they are named, arrows flicked from a scribbled word, the spoken word underlined; wiped clean at every cut.",
+  "scenarios": ["talking-head", "tutorial"],
+  "tags": ["footage", "hand-drawn", "playful"],
+  "uses": [
+    "reviews and unboxings to camera",
+    "vlogs and behind-the-scenes",
+    "screen-recorded walkthroughs and set-ups",
+    "reactions and commentary on a video"
+  ],
+  "basedOn": null,
+  "theme": {
+    "id": "visotalk/dark",
+    "tokens": {
+      "colors": {
+        "bg": "#0E0E0C",
+        "panel": "#171714",
+        "panel2": "#22221E",
+        "border": "#3A3933",
+        "text": "#FFFDF6",
+        "muted": "#CBC7BB",
+        "faint": "#5C5A52",
+        "data": "#FFD93B",
+        "grad": "#FFD93B",
+        "op": "#8FD3FF",
+        "good": "#9BE38A",
+        "bad": "#FF6F61",
+        "warn": "#FFB23B"
+      },
+      "fonts": {
+        "sans": "\"Shantell Sans\", \"LXGW WenKai\", sans-serif",
+        "mono": "\"JetBrains Mono\", monospace",
+        "display": "\"Shantell Sans\", \"LXGW WenKai\", sans-serif"
+      },
+      "caption": {
+        "font": "sans",
+        "size": 42,
+        "weight": 600,
+        "color": "#FFFDF6",
+        "background": "none",
+        "padding": [6, 18],
+        "bottom": 46,
+        "maxWidth": 1500,
+        "shadow": "0 0 2px rgba(14, 14, 12, 0.95), 0 2px 1px rgba(14, 14, 12, 0.85), 0 0 10px rgba(14, 14, 12, 0.8), 0 0 26px rgba(14, 14, 12, 0.6)"
+      }
+    }
+  },
+  "exports": {
+    "captions": "burned"
+  },
+  "locked": [
+    "theme.tokens.fonts",
+    "theme.tokens.colors"
+  ]
+}

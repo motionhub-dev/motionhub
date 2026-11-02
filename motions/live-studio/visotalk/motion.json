@@ -1,0 +1,87 @@
+{
+  "slug": "live-studio",
+  "version": "1",
+  "name": {
+    "en": "Live Studio",
+    "zh-CN": "演播台"
+  },
+  "line": "A broadcast package laid over the person's own footage: square-cut straps that push on in layers, a channel bug and a ticker that stay on air, a picture-in-picture window, a score bar that ticks up as the figure is said; one channel red, no ground.",
+  "scenarios": [
+    "talking-head",
+    "report"
+  ],
+  "tags": [
+    "footage",
+    "modern",
+    "dark"
+  ],
+  "uses": [
+    "news-style updates to camera",
+    "interviews and panels",
+    "reviews and results with numbers",
+    "weekly briefings and round-ups"
+  ],
+  "basedOn": null,
+  "theme": {
+    "id": "visotalk/dark",
+    "tokens": {
+      "colors": {
+        "bg": "#07090D",
+        "panel": "#0C0F15",
+        "panel2": "#171B23",
+        "border": "#2A2F3A",
+        "text": "#F4F5F7",
+        "muted": "#A7ADB8",
+        "faint": "#4A505B",
+        "data": "#FF2E4D",
+        "grad": "#FF2E4D",
+        "op": "#A7ADB8",
+        "good": "#F4F5F7",
+        "bad": "#FF2E4D",
+        "warn": "#FFB547"
+      },
+      "fonts": {
+        "sans": "\"Hanken Grotesk\", \"Noto Sans SC\", sans-serif",
+        "mono": "\"JetBrains Mono\", monospace",
+        "display": "\"Big Shoulders Display\", \"Noto Sans SC\", sans-serif"
+      },
+      "caption": {
+        "font": "sans",
+        "size": 40,
+        "weight": 600,
+        "color": "#F4F5F7",
+        "background": "rgba(7, 9, 13, 0.86)",
+        "radius": 0,
+        "padding": [
+          8,
+          22
+        ],
+        "bottom": 128,
+        "rule": "#FF2E4D",
+        "ruleSide": "left",
+        "maxWidth": 1560
+      }
+    }
+  },
+  "pacing": {
+    "lead": 0.3,
+    "hold": 0.35,
+    "tail": 0.8
+  },
+  "exports": {
+    "captions": "burned"
+  },
+  "canvas": {
+    "presets": [
+      {
+        "id": "16x9",
+        "width": 1920,
+        "height": 1080
+      }
+    ]
+  },
+  "locked": [
+    "theme.tokens.fonts",
+    "theme.tokens.colors"
+  ]
+}

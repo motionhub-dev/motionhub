@@ -1,0 +1,76 @@
+{
+  "slug": "drafting-table",
+  "version": "1",
+  "name": {
+    "en": "Drafting Table",
+    "zh-CN": "绘图台"
+  },
+  "line": "A deep-blue drawing sheet where a mechanism is drafted in white line as it is explained: dimensions measured out as sizes are said, sections cut and hatched, parts exploded along their axis.",
+  "scenarios": ["science", "lesson"],
+  "tags": ["line-art", "retro", "dark"],
+  "uses": [
+    "how machines and mechanisms work",
+    "engineering and physics",
+    "inventions and their parts",
+    "structures and buildings"
+  ],
+  "basedOn": null,
+  "theme": {
+    "id": "visotalk/dark",
+    "tokens": {
+      "colors": {
+        "bg": "#0A1A33",
+        "panel": "#123764",
+        "panel2": "#19467A",
+        "border": "#A9BEDA",
+        "text": "#EEF3F8",
+        "muted": "#93AED0",
+        "faint": "#2E5A90",
+        "data": "#FF7A50",
+        "grad": "#FF7A50",
+        "op": "#B9C8FF",
+        "good": "#7FD1A8",
+        "bad": "#FF7A50",
+        "warn": "#FFD27A"
+      },
+      "fonts": {
+        "sans": "\"Hanken Grotesk\", \"Noto Sans SC\", sans-serif",
+        "mono": "\"JetBrains Mono\", \"Noto Sans SC\", monospace",
+        "display": "\"Hanken Grotesk\", \"Noto Sans SC\", sans-serif"
+      },
+      "caption": {
+        "font": "sans",
+        "size": 34,
+        "weight": 500,
+        "color": "#EEF3F8",
+        "background": "rgba(10, 28, 54, 0.92)",
+        "radius": 2,
+        "padding": [10, 26],
+        "bottom": 78,
+        "rule": "#93AED0",
+        "ruleSide": "left"
+      }
+    }
+  },
+  "pacing": {
+    "lead": 0.4,
+    "hold": 0.6,
+    "tail": 1
+  },
+  "exports": {
+    "captions": "burned"
+  },
+  "canvas": {
+    "presets": [
+      {
+        "id": "16x9",
+        "width": 1920,
+        "height": 1080
+      }
+    ]
+  },
+  "locked": [
+    "theme.tokens.fonts",
+    "theme.tokens.colors"
+  ]
+}

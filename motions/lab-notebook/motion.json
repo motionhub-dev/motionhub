@@ -1,0 +1,28 @@
+{
+  "spec": "motion/0.1",
+  "slug": "lab-notebook",
+  "version": "1.0.0",
+  "name": {
+    "en": "Lab Notebook",
+    "zh-CN": "实验手记"
+  },
+  "line": {
+    "en": "A page of a squared notebook where the diagram is drawn stroke by stroke as it is explained, labelled by hand, the result boxed in red."
+  },
+  "authors": [
+    {
+      "name": "VisoTalk",
+      "github": "iamsuosi"
+    }
+  ],
+  "license": {
+    "text": "CC-BY-4.0",
+    "code": "MIT"
+  },
+  "lang": "en",
+  "tags": [
+    "hand-drawn",
+    "line-art",
+    "light"
+  ]
+}

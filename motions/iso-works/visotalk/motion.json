@@ -1,0 +1,87 @@
+{
+  "slug": "iso-works",
+  "version": "1",
+  "name": {
+    "en": "Iso Works",
+    "zh-CN": "等距工坊"
+  },
+  "line": "A system as small isometric buildings on a pale floor grid, coloured by what each one does, with goods or data riding between them as cubes on belts and quantities stacked in cubes you can count.",
+  "scenarios": [
+    "product",
+    "report"
+  ],
+  "tags": [
+    "isometric",
+    "flat-vector",
+    "light"
+  ],
+  "uses": [
+    "how a system or a company works",
+    "supply chains and data flows",
+    "infrastructure: power, water, networks, logistics",
+    "quantities that stack up: per hour, per day, in total"
+  ],
+  "basedOn": null,
+  "theme": {
+    "id": "visotalk/light",
+    "tokens": {
+      "colors": {
+        "bg": "#ECEAE4",
+        "panel": "#FFFFFF",
+        "panel2": "#E2DFD7",
+        "border": "#D0CCC2",
+        "text": "#22252D",
+        "muted": "#6F7480",
+        "faint": "#C6C3BB",
+        "data": "#3D5BD9",
+        "grad": "#EB6A4B",
+        "op": "#1C9C8A",
+        "good": "#3A9A5B",
+        "bad": "#D6463A",
+        "warn": "#E2A62E"
+      },
+      "fonts": {
+        "sans": "\"Hanken Grotesk\", \"Noto Sans SC\", sans-serif",
+        "mono": "\"JetBrains Mono\", monospace",
+        "display": "\"Hanken Grotesk\", \"Noto Sans SC\", sans-serif"
+      },
+      "caption": {
+        "font": "sans",
+        "size": 34,
+        "weight": 500,
+        "color": "#22252D",
+        "background": "rgba(255, 255, 255, 0.96)",
+        "radius": 4,
+        "padding": [
+          10,
+          24
+        ],
+        "bottom": 56,
+        "shadow": "0 2px 0 #D0CCC2",
+        "rule": "#3D5BD9",
+        "ruleSide": "left"
+      }
+    }
+  },
+  "pacing": {
+    "lead": 0.4,
+    "hold": 0.45,
+    "tail": 1
+  },
+  "exports": {
+    "captions": "burned"
+  },
+  "canvas": {
+    "presets": [
+      {
+        "id": "16x9",
+        "width": 1920,
+        "height": 1080
+      }
+    ]
+  },
+  "locked": [
+    "theme.tokens.fonts",
+    "theme.tokens.colors"
+  ]
+}

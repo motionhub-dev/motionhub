@@ -1,0 +1,74 @@
+{
+  "slug": "depth-stage",
+  "version": "1",
+  "name": {
+    "en": "Depth Stage",
+    "zh-CN": "景深舞台"
+  },
+  "line": "Flat silhouette layers of a place under one perspective camera at dusk: haze pales what is far, the lens softens all but the depth in focus, and the camera travels through the layers.",
+  "scenarios": ["story", "science"],
+  "tags": ["layered", "modern", "dark"],
+  "uses": [
+    "narrative history and events",
+    "nature, landscapes and space",
+    "places and journeys",
+    "a mystery explained"
+  ],
+  "basedOn": null,
+  "theme": {
+    "id": "visotalk/dark",
+    "tokens": {
+      "colors": {
+        "bg": "#19243A",
+        "panel": "#0A0C12",
+        "panel2": "#1A2232",
+        "border": "#2E3A4E",
+        "text": "#F1EADF",
+        "muted": "#A7AFBD",
+        "faint": "#3A465A",
+        "data": "#F2A65E",
+        "grad": "#8C9BB2",
+        "op": "#9DBBDC",
+        "good": "#8CC79F",
+        "bad": "#E0705F",
+        "warn": "#F2A65E"
+      },
+      "fonts": {
+        "sans": "\"Hanken Grotesk\", \"Noto Serif SC\", sans-serif",
+        "mono": "\"JetBrains Mono\", monospace",
+        "display": "\"Newsreader\", \"Noto Serif SC\", serif"
+      },
+      "caption": {
+        "font": "sans",
+        "size": 36,
+        "weight": 500,
+        "color": "#F1EADF",
+        "background": "none",
+        "padding": [4, 24],
+        "bottom": 64,
+        "shadow": "0 1px 3px rgba(4, 6, 12, 0.9), 0 0 26px rgba(4, 6, 12, 0.85)"
+      }
+    }
+  },
+  "pacing": {
+    "lead": 0.4,
+    "hold": 0.45,
+    "tail": 1
+  },
+  "exports": {
+    "captions": "burned"
+  },
+  "canvas": {
+    "presets": [
+      {
+        "id": "16x9",
+        "width": 1920,
+        "height": 1080
+      }
+    ]
+  },
+  "locked": [
+    "theme.tokens.fonts",
+    "theme.tokens.colors"
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "slug": "screen-desk",
+  "version": "1",
+  "name": {
+    "en": "Screen Desk",
+    "zh-CN": "屏幕工作台"
+  },
+  "line": "A pale desk where an app window, a terminal or a phone is the subject; the camera flies in to the part of the screen the narration names, rings the control in blue and pins the numbered step to it.",
+  "scenarios": ["tutorial", "product"],
+  "tags": ["modern", "minimal", "light"],
+  "uses": [
+    "software tutorials and how-tos",
+    "product feature walkthroughs",
+    "developer tools and commands",
+    "settings and onboarding"
+  ],
+  "basedOn": null,
+  "theme": {
+    "id": "visotalk/light",
+    "tokens": {
+      "colors": {
+        "bg": "#E7E5E0",
+        "panel": "#FFFFFF",
+        "panel2": "#F5F4F1",
+        "border": "#E3E1DC",
+        "text": "#1C1D21",
+        "muted": "#6F7178",
+        "faint": "#C7C5BF",
+        "data": "#2F5BFF",
+        "grad": "#DCE4FF",
+        "op": "#2F5BFF",
+        "good": "#1E9A5B",
+        "bad": "#D6453B",
+        "warn": "#B9800F"
+      },
+      "fonts": {
+        "sans": "\"Inter\", \"Noto Sans SC\", sans-serif",
+        "mono": "\"JetBrains Mono\", \"Noto Sans SC\", monospace"
+      },
+      "caption": {
+        "font": "sans",
+        "size": 36,
+        "weight": 400,
+        "color": "#1C1D21",
+        "background": "rgba(255, 255, 255, 0.94)",
+        "radius": 14,
+        "padding": [12, 28],
+        "bottom": 54,
+        "maxWidth": 1500,
+        "shadow": "0 10px 30px -12px rgba(28, 29, 33, 0.35), 0 1px 3px rgba(28, 29, 33, 0.12)"
+      }
+    }
+  },
+  "pacing": {
+    "lead": 0.3,
+    "hold": 0.4,
+    "tail": 0.8
+  },
+  "exports": {
+    "captions": "burned"
+  },
+  "canvas": {
+    "presets": [
+      {
+        "id": "16x9",
+        "width": 1920,
+        "height": 1080
+      }
+    ]
+  },
+  "locked": [
+    "theme.tokens.fonts",
+    "theme.tokens.colors"
+  ]
+}

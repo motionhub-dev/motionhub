@@ -1,0 +1,28 @@
+{
+  "spec": "motion/0.1",
+  "slug": "evidence-board",
+  "version": "1.0.0",
+  "name": {
+    "en": "Evidence Board",
+    "zh-CN": "证据墙"
+  },
+  "line": {
+    "en": "Visual journalism on a dark felt board."
+  },
+  "authors": [
+    {
+      "name": "VisoTalk",
+      "github": "iamsuosi"
+    }
+  ],
+  "license": {
+    "text": "CC-BY-4.0",
+    "code": "MIT"
+  },
+  "lang": "en",
+  "tags": [
+    "collage",
+    "print",
+    "dark"
+  ]
+}
