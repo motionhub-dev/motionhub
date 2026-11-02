@@ -6,5 +6,5 @@ The open motion format and the public catalogue behind motionhub.dev. Read [READ
 - **The rules live in one place as code:** `tools/check.mjs` (format and hub rules, no dependencies) with its tests in `tests/`. A rule written in SPEC.md or CONTRIBUTING.md and not in the checker is a bug, and the other way round.
 - **English** for everything a developer reads: code, comments, documents, commit messages. A motion's own `MOTION.md`, translations and descriptions are in whatever language its author chooses (SPEC.md §8).
 - **Every commit is signed off** (`git commit -s`); the checks refuse a pull request without it.
-- Before pushing: `npm test` and `node tools/check.mjs`.
+- Before pushing: `npm test`, `node tools/check.mjs` and `node tools/build.mjs`.
 - Talk to the developer in Chinese.

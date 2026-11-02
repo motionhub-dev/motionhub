@@ -18,11 +18,14 @@ motions/<slug>/
 
 Any agent can read a motion's `MOTION.md` and `tokens.json` and follow them in its own engine, the way it would follow a design system. A tool that has its own directory in a motion gets ready-made pieces as well.
 
+[`skills/motionhub/SKILL.md`](skills/motionhub/SKILL.md) is a skill for any agent: how to choose a motion, fetch it and make a film in it. Install it the way your agent installs skills.
+
 ## Checking a motion
 
 ```sh
 node tools/check.mjs motions/<slug>    # one motion
 node tools/check.mjs                   # all of them
+node tools/build.mjs                   # the files motionhub.dev serves, into dist/
 ```
 
 ## Maintainers

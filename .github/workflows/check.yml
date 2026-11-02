@@ -1,4 +1,4 @@
-# Every pull request and every push to main: the checker's own tests, every motion against SPEC.md and CONTRIBUTING.md,
+# Every pull request and every push to main: the tools' own tests, every motion against SPEC.md and CONTRIBUTING.md, the hub's build,
 # the motions a pull request changes against its author, and a sign-off on each of its commits. It runs the pull
 # request's own code, so it has no secrets and can only read.
 name: check
@@ -25,6 +25,8 @@ jobs:
         run: npm test
       - name: Every motion
         run: node tools/check.mjs
+      - name: The hub builds
+        run: node tools/build.mjs
       - name: The motions this pull request changes, against its author
         if: github.event_name == 'pull_request'
         env:
