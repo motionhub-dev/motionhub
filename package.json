@@ -11,7 +11,7 @@
   "bin": { "motionhub": "bin/motionhub.mjs" },
   "exports": { ".": "./tools/check.mjs" },
   "files": ["bin/", "tools/check.mjs"],
-  "publishConfig": { "access": "public", "provenance": true },
+  "publishConfig": { "access": "public" },
   "scripts": {
     "check": "node tools/check.mjs",
     "build": "node tools/build.mjs",
