@@ -1,0 +1,28 @@
+name: publish
+
+# A tag `v<version>` stages that version of @motionhub/cli on npm, as VisoTalk publishes its CLI. The workflow holds no npm
+# token: npm trusts this repository and this file by OpenID Connect (npm, package settings, "Trusted Publisher"), so what it
+# can do is what npm allows it. It only stages; the release goes out when a maintainer approves the staged version with 2FA
+# (`npm stage approve <id>`).
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+      - run: npm test
+      - run: node tools/check.mjs
+      - name: The tag names the version being published
+        run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+      - run: npm stage publish .
