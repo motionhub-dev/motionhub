@@ -1,0 +1,28 @@
+{
+  "spec": "motion/0.1",
+  "slug": "depth-stage",
+  "version": "1.0.0",
+  "name": {
+    "en": "Depth Stage",
+    "zh-CN": "景深舞台"
+  },
+  "line": {
+    "en": "Flat silhouette layers of a place under one perspective camera at dusk."
+  },
+  "authors": [
+    {
+      "name": "VisoTalk",
+      "github": "iamsuosi"
+    }
+  ],
+  "license": {
+    "text": "CC-BY-4.0",
+    "code": "MIT"
+  },
+  "lang": "en",
+  "tags": [
+    "layered",
+    "modern",
+    "dark"
+  ]
+}

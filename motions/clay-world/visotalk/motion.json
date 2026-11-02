@@ -1,0 +1,75 @@
+{
+  "slug": "clay-world",
+  "version": "1",
+  "name": {
+    "en": "Clay World",
+    "zh-CN": "黏土小世界"
+  },
+  "line": "A small tabletop world of rounded, hand-pressed clay under soft studio light, in real 3D: forms are squeezed into being, land with a squash, are rolled out as coils and cut open to show their insides; every word sits in the light above it.",
+  "scenarios": ["science", "story"],
+  "tags": ["clay", "3d", "playful", "light"],
+  "uses": [
+    "how nature and the body work",
+    "simple science for young audiences",
+    "stories with little characters",
+    "everyday things explained"
+  ],
+  "basedOn": null,
+  "theme": {
+    "id": "visotalk/light",
+    "tokens": {
+      "colors": {
+        "bg": "#CFE4DF",
+        "panel": "#EAD7BC",
+        "panel2": "#FFF6EA",
+        "border": "#D8BFA2",
+        "text": "#3A2A2C",
+        "muted": "#7C5E50",
+        "faint": "#CDB9A2",
+        "data": "#E0533D",
+        "grad": "#F4ADB0",
+        "op": "#6EA2D4",
+        "good": "#7BB257",
+        "bad": "#A85478",
+        "warn": "#F0BF4C"
+      },
+      "fonts": {
+        "sans": "\"Fredoka\", \"Noto Sans SC\", sans-serif",
+        "mono": "\"JetBrains Mono\", monospace",
+        "display": "\"Fredoka\", \"LXGW WenKai\", sans-serif"
+      },
+      "caption": {
+        "font": "sans",
+        "size": 38,
+        "weight": 500,
+        "color": "#3A2A2C",
+        "background": "#FFF6EA",
+        "radius": 26,
+        "padding": [10, 28],
+        "bottom": 52,
+        "shadow": "0 5px 0 #D8BFA2, 0 14px 26px rgba(70, 40, 30, 0.2)"
+      }
+    }
+  },
+  "pacing": {
+    "lead": 0.4,
+    "hold": 0.5,
+    "tail": 1
+  },
+  "exports": {
+    "captions": "burned"
+  },
+  "canvas": {
+    "presets": [
+      {
+        "id": "16x9",
+        "width": 1920,
+        "height": 1080
+      }
+    ]
+  },
+  "locked": [
+    "theme.tokens.fonts",
+    "theme.tokens.colors"
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "slug": "pixel-quest",
+  "version": "1",
+  "name": {
+    "en": "Pixel Quest",
+    "zh-CN": "像素关卡"
+  },
+  "line": "A 16-bit game screen at dusk: a small hero crosses a tiled world one stage per step, an XP bar in gold cells fills as each step is done, the hard part is a boss to beat, and tips type out in dialogue boxes.",
+  "scenarios": ["tutorial", "lesson"],
+  "tags": [
+    "pixel",
+    "retro",
+    "playful",
+    "dark"
+  ],
+  "uses": [
+    "step-by-step how-tos",
+    "learning a skill or a tool",
+    "onboarding",
+    "a process with stages"
+  ],
+  "basedOn": null,
+  "theme": {
+    "id": "visotalk/dark",
+    "tokens": {
+      "colors": {
+        "bg": "#111925",
+        "panel": "#1A2233",
+        "panel2": "#243049",
+        "border": "#F4ECD6",
+        "text": "#F4ECD6",
+        "muted": "#9AA9B5",
+        "faint": "#4A5670",
+        "data": "#FFC83D",
+        "grad": "#C77B12",
+        "op": "#5BE3B0",
+        "good": "#5BE3B0",
+        "bad": "#F2564B",
+        "warn": "#FF9A3D"
+      },
+      "fonts": {
+        "sans": "\"Fusion Pixel 12px Prop zh-Hans\", sans-serif",
+        "mono": "\"Fusion Pixel 12px Prop zh-Hans\", monospace",
+        "display": "\"Silkscreen\", \"Fusion Pixel 12px Prop zh-Hans\", sans-serif"
+      },
+      "caption": {
+        "font": "sans",
+        "size": 48,
+        "weight": 400,
+        "color": "#F4ECD6",
+        "background": "linear-gradient(#F4ECD6 0 0) top/100% 4px no-repeat, linear-gradient(#F4ECD6 0 0) bottom/100% 4px no-repeat, #1A2233",
+        "radius": 0,
+        "padding": [12, 32],
+        "bottom": 40,
+        "maxWidth": 1600,
+        "shadow": "4px 4px 0 #0B0E14"
+      }
+    }
+  },
+  "pacing": {
+    "lead": 0.3,
+    "hold": 0.4,
+    "tail": 0.8
+  },
+  "exports": {
+    "captions": "burned"
+  },
+  "canvas": {
+    "presets": [
+      {
+        "id": "16x9",
+        "width": 1920,
+        "height": 1080
+      }
+    ]
+  },
+  "locked": ["theme.tokens.fonts", "theme.tokens.colors"]
+}

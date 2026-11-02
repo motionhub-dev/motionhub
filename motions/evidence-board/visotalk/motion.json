@@ -1,0 +1,76 @@
+{
+  "slug": "evidence-board",
+  "version": "1",
+  "name": {
+    "en": "Evidence Board",
+    "zh-CN": "证据墙"
+  },
+  "line": "Visual journalism on a dark felt board: documents, photographs and figures pinned as cards, each tagged with its source; the camera pushes into the original line and a highlighter marks it, and red thread ties the cards into a case.",
+  "scenarios": ["report", "story"],
+  "tags": ["collage", "print", "dark"],
+  "uses": [
+    "investigations and how we know",
+    "a timeline of an event from its sources",
+    "fact-checking a claim or a quote",
+    "history from documents"
+  ],
+  "basedOn": null,
+  "theme": {
+    "id": "visotalk/dark",
+    "tokens": {
+      "colors": {
+        "bg": "#221F1C",
+        "panel": "#EFEADF",
+        "panel2": "#E3DCCB",
+        "border": "#34302B",
+        "text": "#EFEADF",
+        "muted": "#ABA497",
+        "faint": "#4C4740",
+        "data": "#F5DE3F",
+        "grad": "#FBEFA0",
+        "op": "#D2342B",
+        "good": "#7FBF8C",
+        "bad": "#E0645A",
+        "warn": "#E8B04A"
+      },
+      "fonts": {
+        "sans": "\"Hanken Grotesk\", \"Noto Sans SC\", sans-serif",
+        "mono": "\"JetBrains Mono\", \"Noto Sans SC\", monospace",
+        "display": "\"Newsreader\", \"Noto Serif SC\", serif"
+      },
+      "caption": {
+        "font": "sans",
+        "size": 36,
+        "weight": 500,
+        "color": "#221F1C",
+        "background": "#EFEADF",
+        "radius": 2,
+        "padding": [10, 26],
+        "bottom": 50,
+        "maxWidth": 1500,
+        "shadow": "0 12px 22px -10px rgba(0, 0, 0, 0.75), 0 2px 3px rgba(0, 0, 0, 0.45)"
+      }
+    }
+  },
+  "pacing": {
+    "lead": 0.35,
+    "hold": 0.5,
+    "tail": 1
+  },
+  "exports": {
+    "captions": "burned"
+  },
+  "canvas": {
+    "presets": [
+      {
+        "id": "16x9",
+        "width": 1920,
+        "height": 1080
+      }
+    ]
+  },
+  "locked": [
+    "theme.tokens.fonts",
+    "theme.tokens.colors"
+  ]
+}

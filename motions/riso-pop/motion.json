@@ -1,0 +1,29 @@
+{
+  "spec": "motion/0.1",
+  "slug": "riso-pop",
+  "version": "1.0.0",
+  "name": {
+    "en": "Riso Pop",
+    "zh-CN": "孔版双色"
+  },
+  "line": {
+    "en": "A two-ink risograph print on warm off-white paper."
+  },
+  "authors": [
+    {
+      "name": "VisoTalk",
+      "github": "iamsuosi"
+    }
+  ],
+  "license": {
+    "text": "CC-BY-4.0",
+    "code": "MIT"
+  },
+  "lang": "en",
+  "tags": [
+    "print",
+    "retro",
+    "playful",
+    "light"
+  ]
+}

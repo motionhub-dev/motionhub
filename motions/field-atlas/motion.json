@@ -1,0 +1,29 @@
+{
+  "spec": "motion/0.1",
+  "slug": "field-atlas",
+  "version": "1.0.0",
+  "name": {
+    "en": "Field Atlas",
+    "zh-CN": "地图志"
+  },
+  "line": {
+    "en": "An editorial atlas map that the narration moves across."
+  },
+  "authors": [
+    {
+      "name": "VisoTalk",
+      "github": "iamsuosi"
+    }
+  ],
+  "license": {
+    "text": "CC-BY-4.0",
+    "code": "MIT"
+  },
+  "lang": "en",
+  "tags": [
+    "flat-vector",
+    "print",
+    "modern",
+    "light"
+  ]
+}

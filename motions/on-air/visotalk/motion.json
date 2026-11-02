@@ -1,0 +1,60 @@
+{
+  "slug": "on-air",
+  "version": "1",
+  "name": {
+    "en": "On Air",
+    "zh-CN": "口播字条"
+  },
+  "line": "Solid ink tags laid on the person's own footage, one signal colour for what matters, set where each shot leaves room; the footage stays the picture.",
+  "scenarios": ["talking-head"],
+  "tags": ["footage", "modern"],
+  "uses": [
+    "talking heads and reviews to camera",
+    "voice-overs over filmed footage",
+    "interviews and vlogs",
+    "product walk-throughs on video"
+  ],
+  "basedOn": null,
+  "theme": {
+    "id": "visotalk/dark",
+    "tokens": {
+      "colors": {
+        "bg": "#0B0C0E",
+        "panel": "#0F1114",
+        "panel2": "#1A1D22",
+        "border": "#2C3038",
+        "text": "#F6F5F2",
+        "muted": "#B4B8BF",
+        "faint": "#4A4F58",
+        "data": "#35E0C2",
+        "grad": "#35E0C2",
+        "op": "#9AA7FF",
+        "good": "#7FD6A0",
+        "bad": "#FF6B5B",
+        "warn": "#FFC857"
+      },
+      "fonts": {
+        "sans": "\"Atkinson Hyperlegible Next\", \"Noto Sans SC\", sans-serif",
+        "mono": "\"JetBrains Mono\", monospace",
+        "display": "\"Atkinson Hyperlegible Next\", \"Noto Sans SC\", sans-serif"
+      },
+      "caption": {
+        "font": "sans",
+        "size": 40,
+        "weight": 700,
+        "color": "#F6F5F2",
+        "background": "rgba(12, 13, 15, 0.74)",
+        "radius": 6,
+        "padding": [8, 20],
+        "bottom": 54
+      }
+    }
+  },
+  "exports": {
+    "captions": "burned"
+  },
+  "locked": [
+    "theme.tokens.fonts",
+    "theme.tokens.colors"
+  ]
+}

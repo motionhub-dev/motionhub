@@ -1,0 +1,75 @@
+{
+  "slug": "lab-notebook",
+  "version": "1",
+  "name": {
+    "en": "Lab Notebook",
+    "zh-CN": "实验手记"
+  },
+  "line": "A page of a squared notebook where the diagram is drawn stroke by stroke as it is explained, labelled by hand, the result boxed in red.",
+  "scenarios": ["lesson", "science"],
+  "tags": ["hand-drawn", "line-art", "light"],
+  "uses": [
+    "how something works",
+    "science and nature",
+    "a derivation or a calculation, step by step",
+    "processes and mechanisms"
+  ],
+  "basedOn": null,
+  "theme": {
+    "id": "visotalk/light",
+    "tokens": {
+      "colors": {
+        "bg": "#D9D5C9",
+        "panel": "#FBFAF5",
+        "panel2": "#F1EFE6",
+        "border": "#E2A3A0",
+        "text": "#1B2A47",
+        "muted": "#6A7180",
+        "faint": "#D3DFEC",
+        "data": "#2F67A8",
+        "grad": "#CF4F33",
+        "op": "#7A5BA6",
+        "good": "#3B8A5F",
+        "bad": "#CF4F33",
+        "warn": "#F2C14E"
+      },
+      "fonts": {
+        "sans": "\"Atkinson Hyperlegible Next\", \"Noto Sans SC\", sans-serif",
+        "mono": "\"JetBrains Mono\", monospace",
+        "display": "\"Shantell Sans\", \"LXGW WenKai\", cursive"
+      },
+      "caption": {
+        "font": "sans",
+        "size": 34,
+        "color": "#1B2A47",
+        "background": "rgba(255, 253, 246, 0.97)",
+        "radius": 3,
+        "padding": [10, 26],
+        "bottom": 58,
+        "rule": "#CF4F33",
+        "ruleSide": "top"
+      }
+    }
+  },
+  "pacing": {
+    "lead": 0.4,
+    "hold": 0.5,
+    "tail": 1
+  },
+  "exports": {
+    "captions": "burned"
+  },
+  "canvas": {
+    "presets": [
+      {
+        "id": "16x9",
+        "width": 1920,
+        "height": 1080
+      }
+    ]
+  },
+  "locked": [
+    "theme.tokens.fonts",
+    "theme.tokens.colors"
+  ]
+}

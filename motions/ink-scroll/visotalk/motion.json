@@ -1,0 +1,75 @@
+{
+  "slug": "ink-scroll",
+  "version": "1",
+  "name": {
+    "en": "Ink Scroll",
+    "zh-CN": "墨卷"
+  },
+  "line": "A Chinese handscroll of rice paper unrolled from the right: ink washes bloom into hills, rivers and people and settle in layered tones, dates and names are inscribed in columns, and a red seal is pressed on the conclusion. For Chinese narration.",
+  "scenarios": ["story", "lesson"],
+  "tags": ["ink-wash", "oriental", "layered", "light"],
+  "uses": [
+    "history and the people in it",
+    "culture, customs and ideas",
+    "how something came to be",
+    "classical stories, idioms and what they mean"
+  ],
+  "basedOn": null,
+  "theme": {
+    "id": "visotalk/light",
+    "tokens": {
+      "colors": {
+        "bg": "#CFC6B2",
+        "panel": "#EFE7D4",
+        "panel2": "#E5DBC5",
+        "border": "#9C9A86",
+        "text": "#1C1A17",
+        "muted": "#6E685D",
+        "faint": "#CBC2AE",
+        "data": "#3E4A4F",
+        "grad": "#B23A2C",
+        "op": "#8A6B47",
+        "good": "#4D6650",
+        "bad": "#B23A2C",
+        "warn": "#A8813E"
+      },
+      "fonts": {
+        "sans": "\"Newsreader\", \"Noto Serif SC\", serif",
+        "mono": "\"JetBrains Mono\", monospace",
+        "display": "\"Newsreader\", \"LXGW WenKai\", serif"
+      },
+      "caption": {
+        "font": "sans",
+        "size": 42,
+        "weight": 500,
+        "color": "#1C1A17",
+        "background": "none",
+        "padding": [6, 24],
+        "bottom": 66,
+        "maxWidth": 1500,
+        "shadow": "0 0 12px #EFE7D4, 0 0 22px #EFE7D4, 0 0 3px #EFE7D4"
+      }
+    }
+  },
+  "pacing": {
+    "lead": 0.5,
+    "hold": 0.7,
+    "tail": 1.4
+  },
+  "exports": {
+    "captions": "burned"
+  },
+  "canvas": {
+    "presets": [
+      {
+        "id": "16x9",
+        "width": 1920,
+        "height": 1080
+      }
+    ]
+  },
+  "locked": [
+    "theme.tokens.fonts",
+    "theme.tokens.colors"
+  ]
+}

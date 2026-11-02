@@ -1,0 +1,76 @@
+{
+  "slug": "stage-light",
+  "version": "1",
+  "name": {
+    "en": "Stage Light",
+    "zh-CN": "聚光台"
+  },
+  "line": "A dark matte stage where one soft light follows what is being said and everything else waits in shadow; large condensed figures.",
+  "scenarios": ["product", "report"],
+  "tags": ["minimal", "modern", "dark"],
+  "uses": [
+    "technology and products",
+    "business and markets",
+    "then-and-now comparisons and big numbers",
+    "fast news analysis"
+  ],
+  "basedOn": null,
+  "theme": {
+    "id": "visotalk/dark",
+    "tokens": {
+      "colors": {
+        "bg": "#121316",
+        "panel": "#1D1F24",
+        "panel2": "#26292F",
+        "border": "#34383F",
+        "text": "#EDE9E2",
+        "muted": "#8E9198",
+        "faint": "#3B3F47",
+        "data": "#F2B33D",
+        "grad": "#F3E3C3",
+        "op": "#9AA7FF",
+        "good": "#7FC79A",
+        "bad": "#E5675A",
+        "warn": "#F2B33D"
+      },
+      "fonts": {
+        "sans": "\"Hanken Grotesk\", \"Noto Sans SC\", sans-serif",
+        "mono": "\"JetBrains Mono\", monospace",
+        "display": "\"Big Shoulders Display\", \"Noto Sans SC\", sans-serif"
+      },
+      "caption": {
+        "font": "sans",
+        "size": 36,
+        "weight": 500,
+        "color": "#EDE9E2",
+        "background": "none",
+        "padding": [4, 22],
+        "bottom": 66,
+        "shadow": "0 2px 12px rgba(0, 0, 0, 0.9)",
+        "rule": "#F2B33D",
+        "ruleSide": "left"
+      }
+    }
+  },
+  "pacing": {
+    "lead": 0.3,
+    "hold": 0.35,
+    "tail": 0.8
+  },
+  "exports": {
+    "captions": "burned"
+  },
+  "canvas": {
+    "presets": [
+      {
+        "id": "16x9",
+        "width": 1920,
+        "height": 1080
+      }
+    ]
+  },
+  "locked": [
+    "theme.tokens.fonts",
+    "theme.tokens.colors"
+  ]
+}

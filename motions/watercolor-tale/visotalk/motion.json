@@ -1,0 +1,74 @@
+{
+  "slug": "watercolor-tale",
+  "version": "1",
+  "name": {
+    "en": "Watercolor Tale",
+    "zh-CN": "水彩绘本"
+  },
+  "line": "An open picture book painted in transparent watercolour on cold-press paper: washes spread wet and dry with hard edges, colours glazed one over another mix on the page, a pencil underdrawing and pencilled notes, and the page turns to the next spread.",
+  "scenarios": ["story", "lesson"],
+  "tags": ["watercolor", "playful", "light"],
+  "uses": [
+    "stories for children and families",
+    "nature, seasons and living things",
+    "gentle lessons and how things change",
+    "biographies told simply"
+  ],
+  "basedOn": null,
+  "theme": {
+    "id": "visotalk/light",
+    "tokens": {
+      "colors": {
+        "bg": "#C9C2B2",
+        "panel": "#F7F1E4",
+        "panel2": "#EFE6D3",
+        "border": "#A79F8E",
+        "text": "#33291F",
+        "muted": "#5F5A55",
+        "faint": "#D9D0BE",
+        "data": "#2A78B8",
+        "grad": "#D2452F",
+        "op": "#A0522D",
+        "good": "#6A9A3A",
+        "bad": "#B83A4B",
+        "warn": "#F0C419"
+      },
+      "fonts": {
+        "sans": "\"Fraunces\", \"LXGW WenKai\", serif",
+        "mono": "\"JetBrains Mono\", monospace",
+        "display": "\"Patrick Hand\", \"LXGW WenKai\", cursive"
+      },
+      "caption": {
+        "font": "sans",
+        "size": 46,
+        "weight": 500,
+        "color": "#33291F",
+        "background": "none",
+        "padding": [4, 20],
+        "bottom": 64,
+        "maxWidth": 1560
+      }
+    }
+  },
+  "pacing": {
+    "lead": 0.5,
+    "hold": 0.6,
+    "tail": 1.2
+  },
+  "exports": {
+    "captions": "burned"
+  },
+  "canvas": {
+    "presets": [
+      {
+        "id": "16x9",
+        "width": 1920,
+        "height": 1080
+      }
+    ]
+  },
+  "locked": [
+    "theme.tokens.fonts",
+    "theme.tokens.colors"
+  ]
+}

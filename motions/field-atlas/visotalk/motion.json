@@ -1,0 +1,78 @@
+{
+  "slug": "field-atlas",
+  "version": "1",
+  "name": {
+    "en": "Field Atlas",
+    "zh-CN": "地图志"
+  },
+  "line": "An editorial atlas map that the narration moves across: quiet land and water, a route drawn as one red line with the camera riding it, regions filled by a value with a key, labels set like a good atlas, and one camera that zooms from the globe to a town and back with its scale bar.",
+  "scenarios": ["story", "science", "report"],
+  "tags": ["flat-vector", "print", "modern", "light"],
+  "uses": [
+    "journeys and migrations",
+    "where things happen and why",
+    "the geography of an event",
+    "regional data"
+  ],
+  "basedOn": null,
+  "theme": {
+    "id": "visotalk/light",
+    "tokens": {
+      "colors": {
+        "bg": "#ECE7DC",
+        "panel": "#FAF7EF",
+        "panel2": "#D3E1E3",
+        "border": "#A99D8B",
+        "text": "#22262B",
+        "muted": "#646A70",
+        "faint": "#DCD5C7",
+        "data": "#C23B26",
+        "grad": "#B98432",
+        "op": "#5F8A99",
+        "good": "#5E8A57",
+        "bad": "#B33A2B",
+        "warn": "#C98A2E"
+      },
+      "fonts": {
+        "sans": "\"Hanken Grotesk\", \"Noto Sans SC\", sans-serif",
+        "mono": "\"JetBrains Mono\", monospace",
+        "display": "\"Newsreader\", \"Noto Serif SC\", serif"
+      },
+      "caption": {
+        "font": "sans",
+        "size": 34,
+        "weight": 500,
+        "color": "#22262B",
+        "background": "rgba(250, 247, 239, 0.94)",
+        "radius": 2,
+        "padding": [10, 24],
+        "bottom": 56,
+        "maxWidth": 1240,
+        "shadow": "0 1px 2px rgba(34, 38, 43, 0.18)",
+        "rule": "#22262B",
+        "ruleSide": "left"
+      }
+    }
+  },
+  "pacing": {
+    "lead": 0.4,
+    "hold": 0.5,
+    "tail": 1
+  },
+  "exports": {
+    "captions": "burned"
+  },
+  "canvas": {
+    "presets": [
+      {
+        "id": "16x9",
+        "width": 1920,
+        "height": 1080
+      }
+    ]
+  },
+  "locked": [
+    "theme.tokens.fonts",
+    "theme.tokens.colors"
+  ]
+}

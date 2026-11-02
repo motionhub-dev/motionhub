@@ -1,0 +1,28 @@
+{
+  "spec": "motion/0.1",
+  "slug": "drafting-table",
+  "version": "1.0.0",
+  "name": {
+    "en": "Drafting Table",
+    "zh-CN": "绘图台"
+  },
+  "line": {
+    "en": "A deep-blue drawing sheet where a mechanism is drafted in white line as it is explained."
+  },
+  "authors": [
+    {
+      "name": "VisoTalk",
+      "github": "iamsuosi"
+    }
+  ],
+  "license": {
+    "text": "CC-BY-4.0",
+    "code": "MIT"
+  },
+  "lang": "en",
+  "tags": [
+    "line-art",
+    "retro",
+    "dark"
+  ]
+}
