@@ -1,7 +1,7 @@
 {
   "spec": "motion/0.1",
   "slug": "lab-notebook",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": {
     "en": "Lab Notebook",
     "zh-CN": "实验手记"

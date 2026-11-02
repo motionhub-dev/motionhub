@@ -1,7 +1,7 @@
 {
   "spec": "motion/0.1",
   "slug": "field-atlas",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": {
     "en": "Field Atlas",
     "zh-CN": "地图志"
