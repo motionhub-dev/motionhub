@@ -1,7 +1,7 @@
 {
   "spec": "motion/0.1",
   "slug": "live-studio",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": {
     "en": "Live Studio",
     "zh-CN": "演播台"
