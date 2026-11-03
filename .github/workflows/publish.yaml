@@ -17,9 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      # npm stage is in npm 11, which Node 24 ships; Node 22's npm 10 does not have it
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24.19.0
           registry-url: "https://registry.npmjs.org"
       - run: npm test
       - run: node tools/check.mjs
