@@ -92,15 +92,21 @@ const HEADERS = `/api/*
 /llms.txt
   Access-Control-Allow-Origin: *
   Content-Type: text/plain; charset=utf-8
+/llms-full.txt
+  Access-Control-Allow-Origin: *
+  Content-Type: text/plain; charset=utf-8
+/docs/*.md
+  Access-Control-Allow-Origin: *
+  Content-Type: text/markdown; charset=utf-8
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
 `;
 
 /** The files beside the pages: the headers file, robots.txt and the sitemap of the gallery and every motion's page. */
-export function writeSiteFiles(out, rows) {
+export function writeSiteFiles(out, rows, docs = []) {
   writeFileSync(join(out, '_headers'), HEADERS);
   writeFileSync(join(out, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml\n`);
-  const urls = ['/', ...rows.map((r) => `/m/${r.slug}/`)];
+  const urls = ['/', ...docs, ...rows.map((r) => `/m/${r.slug}/`)];
   writeFileSync(join(out, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((u) => `  <url><loc>${SITE}${u}</loc></url>`).join('\n')}\n</urlset>\n`);
 }

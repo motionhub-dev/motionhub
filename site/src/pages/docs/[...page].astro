@@ -1,0 +1,122 @@
+---
+import Base from '../../layouts/Base.astro';
+import {REPO} from '../../lib/catalogue.mjs';
+import {DOCS, PAGES, pagePath, renderDoc, twinPath} from '../../lib/docs.mjs';
+
+export function getStaticPaths() {
+  return PAGES.map((p) => ({params: {page: p.slug === 'index' ? undefined : p.slug}, props: {p}}));
+}
+
+const {p} = Astro.props;
+const {title, html, toc} = renderDoc(p);
+const i = PAGES.indexOf(p);
+const prev = PAGES[i - 1], next = PAGES[i + 1];
+// what the docs' search looks through: each page's title and headings
+const index = PAGES.map((q) => {
+  const d = q === p ? {title, toc} : renderDoc(q);
+  return {t: d.title, l: q.label, u: pagePath(q), h: d.toc.map((h) => [h.text, h.id])};
+});
+const plain = (s: string) => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+const description = plain(html.match(/<p>([\s\S]*?)<\/p>/)?.[1] ?? title).replace(/\s+/g, ' ').slice(0, 200);
+---
+<Base title={`${p.slug === 'index' ? 'Docs' : title}: motionhub`} description={description} path={pagePath(p)} current="docs">
+  <link slot="head" rel="alternate" type="text/markdown" href={twinPath(p)} title="This page as Markdown">
+  <div class="docs">
+    <details class="docnav" open>
+      <summary>Docs: {p.label}</summary>
+      <label class="docsearch">
+        <span class="sr">Search the docs</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="docq" type="search" placeholder="Search the docs" autocomplete="off" spellcheck="false">
+      </label>
+      <nav aria-label="Docs" id="docnav">
+        {DOCS.map((g) => (
+          <>
+            <p class="group">{g.group}</p>
+            {g.pages.map((q) => <a href={pagePath(q)} aria-current={q === p ? 'page' : undefined}>{q.label}</a>)}
+          </>
+        ))}
+      </nav>
+      <ul class="results" id="results" hidden></ul>
+    </details>
+
+    <article class="docmain">
+      <p class="kicker">{p.group}</p>
+      <div class="titlebar">
+        <h1>{title}</h1>
+        <div class="tools">
+          <button type="button" class="btn sm" id="copypage" data-src={twinPath(p)}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+            <span>Copy page</span>
+          </button>
+          <a class="btn sm mono" href={twinPath(p)}>{twinPath(p).split('/').pop()}</a>
+        </div>
+      </div>
+      <div class="doc docbody" set:html={html} />
+      <nav class="pager" aria-label="Pages">
+        {prev ? <a href={pagePath(prev)}>← {prev.label}</a> : <span></span>}
+        {next && <a href={pagePath(next)}>{next.label} →</a>}
+      </nav>
+      <p class="from">This page is <a href={`${REPO}/blob/main/${p.file}`}><code>{p.file}</code></a> in the repository, rendered. <a href={`${REPO}/edit/main/${p.file}`}>Suggest a change</a></p>
+    </article>
+
+    <aside class="docside">
+      {toc.length > 0 && (
+        <>
+          <p class="group">On this page</p>
+          <nav aria-label="On this page" class="toc">
+            {toc.map((h) => <a href={`#${h.id}`} class={h.depth === 3 ? 'sub' : undefined}>{h.text}</a>)}
+          </nav>
+        </>
+      )}
+      <div class="agents">
+        <b>For agents</b>
+        <p>Every page has a Markdown twin: this one is <a href={twinPath(p)}>{twinPath(p)}</a>. <a href="/llms.txt">/llms.txt</a> lists them all; <a href="/llms-full.txt">/llms-full.txt</a> is all of them in one file.</p>
+      </div>
+    </aside>
+  </div>
+  <script type="application/json" id="docindex" set:html={JSON.stringify(index).replace(/</g, '\\u003c')} />
+</Base>
+
+<script>
+  // the sidebar folds away on a narrow screen
+  const nav = document.querySelector<HTMLDetailsElement>('.docnav')!;
+  if (matchMedia('(max-width: 900px)').matches) nav.open = false;
+
+  // Copy page: the page's Markdown twin, for pasting into an agent
+  const copy = document.getElementById('copypage') as HTMLButtonElement;
+  copy.addEventListener('click', async () => {
+    const label = copy.querySelector('span')!;
+    try {
+      const text = await (await fetch(copy.dataset.src!)).text();
+      await navigator.clipboard.writeText(text);
+      label.textContent = 'Copied';
+    } catch {
+      location.href = copy.dataset.src!;
+    }
+    setTimeout(() => (label.textContent = 'Copy page'), 1600);
+  });
+
+  // search: page titles and headings, every word
+  type Entry = {t: string; l: string; u: string; h: [string, string][]};
+  const index: Entry[] = JSON.parse(document.getElementById('docindex')!.textContent!);
+  const q = document.getElementById('docq') as HTMLInputElement;
+  const results = document.getElementById('results')!, list = document.getElementById('docnav')!;
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  q.addEventListener('input', () => {
+    const words = q.value.toLowerCase().split(/\s+/).filter(Boolean);
+    list.hidden = words.length > 0;
+    results.hidden = words.length === 0;
+    if (!words.length) return;
+    const hits: string[] = [];
+    for (const e of index) {
+      if (words.every((w) => `${e.t} ${e.l}`.toLowerCase().includes(w))) hits.push(`<li><a href="${e.u}"><b>${esc(e.l)}</b></a></li>`);
+      for (const [text, id] of e.h) if (words.every((w) => text.toLowerCase().includes(w))) hits.push(`<li><a href="${e.u}#${id}">${esc(text)}<small>${esc(e.l)}</small></a></li>`);
+    }
+    results.innerHTML = hits.slice(0, 30).join('') || '<li class="none">Nothing in the docs matches.</li>';
+  });
+  q.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { const a = results.querySelector('a'); if (a) location.href = a.href; }
+    if (e.key === 'Escape') { q.value = ''; q.dispatchEvent(new Event('input')); }
+  });
+</script>
