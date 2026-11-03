@@ -277,11 +277,6 @@ pre { margin: 0; padding: 12px 14px; background: var(--color-code); color: var(-
 .dd-list li[aria-selected="true"]::after { content: ""; position: absolute; right: 10px; top: 50%; width: 5px; height: 9px; margin-top: -6px; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(45deg); }
 
 /* an engine's guide opens with the project it is about */
-.enginecard { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; margin: 0 0 20px; padding: 14px 16px; border: 1px solid var(--color-line); border-radius: var(--radius-xl); background: var(--color-surface); }
-.engine.big { font-size: var(--size-lg); font-weight: var(--weight-semibold); gap: 10px; }
-.engine.big img { width: 28px; height: 28px; }
-.enginecard .links { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: var(--size-sm); }
-.enginecard .links a { color: var(--color-text-2); }
 
 /* footer */
 .foot { border-top: 1px solid var(--color-line); }
@@ -327,9 +322,23 @@ pre { margin: 0; padding: 12px 14px; background: var(--color-code); color: var(-
 .results .none { padding: 5px 8px; color: var(--color-muted); }
 .docmain { min-width: 0; max-width: 780px; }
 .kicker { margin: 0; font-size: var(--size-sm); color: var(--color-muted); }
-.titlebar { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
-.titlebar h1 { margin: 2px 0 0; font-size: var(--size-xxl); font-weight: var(--weight-semibold); letter-spacing: -0.02em; line-height: 1.2; }
-.titlebar .tools { display: flex; gap: 6px; padding-top: 4px; }
+.titlebar { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.titlebar h1 { min-width: 0; overflow-wrap: anywhere; margin: 2px 0 0; font-size: var(--size-xxl); font-weight: var(--weight-semibold); letter-spacing: -0.02em; line-height: 1.2; }
+.titlebar .titles { min-width: 0; }
+/* an engine's guide opens on one card: its logo, name and line, and under a rule where the project lives */
+.titlebar.enginehead { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 16px; margin: 8px 0 24px; padding: 20px; border: 1px solid var(--color-line); border-radius: var(--radius-xl); background: var(--color-surface); }
+.enginehead .engine img { width: 44px; height: 44px; }
+.enginehead .engine { align-self: start; margin-top: 2px; }
+.enginehead .lead { margin-top: 6px; color: var(--color-text-2); line-height: 1.6; }
+.enginehead .lead p { margin: 0; }
+.enginelinks { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--color-line); font-size: var(--size-sm); }
+.enginelinks a { display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-2); text-decoration: none; }
+.enginelinks a svg { color: var(--color-muted); }
+.enginelinks a:hover, .enginelinks a:hover svg { color: var(--color-text); }
+@media (max-width: 480px) {
+  .titlebar.enginehead { gap: 0 12px; padding: 16px; }
+  .enginehead .engine img { width: 32px; height: 32px; }
+}
 .docbody { font-size: 15px; line-height: 1.65; }
 .docbody h2 { font-size: var(--size-lg); margin: 36px 0 8px; scroll-margin-top: 16px; }
 .docbody h3 { font-size: var(--size-md); margin: 26px 0 6px; scroll-margin-top: 16px; }

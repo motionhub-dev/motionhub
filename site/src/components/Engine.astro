@@ -4,9 +4,9 @@
 import remotion from '../assets/engines/remotion.svg?url';
 import hyperframes from '../assets/engines/hyperframes.svg?url';
 const LOGOS: Record<string, string> = {Remotion: remotion, HyperFrames: hyperframes};
-interface Props { name: string; class?: string; href?: string }
-const {name, class: cls = 'engine', href} = Astro.props;
+interface Props { name: string; class?: string; href?: string; logoOnly?: boolean }
+const {name, class: cls = 'engine', href, logoOnly = false} = Astro.props;
 const logo = LOGOS[name];
 const Tag = href ? 'a' : 'span';
 ---
-<Tag class={cls} href={href}>{logo && <img src={logo} alt="" width="16" height="16" aria-hidden="true">}{name}</Tag>
+<Tag class={cls} href={href}>{logo && <img src={logo} alt="" width="16" height="16" aria-hidden="true">}{!logoOnly && name}</Tag>

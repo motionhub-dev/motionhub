@@ -13,6 +13,8 @@ const {p} = Astro.props;
 // an engine's guide credits the project first: its logo, its site, its repository and its agent skills
 const engine = p.engine && ENGINE_LINKS[p.engine];
 const {title, html, toc} = renderDoc(p);
+// its opening paragraph stands in the head beside the logo; the Markdown twin keeps it as the document's first
+const lead = engine ? html.match(/^<p>[\s\S]*?<\/p>\n?/)?.[0] ?? '' : '';
 const i = PAGES.indexOf(p);
 const prev = PAGES[i - 1], next = PAGES[i + 1];
 // what the docs' search looks through: each page's title and headings
@@ -48,28 +50,22 @@ const description = plain(html.match(/<p>([\s\S]*?)<\/p>/)?.[1] ?? title).replac
 
     <article class="docmain">
       <p class="kicker">{p.group}</p>
-      <div class="titlebar">
-        <h1>{title}</h1>
-        <div class="tools">
-          <button type="button" class="btn sm" id="copypage" data-src={twinPath(p)}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
-            <span>Copy page</span>
-          </button>
-          <a class="btn sm mono" href={twinPath(p)}>{twinPath(p).split('/').pop()}</a>
+      <div class:list={['titlebar', engine && 'enginehead']}>
+        {engine && <Engine name={p.engine} logoOnly />}
+        <div class="titles">
+          <h1>{title}</h1>
+          {lead && <div class="lead" set:html={lead} />}
         </div>
+        {engine && (
+          <p class="enginelinks">
+            <a href={engine.site} rel="noopener">{new URL(engine.site).host.replace(/^www\./, '')}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a>
+            <a href={engine.repo} rel="noopener">GitHub<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a>
+            <a href={engine.skills} rel="noopener">Agent skills<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a>
+          </p>
+        )}
       </div>
-      {engine && (
-        <div class="enginecard">
-          <Engine name={p.engine} class="engine big" />
-          <span class="links">
-            <a href={engine.site}>{new URL(engine.site).host.replace(/^www\./, '')}</a>
-            <a href={engine.repo}>{engine.repo.replace('https://', '')}</a>
-            <a href={engine.skills}>Agent skills</a>
-          </span>
-        </div>
-      )}
       {p.slug === 'brand' && <BrandSheet />}
-      <div class="doc docbody" set:html={html} />
+      <div class="doc docbody" set:html={html.slice(lead.length)} />
       <nav class="pager" aria-label="Pages">
         {prev ? <a href={pagePath(prev)}>← {prev.label}</a> : <span></span>}
         {next && <a href={pagePath(next)}>{next.label} →</a>}
@@ -99,20 +95,6 @@ const description = plain(html.match(/<p>([\s\S]*?)<\/p>/)?.[1] ?? title).replac
   // on a narrow screen the sidebar is folded (by CSS, so nothing moves as the page loads) until its button opens it
   const nav = document.querySelector<HTMLElement>('.docnav')!, toggle = nav.querySelector<HTMLButtonElement>('.docnav-toggle')!;
   toggle.addEventListener('click', () => toggle.setAttribute('aria-expanded', String(nav.classList.toggle('open'))));
-
-  // Copy page: the page's Markdown twin, for pasting into an agent
-  const copy = document.getElementById('copypage') as HTMLButtonElement;
-  copy.addEventListener('click', async () => {
-    const label = copy.querySelector('span')!;
-    try {
-      const text = await (await fetch(copy.dataset.src!)).text();
-      await navigator.clipboard.writeText(text);
-      label.textContent = 'Copied';
-    } catch {
-      location.href = copy.dataset.src!;
-    }
-    setTimeout(() => (label.textContent = 'Copy page'), 1600);
-  });
 
   // search: page titles and headings, every word
   type Entry = {t: string; l: string; u: string; h: [string, string][]};

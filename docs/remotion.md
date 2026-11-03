@@ -1,6 +1,6 @@
 # Remotion
 
-[Remotion](https://www.remotion.dev) makes videos in React: a film is a component, drawn frame by frame and rendered to MP4 ([github.com/remotion-dev/remotion](https://github.com/remotion-dev/remotion)). It is its makers' work and under [their licence](https://github.com/remotion-dev/remotion/blob/main/LICENSE.md): free for individuals, non-profits and companies of up to three people, with a company licence beyond that. A motion's components run in it unchanged, so a film in Remotion can take any look on motionhub.
+A film is a React component, drawn frame by frame and rendered to MP4. A motion's components run unchanged.
 
 ## With your agent
 

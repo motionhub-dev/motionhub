@@ -1,6 +1,6 @@
 # HyperFrames
 
-[HyperFrames](https://hyperframes.heygen.com) turns HTML, CSS, media and seekable animations into deterministic MP4 video, made by HeyGen and open source under the Apache 2.0 licence ([github.com/heygen-com/hyperframes](https://github.com/heygen-com/hyperframes)). A motion's components draw in it unchanged, at your GSAP timeline's time, so a film in HyperFrames can take any look on motionhub.
+Made by HeyGen: HTML, CSS, media and seekable animations become deterministic MP4 video. A motion's components draw unchanged, at your GSAP timeline's time.
 
 ## With your agent
 
