@@ -1,4 +1,5 @@
-// motionhub.dev: the static build in dist/ (node tools/build.mjs) and a Worker that serves packages from R2.
+// motionhub.dev: the static build in dist/ (npm run build in site/) and a Worker that serves packages from R2 and
+// counts downloads and views in Analytics Engine, read back through the Analytics SQL binding (no API token).
 // Deployed by .github/workflows/deploy.yml on every push to main.
 {
   "name": "motionhub",
@@ -8,9 +9,12 @@
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "404-page",
-    "run_worker_first": ["/m/*"]
+    "run_worker_first": ["/m/*", "/api/stats.json"]
   },
   "r2_buckets": [{"binding": "PACKAGES", "bucket_name": "motionhub"}],
+  "analytics_engine_datasets": [{"binding": "EVENTS", "dataset": "motionhub_events"}],
+  "analytics": {"binding": "ANALYTICS_SQL"},
+  "triggers": {"crons": ["7 0 * * *"]},
   "routes": [{"pattern": "motionhub.dev", "custom_domain": true}],
   "observability": {"enabled": true}
 }

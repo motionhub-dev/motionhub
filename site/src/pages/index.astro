@@ -5,7 +5,7 @@ import {REPO, chips, en, other, rows, tools} from '../lib/catalogue.mjs';
 
 // what a search matches: the id, every name and line, the tags, the tools and the authors
 const text = (r) => [r.slug, ...Object.values(r.name), ...Object.values(r.line), ...r.tags, ...r.tools, ...r.authors.flatMap((a) => [a.name, a.github])].join(' ').toLowerCase();
-const filter = (r) => ({'data-text': text(r), 'data-tags': r.tags.join(' '), 'data-tools': r.tools.join(' ')});
+const filter = (r) => ({'data-id': r.slug, 'data-text': text(r), 'data-tags': r.tags.join(' '), 'data-tools': r.tools.join(' ')});
 const n = rows.length;
 ---
 <Base title="motionhub: open looks for explainer videos" description="Open motions for narrated and explanatory video: pick a look, and any agent can make your film in it." path="/" current="motions">
@@ -27,6 +27,13 @@ const n = rows.length;
         </select>
       </label>
     )}
+    <label class="field" id="sortfield" hidden>Sort
+      <select id="sort">
+        <option value="">A to Z</option>
+        <option value="last30">Most downloaded, 30 days</option>
+        <option value="total">Most downloaded, all time</option>
+      </select>
+    </label>
     <div class="seg" role="group" aria-label="View">
       <button type="button" data-view="grid" aria-pressed="true" aria-label="Grid"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
       <button type="button" data-view="list" aria-pressed="false" aria-label="List"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
@@ -41,7 +48,7 @@ const n = rows.length;
 
   <div class="table" id="list" hidden>
     <table>
-      <thead><tr><th colspan="2">Motion</th><th>Looks</th><th>Ready for</th><th>By</th><th class="r">Version</th></tr></thead>
+      <thead><tr><th colspan="2">Motion</th><th>Looks</th><th>Ready for</th><th>By</th><th class="r" id="dlhead">Downloads</th><th class="r">Version</th></tr></thead>
       <tbody>
         {rows.map((r) => (
           <tr {...filter(r)}>
@@ -50,6 +57,7 @@ const n = rows.length;
             <td>{r.tags.join(', ')}</td>
             <td>{r.tools.map((t) => <span class="badge">{t}</span>)}</td>
             <td>{r.authors.map((a) => a.name).join(', ')}</td>
+            <td class="r" data-dl={r.slug}>–</td>
             <td class="r mono">{r.version}</td>
           </tr>
         ))}
@@ -70,11 +78,27 @@ const n = rows.length;
   const items = [...document.querySelectorAll<HTMLElement>('[data-text]')];
   const grid = $<HTMLElement>('#grid')!, list = $<HTMLElement>('#list')!;
   const params = new URLSearchParams(location.search);
+  const sort = $<HTMLSelectElement>('#sort')!;
+  let counts: Record<string, {downloads: {total: number; last30: number}}> = {};
   let tag = params.get('tag') ?? '';
   let view = params.get('view') ?? (() => { try { return localStorage.getItem('motionhub.view'); } catch { return null; } })() ?? 'grid';
   q.value = params.get('q') ?? q.value;
   if (tool) tool.value = params.get('tool') ?? '';
   if (!chips.some((c) => c.dataset.tag === tag)) tag = '';
+
+  // the downloads each motion shows: in all, or in the last 30 days while sorted by them
+  const ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 4v12M6 11l6 6 6-6M5 20h14"/></svg>';
+  const fmt = new Intl.NumberFormat('en', {notation: 'compact'});
+  function paint(which: 'total' | 'last30') {
+    for (const el of document.querySelectorAll<HTMLElement>('[data-dl]')) {
+      const d = counts[el.dataset.dl!]?.downloads;
+      if (!d) { if (el.tagName === 'TD') el.textContent = Object.keys(counts).length ? '0' : '–'; continue; }
+      const n = d[which];
+      if (el.tagName === 'TD') el.textContent = fmt.format(n);
+      else { el.innerHTML = ICON + fmt.format(n); el.hidden = n === 0; }
+      el.title = `${d.total} downloads, ${d.last30} in the last 30 days`;
+    }
+  }
 
   function apply() {
     const words = q.value.toLowerCase().split(/\s+/).filter(Boolean);
@@ -85,6 +109,14 @@ const n = rows.length;
       el.hidden = !show;
       if (show && el.tagName === 'A') n++;
     }
+    // order: A to Z (the page's own order), or by downloads with A to Z among equals
+    const by = sort.value as '' | 'total' | 'last30';
+    for (const box of [grid, list.querySelector('tbody')!]) {
+      const kids = [...box.children] as HTMLElement[];
+      kids.sort((a, b) => (by ? (counts[b.dataset.id!]?.downloads[by] ?? 0) - (counts[a.dataset.id!]?.downloads[by] ?? 0) : 0) || Number(a.dataset.order) - Number(b.dataset.order));
+      box.append(...kids);
+    }
+    paint(by === 'last30' ? 'last30' : 'total');
     for (const c of chips) c.setAttribute('aria-pressed', String(c.dataset.tag === tag));
     for (const v of views) v.setAttribute('aria-pressed', String(v.dataset.view === view));
     grid.hidden = view !== 'grid';
@@ -93,13 +125,14 @@ const n = rows.length;
     if (tag) parts.push(`tagged ${tag}`);
     if (t) parts.push(`ready for ${t}`);
     if (words.length) parts.push(`matching “${q.value.trim()}”`);
-    $('#count')!.textContent = parts.join(' ') + ', A to Z';
+    $('#count')!.textContent = parts.join(' ') + ', ' + (by ? `most downloaded${by === 'last30' ? ' in 30 days' : ''} first` : 'A to Z');
     $<HTMLElement>('#empty')!.hidden = n > 0;
     const next = new URLSearchParams();
     if (q.value.trim()) next.set('q', q.value.trim());
     if (tag) next.set('tag', tag);
     if (t) next.set('tool', t);
     if (view !== 'grid') next.set('view', view);
+    if (by) next.set('sort', by);
     const s = next.toString();
     history.replaceState(null, '', s ? `?${s}` : location.pathname);
   }
@@ -107,7 +140,18 @@ const n = rows.length;
   q.form!.addEventListener('submit', (e) => e.preventDefault());
   q.addEventListener('input', apply);
   tool?.addEventListener('change', apply);
+  sort.addEventListener('change', apply);
   for (const c of chips) c.addEventListener('click', () => { tag = c.dataset.tag!; apply(); });
   for (const v of views) v.addEventListener('click', () => { view = v.dataset.view!; try { localStorage.setItem('motionhub.view', view); } catch {} apply(); });
+  for (const [i, el] of items.entries()) el.dataset.order = String(i % (items.length / 2));
   apply();
+
+  // the public counts, when they load: downloads on each motion, and sorting by them
+  fetch('/api/stats.json').then((r) => (r.ok ? r.json() : Promise.reject())).then((s) => {
+    counts = s.motions ?? {};
+    $<HTMLElement>('#sortfield')!.hidden = false;
+    const want = params.get('sort');
+    if (want === 'total' || want === 'last30') sort.value = want;
+    apply();
+  }).catch(() => {});
 </script>
