@@ -8,7 +8,6 @@ import {join} from 'node:path';
 export const SITE = 'https://motionhub.dev';
 const REPO = 'https://github.com/motionhub-dev/motions';
 const MARK = '<svg viewBox="0 0 96 56" aria-hidden="true"><circle cx="10" cy="40" r="5" fill="#E2442B" fill-opacity="0.18"/><circle cx="27" cy="31" r="7" fill="#E2442B" fill-opacity="0.35"/><circle cx="47" cy="24" r="9" fill="#E2442B" fill-opacity="0.6"/><circle cx="72" cy="21" r="14" fill="#E2442B"/></svg>';
-const ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#F3EEE4"/><circle cx="12" cy="42" r="4" fill="#E2442B" fill-opacity="0.25"/><circle cx="24" cy="35" r="6" fill="#E2442B" fill-opacity="0.5"/><circle cx="42" cy="28" r="12" fill="#E2442B"/></svg>\n';
 
 export const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const en = (localized) => localized?.en ?? Object.values(localized ?? {})[0] ?? '';
@@ -96,8 +95,12 @@ function page({title, description, path, image, body, script = ''}) {
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:url" content="${SITE}${path}">
-${image ? `<meta property="og:image" content="${SITE}${image}">\n<meta name="twitter:card" content="summary_large_image">` : ''}
-<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<meta property="og:image" content="${SITE}${image ?? '/og-default.png'}">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap">
@@ -259,7 +262,6 @@ export function writeSite(out, rows, motionsDir, css) {
   }
   writeFileSync(join(out, '404.html'), NOT_FOUND());
   writeFileSync(join(out, 'site.css'), css);
-  writeFileSync(join(out, 'icon.svg'), ICON);
   writeFileSync(join(out, '_headers'), HEADERS);
   writeFileSync(join(out, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml\n`);
   const urls = ['/', ...rows.map((r) => `/m/${r.slug}/`)];
