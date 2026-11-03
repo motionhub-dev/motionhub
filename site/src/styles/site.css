@@ -281,6 +281,7 @@ pre { margin: 0; padding: 12px 14px; background: var(--color-surface); border: 1
 .foot .wrap { align-items: center; }
 .theme { display: flex; border: 1px solid var(--color-line); border-radius: var(--radius-pill); padding: 2px; gap: 2px; }
 .theme button { display: grid; place-items: center; width: 26px; height: 24px; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--color-muted); cursor: pointer; }
+.foot .theme { margin-left: auto; }
 .theme button:hover { color: var(--color-text); }
 .theme button[aria-checked="true"] { background: var(--color-surface-2); color: var(--color-text); }
 
