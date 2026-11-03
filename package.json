@@ -15,6 +15,7 @@
   "scripts": {
     "check": "node tools/check.mjs",
     "build": "node tools/build.mjs",
+    "brand": "node tools/brand.mjs",
     "test": "node --test \"tests/*.test.mjs\""
   }
 }

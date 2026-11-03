@@ -1,0 +1,60 @@
+/* Generated from brand/brand.tokens.json by node tools/brand.mjs: edit the tokens, not this file. */
+
+:root {
+  color-scheme: light;
+  --color-bg: #F3EEE4;
+  --color-surface: #FBF8F2;
+  --color-surface-2: #EAE2D4;
+  --color-line: #DDD3C3;
+  --color-text: #2A2622;
+  --color-text-2: #4A453E;
+  --color-muted: #6B645A;
+  --color-mark: #E2442B;
+  --color-like: #C24A33;
+  --font-ui: "Inter", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", "Menlo", monospace;
+  --font-wordmark: "Instrument Serif", serif;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --size-xs: 12px;
+  --size-sm: 13px;
+  --size-base: 14px;
+  --size-md: 16px;
+  --size-lg: 20px;
+  --size-xl: 26px;
+  --size-xxl: 30px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-pill: 999px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-bg: #1A1714;
+    --color-surface: #221E1A;
+    --color-surface-2: #2C2722;
+    --color-line: #3B342D;
+    --color-text: #F1EBE0;
+    --color-text-2: #D3CABC;
+    --color-muted: #A89E90;
+    --color-mark: #FF6A4D;
+    --color-like: #FF7A5E;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #1A1714;
+  --color-surface: #221E1A;
+  --color-surface-2: #2C2722;
+  --color-line: #3B342D;
+  --color-text: #F1EBE0;
+  --color-text-2: #D3CABC;
+  --color-muted: #A89E90;
+  --color-mark: #FF6A4D;
+  --color-like: #FF7A5E;
+}

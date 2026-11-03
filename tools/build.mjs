@@ -10,8 +10,10 @@
 //   m/<id>/<file>                    the newest version's motion.json, MOTION*.md, tokens.json, CREDITS.md, poster.jpg
 //   m/<id>/<version>.tgz             the whole motion, its paths under <id>/; the same files always give the same bytes
 //   llms.txt                         the generic skill, for agents (skills/motionhub/SKILL.md without its front matter)
-//   index.html, m/<slug>/index.html  the gallery and a page per motion, with 404.html, site.css, icon.svg, _headers,
+//   index.html, m/<slug>/index.html  the gallery and a page per motion, with 404.html, site.css, _headers,
 //                                    robots.txt and sitemap.xml (tools/site.mjs)
+//   favicon.svg, favicon-32.png, apple-touch-icon.png, icon-192.png, icon-512.png, site.webmanifest, og-default.png
+//                                    the brand's icons and default share card, copied from brand/
 //   .assetsignore                    keeps the packages out of the deployed assets: the Worker serves them from R2
 // It refuses to build while any motion has an issue (tools/check.mjs). Publishing must never replace a package that is
 // already at its URL (HUB.md): that is the deploy's rule, since this build only knows the newest versions.
@@ -110,6 +112,10 @@ export function build(out, root = ROOT) {
   const skill = readFileSync(join(root, 'skills/motionhub/SKILL.md'), 'utf8');
   writeFileSync(join(out, 'llms.txt'), skill.replace(/^---\n[\s\S]*?\n---\n+/, ''));
   writeSite(out, rows, motions, readFileSync(join(ROOT, 'tools/site.css'), 'utf8'));
+  // the brand's favicons, web manifest and default share card, from brand/ (BRAND.md)
+  for (const [dir, names] of [['favicon', ['favicon.svg', 'favicon-32.png', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'site.webmanifest']], ['social', ['og-default.png']]]) {
+    for (const name of names) copyFileSync(join(ROOT, 'brand', dir, name), join(out, name));
+  }
   writeFileSync(join(out, '.assetsignore'), '*.tgz\n');
   return rows;
 }
