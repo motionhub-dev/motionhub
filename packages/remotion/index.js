@@ -33,9 +33,13 @@ const GENERIC = /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|math|emo
 const HAN = /^(Noto (Sans|Serif) (SC|TC|JP|KR)|LXGW WenKai|Fusion Pixel.*)$/;
 /** The family names in the tokens' font stacks */
 export const families = (resolved) => [...new Set(Object.values(resolved?.font ?? {}).flatMap((s) => String(s).split(',').map((f) => f.trim().replace(/^["']|["']$/g, ''))))].filter((f) => f && !GENERIC.test(f));
-/** Faces Google Fonts does not have (it only has "LXGW WenKai TC"), by family: stylesheets of the OFL-1.1 npm package, split by unicode-range */
+/**
+ * Faces Google Fonts does not have, by family: stylesheets that split them by unicode-range, at an exact version so that a film renders the same
+ * next year. Google has only "LXGW WenKai TC", so LXGW WenKai comes from its OFL-1.1 webfont package on npm, through jsDelivr. The same table is
+ * in @motionhub/hyperframes (tests/bindings.test.mjs keeps them equal).
+ */
 const ELSEWHERE = {
-  'LXGW WenKai': ['regular', 'bold'].map((w) => `https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1/lxgwwenkai-${w}.css`),
+  'LXGW WenKai': ['regular', 'bold'].map((w) => `https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/lxgwwenkai-${w}.css`),
 };
 /** A stylesheet from a URL, its relative `url()`s made absolute: it is set in a <style>, where they would not resolve */
 const sheet = async (href) => {
@@ -80,7 +84,10 @@ export const MotionFonts = ({han = false}) => {
         el.textContent = text;
         document.head.appendChild(el);
       }
-      await Promise.all(['400', '700'].map((w) => document.fonts.load(`${w} 32px "${family}"`).catch(() => undefined)));
+      // a face split by unicode-range fetches a part only when its text is first drawn, too late for that frame: so a Chinese, Japanese or
+      // Korean face, whose text no one knows beforehand, is loaded whole; the others need only their latin part, which these loads fetch
+      if (HAN.test(family)) await Promise.all([...document.fonts].filter((f) => f.family.replace(/^["']|["']$/g, '') === family).map((f) => f.load().catch(() => undefined)));
+      else await Promise.all(['400', '700'].map((w) => document.fonts.load(`${w} 32px "${family}"`).catch(() => undefined)));
     })).finally(() => continueRender(handle));
   }, [handle]);
   return null;
