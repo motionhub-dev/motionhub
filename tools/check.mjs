@@ -34,6 +34,7 @@ const POSTER_BYTES = 500 * 1024;
 
 // The hub's rules (CONTRIBUTING.md)
 const REEL_SECONDS = 30;
+const FONT_BYTES = 300 * 1024;
 const TEXT_LICENSES = new Set(['CC-BY-4.0', 'CC-BY-SA-4.0', 'CC0-1.0']);
 const CODE_LICENSES = new Set(['MIT', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'ISC', '0BSD']);
 const MOTION_BYTES = 1024 * 1024;
@@ -351,6 +352,24 @@ function checkHub(dir, manifest, {author, official, was}, add) {
     }
   }
   if (total > MOTION_BYTES) add('hub.size', '.', `${total} bytes: a motion is at most ${MOTION_BYTES}`);
+  // faces a motion carries for its components (react/fonts/): WOFF2, each named in fonts.json and credited
+  const fontDir = join(dir, 'react/fonts');
+  if (existsSync(fontDir)) {
+    let list = [];
+    try { list = JSON.parse(readFileSync(join(fontDir, 'fonts.json'), 'utf8')); } catch { add('hub.font', 'react/fonts/fonts.json', 'react/fonts/ needs fonts.json: [{family, file, weight, style}]'); }
+    const credits = existsSync(join(dir, 'CREDITS.md')) ? readFileSync(join(dir, 'CREDITS.md'), 'utf8') : '';
+    const files = readdirSync(fontDir).filter((n) => n !== 'fonts.json');
+    for (const n of files) {
+      const buf = readFileSync(join(fontDir, n));
+      if (!n.endsWith('.woff2') || buf.subarray(0, 4).toString('latin1') !== 'wOF2') add('hub.font', `react/fonts/${n}`, 'a face is a WOFF2 file');
+      else if (buf.length > FONT_BYTES) add('hub.font', `react/fonts/${n}`, `${buf.length} bytes: a face is at most ${FONT_BYTES}; cut it to the characters it draws`);
+      if (!Array.isArray(list) || !list.some((f) => f?.file === n)) add('hub.font', `react/fonts/${n}`, 'fonts.json does not name it');
+    }
+    for (const f of Array.isArray(list) ? list : []) {
+      if (typeof f?.family !== 'string' || typeof f?.file !== 'string' || !files.includes(f.file)) add('hub.font', 'react/fonts/fonts.json', `an entry needs a family and a file that is here (${f?.file})`);
+      else if (!credits.includes(f.family)) add('hub.font', 'CREDITS.md', `CREDITS.md must name the face ${f.family} and its licence`);
+    }
+  }
   // a reel is what the motion's page plays live: a default export and how long it runs
   if (existsSync(join(dir, 'react/reel.tsx'))) {
     const reel = readFileSync(join(dir, 'react/reel.tsx'), 'utf8');

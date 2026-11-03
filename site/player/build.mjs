@@ -38,11 +38,17 @@ async function googleCss(family) {
 }
 
 /** @font-face rules for the latin files of `families`, the files copied into `dir/fonts`; a family Google Fonts lacks is named */
-async function faces(families, dir) {
+async function faces(families, dir, motion) {
   mkdirSync(join(dir, 'fonts'), {recursive: true});
   mkdirSync(CACHE, {recursive: true});
   const css = [], missing = [];
-  for (const family of families) {
+  // the faces the motion carries itself (react/fonts/fonts.json), before Google Fonts
+  const ownDir = join(motion, 'react/fonts'), own = existsSync(join(ownDir, 'fonts.json')) ? JSON.parse(readFileSync(join(ownDir, 'fonts.json'), 'utf8')) : [];
+  for (const f of own) {
+    copyFileSync(join(ownDir, f.file), join(dir, 'fonts', f.file));
+    css.push(`@font-face { font-family: ${JSON.stringify(f.family)}; font-style: ${f.style ?? 'normal'}; font-weight: ${f.weight ?? '400'}; font-display: block; src: url('fonts/${f.file}') format('woff2'); }`);
+  }
+  for (const family of families.filter((name) => !own.some((f) => f.family === name))) {
     const text = await googleCss(family);
     if (!text) { missing.push(family); continue; }
     const blocks = [...text.matchAll(/\/\*\s*([a-z-]+)\s*\*\/\s*(@font-face\s*\{[^}]*\})/g)].filter(([, subset]) => subset === 'latin').map(([, , b]) => b);
@@ -92,7 +98,7 @@ async function player(id) {
   const tokens = resolveTokens(JSON.parse(readFileSync(join(dir, 'tokens.json'), 'utf8')));
   const name = JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8')).name?.en ?? id;
   mkdirSync(out, {recursive: true});
-  const {css, missing} = await faces(familiesOf(tokens), out);
+  const {css, missing} = await faces(familiesOf(tokens), out, dir);
   writeFileSync(join(out, 'reel.css'), [...css, ':root {', ...Object.entries(tokenVariables(tokens)).map(([k, v]) => `  ${k}: ${v};`), '}', ''].join('\n'));
   const {metafile} = await build({
     entryPoints: [join(HERE, 'player.jsx')],

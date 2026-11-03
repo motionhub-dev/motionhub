@@ -220,3 +220,13 @@ test('a reel has a default export and runs at most 30 seconds', () => {
   assert.ok(reel('export const reel = {seconds: 45};\nexport default function Reel() { return null; }\n').includes('hub.reel'));
   assert.ok(reel('export function Reel() { return null; }\n').includes('hub.reel'));
 });
+
+test('a motion\'s own faces are WOFF2, named in fonts.json and credited', () => {
+  const WOFF2 = Buffer.concat([Buffer.from('wOF2', 'latin1'), Buffer.alloc(60)]);
+  const faces = (extra, credits = 'Pixel Face: SIL Open Font License 1.1\n') => codes(motion({credits, extra: {'react/fonts/pixel.woff2': WOFF2, ...extra}}));
+  const list = JSON.stringify([{family: 'Pixel Face', file: 'pixel.woff2', weight: '400', style: 'normal'}]);
+  assert.deepEqual(faces({'react/fonts/fonts.json': list}).filter((c) => c === 'hub.font'), []);
+  assert.ok(faces({}).includes('hub.font'));
+  assert.ok(faces({'react/fonts/fonts.json': list}, 'No assets.\n').includes('hub.font'));
+  assert.ok(faces({'react/fonts/fonts.json': list, 'react/fonts/other.ttf': 'x'}).includes('hub.font'));
+});
