@@ -2,9 +2,11 @@
 // against the SHA-256 the index gives, unpacked with no link and no path outside the motion), start a new motion, and
 // share one by pull request (HUB.md, CONTRIBUTING.md).
 //
-//   motionhub search [words ...]                one line per motion that has every word in its slug, names, line or tags
-//   motionhub get <slug> [--out <dir>]          the newest version, into <dir> (default ./motion), which must not exist yet
-//   motionhub init <slug> [--github <login>]    ./<slug>/ with every required file but the poster, to fill in
+//   motionhub search [words ...]                one line per motion that has every word in its id, names, line or tags
+//   motionhub get <id> [--out <dir>]            the newest version of `red-pencil` or `@ana/ledger-pencil`, into <dir>
+//                                               (default ./motion), which must not exist yet
+//   motionhub init <slug> [--github <login>]    ./<slug>/ with every required file but the poster, to fill in, scoped to
+//                                               the account gh is signed in as (or --github): its id is @<login>/<slug>
 //   motionhub share <dir> [--github <login>] [--pr]
 //                                               the pull request's checks, as the person and against what is published;
 //                                               with --pr, the pull request itself, from the fork of the account gh is
@@ -16,7 +18,7 @@ import {cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeF
 import {tmpdir} from 'node:os';
 import {basename, dirname, join, resolve} from 'node:path';
 import {gunzipSync} from 'node:zlib';
-import {checkMotion} from './check.mjs';
+import {SPEC, checkMotion, motionId} from './check.mjs';
 
 export const HUB = 'https://motionhub.dev';
 
@@ -71,10 +73,10 @@ export function unpack(row, gz) {
   return files;
 }
 
-/** Write the newest version of `slug` into `out`, which must not exist yet. Returns its index row. */
-export async function getMotion(slug, out, base = HUB) {
-  const row = (await index(base)).find((m) => m.slug === slug);
-  if (!row) throw new Error(`no motion "${slug}" on ${base}: motionhub search <words>`);
+/** Write the newest version of the motion `id` (`<slug>` or `@<scope>/<slug>`) into `out`, which must not exist yet. Returns its index row. */
+export async function getMotion(id, out, base = HUB) {
+  const row = (await index(base)).find((m) => m.slug === id);
+  if (!row) throw new Error(`no motion "${id}" on ${base}${id.startsWith('@') ? '' : ` (a community motion's id starts with its creator: @<login>/${id})`}: motionhub search <words>`);
   if (existsSync(out)) throw new Error(`${out} already exists: a project keeps the copy it took, so remove it first or choose --out`);
   const files = unpack(row, Buffer.from(await (await get(new URL(row.package.url, base).href)).arrayBuffer()));
   for (const [path, data] of files) { mkdirSync(dirname(join(out, path)), {recursive: true}); writeFileSync(join(out, path), data); }
@@ -86,7 +88,7 @@ export async function main(command, args, base = HUB) {
   if (command === 'search') {
     const rows = search(await index(base), args.filter((a) => !a.startsWith('--')));
     for (const m of rows) console.log(`${m.slug}  ${m.version}  ${m.line.en ?? Object.values(m.line)[0]}  (looks: ${m.tags.join(', ')}; by ${m.authors.map((a) => a.github).join(', ')}; ${m.license.text}${m.tools.length ? `; for ${m.tools.join(', ')}` : ''})`);
-    console.log(rows.length ? `${rows.length} motion(s); get one with: motionhub get <slug>` : 'No motion has every one of those words');
+    console.log(rows.length ? `${rows.length} motion(s); get one with: motionhub get <id>` : 'No motion has every one of those words');
     return 0;
   }
   const value = (flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : undefined; };
@@ -97,15 +99,15 @@ export async function main(command, args, base = HUB) {
     return 0;
   }
   if (command === 'init') {
-    if (!slug || !/^(?=.{3,40}$)[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) { console.error('usage: motionhub init <slug>  (3 to 40 characters of a-z, 0-9 and single hyphens)'); return 2; }
+    if (!slug || !/^(?=.{3,40}$)[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) { console.error('usage: motionhub init <slug> [--github <login>]  (3 to 40 characters of a-z, 0-9 and single hyphens)'); return 2; }
     const out = resolve(slug);
     if (existsSync(out)) throw new Error(`${out} already exists`);
     const account = value('--github') ? {login: value('--github')} : githubAccount();
     for (const [path, data] of scaffold(slug, account)) { mkdirSync(dirname(join(out, path)), {recursive: true}); writeFileSync(join(out, path), data); }
-    console.log(`${out}, authored by ${account?.login ? `${account.login}${value('--github') ? '' : ' (the account gh is signed in as)'}` : 'nobody yet: set authors in motion.json'}: fill in motion.json, MOTION.md, tokens.json and CREDITS.md, add poster.jpg (a frame of a film made in it, 960 to 3840 pixels wide, at most 500 KB) and any tool directory, then: motionhub share ${basename(out)}`);
+    console.log(`${out}, the motion @${account?.login ? account.login.toLowerCase() : 'your-github-login'}/${slug}, authored by ${account?.login ? `${account.login}${value('--github') ? '' : ' (the account gh is signed in as)'}` : 'nobody yet: set scope and authors in motion.json'}: fill in motion.json, MOTION.md, tokens.json and CREDITS.md, add poster.jpg (a frame of a film made in it, 960 to 3840 pixels wide, at most 500 KB) and any tool directory, then: motionhub share ${basename(out)}`);
     return 0;
   }
-  if (!slug) { console.error('usage: motionhub get <slug> [--out <dir>]'); return 2; }
+  if (!slug) { console.error('usage: motionhub get <id> [--out <dir>]'); return 2; }
   const out = resolve(value('--out') ?? 'motion');
   const row = await getMotion(slug, out, base);
   console.log(`${row.slug} ${row.version} in ${out}: read its MOTION.md and tokens.json before drawing. Credit: ${row.name.en} by ${row.authors.map((a) => a.name).join(', ')}, ${base}/m/${row.slug}/, ${row.license.text}`);
@@ -127,12 +129,12 @@ export function githubAccount() {
   return r.error || r.status !== 0 ? undefined : JSON.parse(r.stdout);
 }
 
-/** A new motion's starting files, by path: every required file but the poster, with what each part is for. */
+/** A new motion's starting files, by path: every required file but the poster, with what each part is for, scoped to its author. */
 export function scaffold(slug, author) {
   const title = slug.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
   const color = (hex) => ({colorSpace: 'srgb', components: [1, 3, 5].map((i) => Math.round((parseInt(hex.slice(i, i + 2), 16) / 255) * 10000) / 10000), hex});
   return new Map([
-    ['motion.json', JSON.stringify({spec: 'motion/0.1', slug, version: '1.0.0', name: {en: title}, line: {en: `One sentence: what ${title} looks like and what it is for.`},
+    ['motion.json', JSON.stringify({spec: SPEC, scope: (author?.login || 'your-github-login').toLowerCase(), slug, version: '1.0.0', name: {en: title}, line: {en: `One sentence: what ${title} looks like and what it is for.`},
       authors: [{name: author?.name || author?.login || 'Your name', github: author?.login || 'your-github-login'}], license: {text: 'CC-BY-4.0', code: 'MIT'}, tags: []}, null, 2) + '\n'],
     ['MOTION.md', `# ${title}\n\nWhat a film in this motion feels like, in a sentence or two. Describe the look and the motion, never a particular film.\n\n## Essence\n\nThe few traits that make a frame read as ${title} at a glance, and what it is easily confused with.\n\n## Colour\n\nWhat each colour token is for, and what is never coloured.\n\n## Type\n\nThe faces and their roles, sizes, and how words sit in the frame.\n\n## Motion\n\nHow things arrive, change and leave; the easing and the durations in seconds; how motion follows the narration or music; what never moves.\n\n## Avoid\n\nThe mistakes this look invites, and what to do instead.\n`],
     ['tokens.json', JSON.stringify({
@@ -147,7 +149,7 @@ export function scaffold(slug, author) {
 
 /**
  * Check a motion for the hub as its pull request will be checked, under the person's GitHub account and against what
- * is published for its slug; with `pr`, fork this repository, commit it signed off as the person's git identity and
+ * is published for its id; with `pr`, fork this repository, commit it signed off as the person's git identity and
  * open the pull request from their fork. Nothing is published without `pr`.
  */
 export async function share(dir, {pr = false, github} = {}, base = HUB) {
@@ -158,21 +160,22 @@ export async function share(dir, {pr = false, github} = {}, base = HUB) {
   const account = signedIn ?? (github ? {login: github} : undefined);
   if (!account?.login) throw new Error('sharing needs your GitHub account: sign in with gh (gh auth login), or pass --github <login>');
   const manifest = JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8'));
-  const published = (await index(base)).find((m) => m.slug === manifest.slug);
-  const was = published ? await (await get(`${base}/m/${published.slug}/motion.json`)).json() : undefined;
+  const id = motionId(manifest);
+  const published = (await index(base)).find((m) => m.slug === id);
+  const was = published ? await (await get(`${base}/m/${id}/motion.json`)).json() : undefined;
   const issues = checkMotion(dir, {author: account.login, was});
   if (issues.length) throw new Error(`${dir} does not pass the hub's checks:\n${issues.map((i) => `${i.at}  ${i.code}  ${i.message}`).join('\n')}`);
   const what = `${published ? 'Update' : 'Add'} ${manifest.name.en} ${manifest.version}`;
-  if (!pr) return `${manifest.slug} ${manifest.version} passes the hub's checks as ${account.login}${published ? `, after ${published.version}` : ''}. Nothing is published yet: run again with --pr to open "${what}" on github.com/${REPO}.`;
+  if (!pr) return `${id} ${manifest.version} passes the hub's checks as ${account.login}${published ? `, after ${published.version}` : ''}. Nothing is published yet: run again with --pr to open "${what}" on github.com/${REPO}.`;
   const clone = mkdtempSync(join(tmpdir(), 'motionhub-'));
   try {
-    const branch = `motion/${manifest.slug}-${manifest.version}`;
+    const branch = `motion/${id.replace('@', '')}-${manifest.version}`;
     run('gh', ['repo', 'fork', REPO, '--clone=false']);
     must('git', ['clone', '--quiet', `https://github.com/${REPO}.git`, clone]);
     must('git', ['checkout', '--quiet', '-b', branch], clone);
-    rmSync(join(clone, 'motions', manifest.slug), {recursive: true, force: true});
-    cpSync(dir, join(clone, 'motions', manifest.slug), {recursive: true});
-    must('git', ['add', join('motions', manifest.slug)], clone);
+    rmSync(join(clone, 'motions', id), {recursive: true, force: true});
+    cpSync(dir, join(clone, 'motions', id), {recursive: true});
+    must('git', ['add', join('motions', id)], clone);
     must('git', ['commit', '--quiet', '--signoff', '-m', what], clone);
     must('git', ['-c', 'credential.helper=', '-c', 'credential.helper=!gh auth git-credential', 'push', '--quiet', `https://github.com/${account.login}/motions.git`, `HEAD:refs/heads/${branch}`], clone);
     return must('gh', ['pr', 'create', '--repo', REPO, '--head', `${account.login}:${branch}`, '--title', what, '--body', `${manifest.line.en}\n\nChecked with @motionhub/cli.`], clone);

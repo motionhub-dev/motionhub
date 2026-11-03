@@ -1,6 +1,6 @@
-# Motion format 0.1
+# Motion format 0.2
 
-> **Status:** Draft · **Version:** `motion/0.1`
+> **Status:** Draft · **Version:** `motion/0.2` · what each version added: §10
 
 What a motion is on disk: the files, their fields and the rules any tool can rely on. This document only grows: a later version adds to it and never changes the meaning of what is here.
 
@@ -27,13 +27,16 @@ A motion is a directory named after its slug. A copy taken into a project may si
 
 No other file may sit at the top of a motion. Names are exact and case-sensitive.
 
+Where many motions are kept together, a scoped motion's directory sits in a directory named after its scope with an `@` before it: `@ana/ledger-pencil/` (§3, Identity).
+
 ## 3. `motion.json`
 
 A JSON object with these members and no others, except extension members (§7).
 
 | Member | Required | Value |
 | --- | --- | --- |
-| `spec` | yes | `"motion/0.1"` |
+| `spec` | yes | `"motion/0.2"`, or `"motion/0.1"` for a motion without a scope |
+| `scope` | no | The GitHub username, in lowercase, of the person or organization that publishes the motion (since 0.2) |
 | `slug` | yes | 3 to 40 characters of `a-z`, `0-9` and single hyphens, starting and ending with a letter or digit; the name of the directory it is published in (§2) |
 | `version` | yes | A [Semantic Versioning 2.0](https://semver.org) version of this motion, for example `"1.0.0"` |
 | `name` | yes | A localized string (§8) of at most 60 characters per language |
@@ -43,16 +46,21 @@ A JSON object with these members and no others, except extension members (§7).
 | `lang` | no | The [BCP 47](https://www.rfc-editor.org/info/bcp47) tag of the language `MOTION.md` is written in; `"en"` when absent |
 | `tags` | no | Up to 10 keywords, each of `a-z`, `0-9` and single hyphens, in English |
 
+### Identity
+
+A motion's **id** is `@<scope>/<slug>` when it has a scope, and `<slug>` when it does not: `@ana/ledger-pencil`, `red-pencil`. Two motions under different scopes may have the same slug. Only the owner of a GitHub account publishes under its scope; what an unscoped id means is for the collection that holds it to say (motionhub keeps them for its maintainers' official motions). Tools name, fetch and credit a motion by its id.
+
 An SPDX value is an [SPDX license expression](https://spdx.github.io/spdx-spec/v2.3/SPDX-license-expressions/), for example `"CC-BY-4.0"` or `"MIT"`.
 
 ```json
 {
-  "spec": "motion/0.1",
+  "spec": "motion/0.2",
+  "scope": "ana",
   "slug": "lab-notebook",
   "version": "1.0.0",
   "name": { "en": "Lab Notebook", "zh-CN": "实验手记" },
   "line": { "en": "A squared notebook page where the diagram is drawn stroke by stroke as it is explained." },
-  "authors": [{ "name": "SuoSi", "github": "iamsuosi" }],
+  "authors": [{ "name": "Ana", "github": "ana" }],
   "license": { "text": "CC-BY-4.0", "code": "MIT" },
   "tags": ["hand-drawn", "line-art", "light"]
 }
@@ -124,7 +132,7 @@ What several tools come to share moves into a later version of this format.
 
 | Part | Language |
 | --- | --- |
-| File and directory names, member names, `slug`, `spec`, `version`, `license`, `tags`, token names, the start of the five `MOTION.md` headings | English (identifiers) |
+| File and directory names, member names, `scope`, `slug`, `spec`, `version`, `license`, `tags`, token names, the start of the five `MOTION.md` headings | English (identifiers) |
 | `name`, `line` | A localized string: an object whose keys are BCP 47 tags and whose values are text in that language. `en` is required; other languages are optional |
 | The body of `MOTION.md`, translations, `$description`, `authors[].name`, `CREDITS.md`, words drawn in a film | Any language |
 
@@ -132,4 +140,11 @@ What several tools come to share moves into a later version of this format.
 
 A motion's `version` changes whenever any of its files change. A published version is never changed: a fix is a new version. A film that uses a motion keeps the copy it took.
 
-`spec` names the version of this format. A tool that meets a `spec` it does not know does not guess its meaning.
+`spec` names the version of this format. A tool that meets a `spec` it does not know does not guess its meaning. A tool that reads a version reads every version before it: a `motion/0.1` motion is a `motion/0.2` motion without a scope.
+
+## 10. Versions of this format
+
+| Version | Adds |
+| --- | --- |
+| `motion/0.1` | The format: five files, `motion.json`, `tokens.json`, `MOTION.md`, extensions, languages |
+| `motion/0.2` | `scope`, and a motion's id `@<scope>/<slug>` (§3, Identity) |

@@ -1,11 +1,11 @@
 # Contributing a motion
 
-A motion arrives as a pull request that adds `motions/<slug>/` in the [format](SPEC.md). Your GitHub account is your identity here: the `github` of at least one author in `motion.json` must be the account that opens the pull request.
+A motion arrives as a pull request that adds `motions/@<you>/<slug>/` in the [format](SPEC.md). Your GitHub account is your identity here: the motion's `scope` is your GitHub username in lowercase, its id is `@<you>/<slug>`, and the `github` of at least one author in `motion.json` must be the account that opens the pull request. Unscoped ids (`motions/<slug>/`) are the hub's official motions, published by its maintainers only.
 
 ## The quick way
 
 ```sh
-npx @motionhub/cli init <slug>          # ./<slug>/ with every required file to fill in
+npx @motionhub/cli init <slug>          # ./<slug>/ with every required file to fill in, scoped to you
 npx @motionhub/cli share <slug>         # the checks below, as your GitHub account (gh)
 npx @motionhub/cli share <slug> --pr    # the pull request, from your fork, signed off
 ```
@@ -13,7 +13,7 @@ npx @motionhub/cli share <slug> --pr    # the pull request, from your fork, sign
 ## Before you open it
 
 ```sh
-npx @motionhub/cli check motions/<slug>     # or, in a clone of this repository: node tools/check.mjs motions/<slug>
+npx @motionhub/cli check <slug> --author <you>     # or, in a clone of this repository: node tools/check.mjs motions/@<you>/<slug> --author <you>
 ```
 
 The checker has no dependencies (Node 20 or later). It runs the same rules as the pull request's checks: the format, then the rules below.
@@ -37,7 +37,7 @@ A motion is a look of your own. You may learn from any film or project, and say 
 - No copy of another project's code, artwork, fonts or text, whatever its licence, unless that licence allows it and `CREDITS.md` names it.
 - An art movement or a painter's manner is fine. A copy of a particular protected artwork is not.
 
-Building on another motion is welcome when its licence allows it (every licence accepted here does): publish yours under a new slug, say in `CREDITS.md` what you took and what you changed, and keep its notices for any code you copied.
+Building on another motion is welcome when its licence allows it (every licence accepted here does): publish yours under your own scope, say in `CREDITS.md` what you took and what you changed, and keep its notices for any code you copied.
 
 A pull request that breaks these is closed. If you hold rights in something here, open an issue and it will be looked at quickly.
 
@@ -68,6 +68,6 @@ A tool may add rules of its own for its directory.
 
 ## Changing a published motion
 
-Only one of a motion's published authors may change it: the checks compare the pull request's author with the authors of the version on the main branch, so adding yourself to `authors` does not make a motion yours. To build on someone else's motion, publish your own under a new slug and credit theirs in `CREDITS.md`.
+Only one of a motion's published authors may change it: the checks compare the pull request's author with the authors of the version on the main branch, so adding yourself to `authors` does not make a motion yours. To build on someone else's motion, publish your own under your scope and credit theirs, by its id, in `CREDITS.md`.
 
-A change carries a higher `version` than the published one, since a published version never changes ([SPEC.md](SPEC.md) §9). The newest version replaces the previous one in `motions/<slug>/`; published packages of earlier versions stay where they are ([HUB.md](HUB.md)).
+A change carries a higher `version` than the published one, since a published version never changes ([SPEC.md](SPEC.md) §9). The newest version replaces the previous one in its directory; published packages of earlier versions stay where they are ([HUB.md](HUB.md)).

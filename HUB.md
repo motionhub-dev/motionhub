@@ -8,7 +8,8 @@ How this repository is published at [motionhub.dev](https://motionhub.dev): the 
 
 | Path | What it is |
 | --- | --- |
-| `motions/<slug>/` | One motion, in the [format](SPEC.md). The newest version is the one in the main branch |
+| `motions/<slug>/` | One official motion, in the [format](SPEC.md). Unscoped ids are the hub's own: only its maintainers, listed in `.github/maintainers`, publish them |
+| `motions/@<scope>/<slug>/` | One motion published by the GitHub account `<scope>`, id `@<scope>/<slug>`. The newest version of each is the one in the main branch |
 | `tools/check.mjs` | The checker every pull request runs, with no dependencies: the one place the rules are written as code |
 | `bin/motionhub.mjs`, `tools/hub.mjs`, `package.json` | The npm package `@motionhub/cli` (command `motionhub`): `check` (the checker, for tools and people outside this repository), `search` and `get` (the index, and a package checked against its SHA-256 and unpacked into `./motion`). A tag `v<version>` stages it on npm (`.github/workflows/publish.yaml`, trusted publishing, no token) and a maintainer approves it with `npm stage approve` |
 | `packages/runtime/`, `packages/remotion/`, `packages/hyperframes/` | The npm packages `@motionhub/runtime` (what a motion's components draw with, in any engine) and its bindings for Remotion and HyperFrames. A tag `<package>-v<version>` stages one the same way |
@@ -26,10 +27,10 @@ A static site, rebuilt from the main branch whenever it changes and every six ho
 
 | Path | What it is |
 | --- | --- |
-| `/` and `/m/<slug>` | The gallery and a page per motion: poster, sample, colours, faces, `MOTION.md` |
-| `/api/motions.json` | The index: `spec`, and `motions`, one row per motion ordered by slug, with `slug`, `version`, `name`, `line`, `lang`, `tags`, `authors`, `license`, `poster`, `tools` (the directories it has for tools) and `package` (`url`, `sha256`, `bytes`). Paths are relative to the site |
-| `/m/<slug>/MOTION.md`, `/m/<slug>/tokens.json`, `/m/<slug>/motion.json` | The newest version's files, to read directly |
-| `/m/<slug>/<version>.tgz` | The whole motion at that version, its paths under `<slug>/`, with its SHA-256 in the index. The same files always give the same bytes |
+| `/` and `/m/<id>` | The gallery and a page per motion: poster, sample, colours, faces, `MOTION.md` |
+| `/api/motions.json` | The index: `spec`, and `motions`, one row per motion ordered by id, with `slug` (the motion's id, `<slug>` or `@<scope>/<slug>`, so a client that only knows `motion/0.1` never takes one motion for another), `scope` (when it has one), `spec` (its motion's), `version`, `name`, `line`, `lang`, `tags`, `authors`, `license`, `poster`, `tools` (the directories it has for tools) and `package` (`url`, `sha256`, `bytes`). Paths are relative to the site |
+| `/m/<id>/MOTION.md`, `/m/<id>/tokens.json`, `/m/<id>/motion.json` | The newest version's files, to read directly |
+| `/m/<id>/<version>.tgz` | The whole motion at that version, its paths under `<id>/`, with its SHA-256 in the index. The same files always give the same bytes |
 | `/llms.txt` | For agents: what a motion is, how to choose one from the index and how to use it |
 
 A tool needs the index to search and one package to use a motion; it never downloads the repository. Every published package stays at its URL: the build knows only the newest versions, so the deploy adds packages and never replaces or removes one.

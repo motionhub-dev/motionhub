@@ -3,7 +3,8 @@
 export default {
   async fetch(request, env) {
     const {pathname} = new URL(request.url);
-    const m = /^\/m\/([a-z0-9-]+)\/([0-9A-Za-z.+-]+)\.tgz$/.exec(pathname);
+    // /m/<id>/<version>.tgz, the id being <slug> or @<scope>/<slug>
+    const m = /^\/m\/((?:@[a-z0-9-]+\/)?[a-z0-9-]+)\/([0-9A-Za-z.+-]+)\.tgz$/.exec(pathname);
     if (!m) return env.ASSETS.fetch(request);
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method not allowed', {status: 405, headers: {allow: 'GET, HEAD'}});
     const object = await env.PACKAGES.get(pathname.slice(1));
@@ -13,7 +14,7 @@ export default {
     }
     const headers = new Headers({
       'content-type': 'application/gzip',
-      'content-disposition': `attachment; filename="${m[1]}-${m[2]}.tgz"`,
+      'content-disposition': `attachment; filename="${m[1].replace('@', '').replace('/', '-')}-${m[2]}.tgz"`,
       'cache-control': 'public, max-age=31536000, immutable',
       'access-control-allow-origin': '*',
       etag: object.httpEtag,

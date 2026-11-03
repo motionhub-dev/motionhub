@@ -5,13 +5,13 @@ description: Find a motion (a reusable look for narrated and explanatory video) 
 
 # Making a film in a motion
 
-A **motion** is a look for narrated and explanatory video, written down: how a film looks (ground, colour, type) and how it moves (how things arrive, change and leave). It holds no film: no story, script, scenes or timings. You bring the story; the motion decides how it looks and moves. The format is [SPEC.md](https://github.com/motionhub-dev/motions/blob/main/SPEC.md) (`motion/0.1`).
+A **motion** is a look for narrated and explanatory video, written down: how a film looks (ground, colour, type) and how it moves (how things arrive, change and leave). It holds no film: no story, script, scenes or timings. You bring the story; the motion decides how it looks and moves. The format is [SPEC.md](https://github.com/motionhub-dev/motions/blob/main/SPEC.md) (`motion/0.2`). A motion is named by its id: `red-pencil` for an official one, `@ana/ledger-pencil` for one a creator published.
 
 A motion is a directory:
 
 | File | What you take from it |
 | --- | --- |
-| `motion.json` | Its slug, version, name, one line, authors and licence; `lang` is the language of `MOTION.md` |
+| `motion.json` | Its scope and slug (together its id), version, name, one line, authors and licence; `lang` is the language of `MOTION.md` |
 | `MOTION.md` | The look in words. Five sections always: **Essence**, **Colour**, **Type**, **Motion**, **Avoid** |
 | `tokens.json` | The exact values, as W3C design tokens: `color`, `font`, and often `duration` and `cubicBezier` |
 | `poster.jpg` | One frame of a film made in it |
@@ -21,18 +21,18 @@ A motion is a directory:
 
 ## 1. Choose the motion
 
-- **The person named one** (a name, a slug, or a `motionhub.dev/m/<slug>` link): use it.
-- **Otherwise** search: `npx @motionhub/cli search <words>` (no words lists them all), or read the index, `https://motionhub.dev/api/motions.json`, whose rows have `slug`, `name`, `line`, `tags`, `lang`, `poster` and `package`, with paths relative to `https://motionhub.dev`. Match the `line` and `tags` against the subject and the medium (a screen recording, a person's own footage, a dataset, a story), offer two or three with their posters, and let the person choose. Choose yourself only when they asked you to.
+- **The person named one** (a name, an id, or a `motionhub.dev/m/<id>` link): use it.
+- **Otherwise** search: `npx @motionhub/cli search <words>` (no words lists them all), or read the index, `https://motionhub.dev/api/motions.json`, whose rows have `slug` (the id), `name`, `line`, `tags`, `lang`, `poster` and `package`, with paths relative to `https://motionhub.dev`. Match the `line` and `tags` against the subject and the medium (a screen recording, a person's own footage, a dataset, a story), offer two or three with their posters, and let the person choose. Choose yourself only when they asked you to.
 
 ## 2. Get it
 
 Copy the whole motion into the project, so the film keeps the version it was made in:
 
 ```sh
-npx @motionhub/cli get <slug>          # into ./motion, checked against the index's SHA-256
+npx @motionhub/cli get <id>            # into ./motion, checked against the index's SHA-256
 ```
 
-Without Node: download `https://motionhub.dev/m/<slug>/<version>.tgz`, check it against the row's `package.sha256`, and unpack it. Without a shell, fetch `https://motionhub.dev/m/<slug>/MOTION.md`, `tokens.json`, `motion.json` and `CREDITS.md` one by one.
+Without Node: download `https://motionhub.dev/m/<id>/<version>.tgz`, check it against the row's `package.sha256`, and unpack it. Without a shell, fetch `https://motionhub.dev/m/<id>/MOTION.md`, `tokens.json`, `motion.json` and `CREDITS.md` one by one.
 
 ## 3. Read it whole
 
@@ -82,17 +82,17 @@ If the motion also has a directory for your engine (`remotion/`), its pieces add
 
 ## 7. Changing it, and sharing a look of your own
 
-Adapt your own copy freely for one film. A changed copy is no longer that version: do not publish it under the same slug and version.
+Adapt your own copy freely for one film. A changed copy is no longer that version: do not publish it under the same id and version.
 
 To publish a look the person made (only when they ask):
 
-1. `npx @motionhub/cli init <slug>` writes `./<slug>/` with every required file to fill in.
+1. `npx @motionhub/cli init <slug>` writes `./<slug>/` with every required file to fill in, as the motion `@<their login>/<slug>`.
 2. Take the look from their project, never the film: the theme's colours and faces into `tokens.json` (with the durations and curves the project uses); `MOTION.md` in the five sections, saying what any film in this look shares and nothing of this film's story; `CREDITS.md` naming every face and asset with its licence.
 3. `poster.jpg`: one frame of their film, a JPEG 960 to 3840 pixels wide and at most 500 KB (Remotion: `npx remotion still <composition> poster.jpg --frame=<n> --image-format=jpeg`).
 4. Optionally the reusable components, in `react/parts/` as [CONTRIBUTING.md](https://github.com/motionhub-dev/motions/blob/main/CONTRIBUTING.md) describes: React components that import only `react` and `@motionhub/runtime` (in Remotion, `useTime()` and `useVideoConfig()` from it instead of Remotion's), take what changes as props, and hold nothing of this film's story.
 5. `npx @motionhub/cli share <slug>` runs the checks its pull request will run, as the person's GitHub account. Show them the result; with their yes, `npx @motionhub/cli share <slug> --pr` opens the pull request from their fork.
 
-To build on someone else's motion, publish yours under a new slug and credit theirs in `CREDITS.md`; only its authors change the original.
+To build on someone else's motion, publish yours under your own scope and credit theirs, by its id, in `CREDITS.md`; only its authors change the original.
 
 ## 8. Check before you hand it over
 
