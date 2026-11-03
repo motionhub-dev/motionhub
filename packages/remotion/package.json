@@ -1,6 +1,6 @@
 {
   "name": "@motionhub/remotion",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Use a motion from motionhub.dev in Remotion: its React components as they are, and its tokens as Remotion values.",
   "license": "MIT",
   "repository": {
@@ -23,10 +23,8 @@
     "index.d.ts",
     "README.md"
   ],
-  "dependencies": {
-    "@motionhub/runtime": "0.1.0"
-  },
   "peerDependencies": {
+    "@motionhub/runtime": "^0.3.0",
     "react": ">=18",
     "remotion": ">=4"
   }

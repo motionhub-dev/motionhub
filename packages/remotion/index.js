@@ -28,12 +28,28 @@ export const MotionProvider = ({tokens, root = true, children}) => {
   return createElement(MotionRuntimeProvider, {value}, root ? createElement(MotionRoot, {tokens: resolved}, children) : children);
 };
 
-// ---- the motion's faces, from Google Fonts, before the first frame ----
+// ---- the motion's faces, from Google Fonts (or where it has none), before the first frame ----
 const GENERIC = /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|math|emoji|ui-[a-z-]+)$/;
 const HAN = /^(Noto (Sans|Serif) (SC|TC|JP|KR)|LXGW WenKai|Fusion Pixel.*)$/;
 /** The family names in the tokens' font stacks */
 export const families = (resolved) => [...new Set(Object.values(resolved?.font ?? {}).flatMap((s) => String(s).split(',').map((f) => f.trim().replace(/^["']|["']$/g, ''))))].filter((f) => f && !GENERIC.test(f));
+/** Faces Google Fonts does not have (it only has "LXGW WenKai TC"), by family: stylesheets of the OFL-1.1 npm package, split by unicode-range */
+const ELSEWHERE = {
+  'LXGW WenKai': ['regular', 'bold'].map((w) => `https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1/lxgwwenkai-${w}.css`),
+};
+/** A stylesheet from a URL, its relative `url()`s made absolute: it is set in a <style>, where they would not resolve */
+const sheet = async (href) => {
+  const res = await fetch(href).catch(() => undefined);
+  if (!res?.ok) return undefined;
+  return (await res.text()).replace(/url\((["']?)(?![a-z]+:|\/\/|data:)([^)"']+)\1\)/gi, (_, q, path) => `url(${q}${new URL(path, href).href}${q})`);
+};
+/** The stylesheet texts for a family, [] when no source has it */
 const css = async (family) => {
+  if (ELSEWHERE[family]) return (await Promise.all(ELSEWHERE[family].map(sheet))).filter(Boolean);
+  const text = await google(family);
+  return text ? [text] : [];
+};
+const google = async (family) => {
   const name = encodeURIComponent(family).replace(/%20/g, '+');
   // Google Fonts refuses a weight range a face does not span, so ask for the common ones in turn, then its default weight
   for (const axes of [':wght@100..900', ':wght@200..900', ':wght@100..800', ':wght@200..800', ':wght@300..800', ':wght@300..700', ':wght@400..700', ':wght@400;700', '']) {
@@ -43,8 +59,8 @@ const css = async (family) => {
   return undefined;
 };
 /**
- * Loads the faces the tokens name, inside <MotionProvider>. Faces for Chinese, Japanese and Korean are large and load only with `han`; one Google Fonts
- * does not have is named in the console and left to the stack's next face (bundle it with @remotion/fonts).
+ * Loads the faces the tokens name, inside <MotionProvider>. Faces for Chinese, Japanese and Korean are large and load only with `han`; one no source
+ * has is named in the console and left to the stack's next face (bundle it with @remotion/fonts).
  */
 export const MotionFonts = ({han = false}) => {
   const tokens = useTokens();
@@ -52,11 +68,18 @@ export const MotionFonts = ({han = false}) => {
   useEffect(() => {
     const wanted = families(tokens).filter((f) => han || !HAN.test(f));
     Promise.all(wanted.map(async (family) => {
-      const text = await css(family);
-      if (!text) { console.warn(`@motionhub/remotion: Google Fonts has no "${family}"; load it with @remotion/fonts`); return; }
-      const el = document.createElement('style');
-      el.textContent = text;
-      document.head.appendChild(el);
+      const texts = await css(family);
+      if (!texts.length) {
+        // a face a Chinese, Japanese or Korean motion is written for must not fall back unseen
+        const message = `@motionhub/remotion: no source has "${family}"; load it with @remotion/fonts`;
+        if (HAN.test(family)) console.error(message); else console.warn(message);
+        return;
+      }
+      for (const text of texts) {
+        const el = document.createElement('style');
+        el.textContent = text;
+        document.head.appendChild(el);
+      }
       await Promise.all(['400', '700'].map((w) => document.fonts.load(`${w} 32px "${family}"`).catch(() => undefined)));
     })).finally(() => continueRender(handle));
   }, [handle]);
