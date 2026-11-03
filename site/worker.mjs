@@ -123,7 +123,8 @@ export default {
     if (own) return own;
     const pkg = PACKAGE.exec(pathname);
     if (pkg) return packageResponse(request, env, ctx, pkg, pathname);
-    // the static files under m/@<scope>/ and play/@<scope>/ are found at the %40 spelling; asked for with @, the
+    // the static files under m/@<scope>/ and play/@<scope>/ (wrangler.jsonc runs the Worker first for both) are found
+    // at the %40 spelling; asked for with @, the
     // assets would answer with a redirect to it, so the Worker asks for it directly and the address keeps its @
     let response;
     if (url.pathname.includes('@')) {
