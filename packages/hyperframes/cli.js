@@ -79,11 +79,11 @@ for (const family of families.filter((name) => !own.some((f) => f.family === nam
   // without --han, only the blocks for latin text, which Google's comments name; a face whose blocks name none keeps them all
   const latin = all.filter((f) => f.subset === 'latin');
   const kept = han || HAN.test(family) || !latin.length ? all : latin;
-  kept.forEach((f, i) => {
-    const local = localBlock(f, family, i);
+  for (const f of kept) {
+    const local = localBlock(f, family);
     jobs.push({url: f.url, path: join(out, 'fonts', local.file)});
     faceCss.push(local.block);
-  });
+  }
 }
 await download(jobs);
 

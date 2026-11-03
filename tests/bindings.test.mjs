@@ -77,13 +77,15 @@ test('HyperFrames reads the blocks of Google\'s and a package\'s stylesheets, ea
     'https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/files/lxgwwenkai-regular-subset-4.woff2',
     'https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/files/lxgwwenkai-regular-subset-5.woff2',
   ]);
-  const local = w.map((f, i) => localBlock(f, 'LXGW WenKai', i));
+  const local = w.map((f) => localBlock(f, 'LXGW WenKai'));
   assert.equal(new Set(local.map((l) => l.file)).size, 2);
   for (const l of local) {
-    assert.match(l.block, /src: url\('fonts\/LXGW-WenKai-normal-400-\d\.woff2'\) format\('woff2'\)/);
+    assert.match(l.block, /src: url\('fonts\/LXGW-WenKai-normal-400-[0-9a-f]{10}\.woff2'\) format\('woff2'\)/);
     assert.match(l.block, /font-display: block/);
     assert.match(l.block, /unicode-range:/);
   }
+  // a name is the URL's, not the block's place: the same part keeps its name when the stylesheet changes
+  assert.equal(localBlock(w[1], 'LXGW WenKai').file, localBlock(blocks(wenkai.split('/* LXGW WenKai [5] */')[1], href)[0], 'LXGW WenKai').file);
 });
 
 test('lab-notebook\'s hand label draws its underline by a clip, not a dash, on a non-scaling stroke', () => {

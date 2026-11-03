@@ -1,5 +1,7 @@
 // The faces a motion names, as @font-face blocks whose files can be made local. No dependencies.
 
+import {createHash} from 'node:crypto';
+
 /**
  * Faces Google Fonts does not have, by family: stylesheets that split them by unicode-range, at an exact version so that
  * a film renders the same next year. Google has only "LXGW WenKai TC", so LXGW WenKai comes from its OFL-1.1 webfont
@@ -31,12 +33,14 @@ export function blocks(css, href) {
 }
 
 /**
- * A block made local: its file at `fonts/<file>`, shown only once loaded (block), since a frame is rendered once. Each
- * file gets its own name, as a face split by unicode-range has many files for one style and weight.
+ * A block made local: its file at `fonts/<file>`, shown only once loaded (block), since a frame is rendered once. A face
+ * split by unicode-range has many files for one style and weight, so each is named by its URL: a name always holds the
+ * same part, however the stylesheet changes between runs into the same directory.
  */
-export function localBlock(face, family, index) {
+export function localBlock(face, family) {
   const ext = /\.woff2(\?|$)/.test(face.url) ? '.woff2' : /\.woff(\?|$)/.test(face.url) ? '.woff' : '.ttf';
-  const file = `${family.replace(/\W+/g, '-')}-${face.style}-${face.weight}-${index}${ext}`;
+  const id = createHash('sha256').update(face.url).digest('hex').slice(0, 10);
+  const file = `${family.replace(/\W+/g, '-')}-${face.style}-${face.weight}-${id}${ext}`;
   const format = ext === '.woff2' ? 'woff2' : ext === '.woff' ? 'woff' : 'truetype';
   const block = face.block
     .replace(/src:\s*[^;}]*/, `src: url('fonts/${file}') format('${format}')`)
