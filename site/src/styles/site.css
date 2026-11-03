@@ -72,8 +72,6 @@ main.wrap { padding-top: 20px; padding-bottom: 56px; }
 .pill.any { background: transparent; border-style: dashed; font-weight: var(--weight-regular); color: var(--color-text-2); text-decoration: none; }
 a.pill { text-decoration: none; color: var(--color-text); }
 a.pill:hover { border-color: var(--color-text-2); }
-.skills-note { margin: -6px 0 0; font-size: var(--size-sm); color: var(--color-muted); }
-.skills-note a { color: var(--color-text-2); }
 .pill.any:hover { color: var(--color-text); border-color: var(--color-text-2); }
 .pill img, .engine img { width: 16px; height: 16px; flex: none; }
 .pill { gap: 6px; }

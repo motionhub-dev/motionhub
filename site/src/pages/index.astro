@@ -27,9 +27,7 @@ const engines = [...new Set(rows.flatMap((r) => r.tools.flatMap(toolEngines)))];
         <span class="label">Works with</span>
         {engines.map((e) => <Engine name={e} class="pill" href={ENGINE_LINKS[e]?.guide} />)}
         <a class="pill any" href="/docs/use/#in-anything-else">any code‑video engine</a>
-      </div>
-      <p class="skills-note">Using {engines.map((e, i) => <>{i > 0 && ' or '}<a href={ENGINE_LINKS[e]?.guide}>{e}</a></>)} with your agent? Install their skills beside motionhub's, and ask for a film in a motion.</p>
-      <ul class="open">
+      </div>      <ul class="open">
         <li><b>Open format</b><span>A <a href="/docs/spec/">public spec</a>. CC BY looks, MIT code.</span></li>
         <li><b>Any engine</b><span>Words and design tokens, not a renderer.</span></li>
         <li><b>Open to share</b><span><a href="/docs/contribute/">Publish your look</a>, credited to you.</span></li>
