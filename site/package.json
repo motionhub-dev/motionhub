@@ -5,7 +5,7 @@
   "description": "The pages of motionhub.dev, built with Astro over the files tools/build.mjs writes.",
   "scripts": {
     "build": "node ../tools/build.mjs ../dist && node thumbs.mjs && node player/build.mjs && astro build && node merge.mjs",
-    "dev": "node ../tools/build.mjs ../dist && node thumbs.mjs && MOTIONHUB_DEV=1 astro dev",
+    "dev": "node ../tools/build.mjs .cache/dev-public && node thumbs.mjs .cache/dev-public && MOTIONHUB_DEV=1 astro dev",
     "preview": "npm run build && npx --yes wrangler@4.154.0 dev"
   },
   "dependencies": {

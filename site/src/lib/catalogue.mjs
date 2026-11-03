@@ -1,5 +1,5 @@
-// The catalogue as the pages see it: the index tools/build.mjs wrote to ../dist, and each motion's own files in
-// ../motions. Read once per build.
+// The catalogue as the pages see it: the index tools/build.mjs wrote to ../dist (.cache/dev-public in development),
+// and each motion's own files in ../motions. Read once per build.
 import {existsSync, readFileSync, readdirSync} from 'node:fs';
 import {join, resolve} from 'node:path';
 import {SPEC, readAccounts} from '../../../tools/check.mjs';
@@ -9,8 +9,8 @@ export {REPO, SITE, SPEC, colours, en, faces, markdown, other};
 
 /** The repository's root: the build runs in site/. */
 export const ROOT = resolve(process.cwd(), '..');
-const index = join(ROOT, 'dist/api/motions.json');
-if (!existsSync(index)) throw new Error('no dist/api/motions.json: run node tools/build.mjs first (npm run build does)');
+const index = join(ROOT, process.env.MOTIONHUB_DEV ? 'site/.cache/dev-public' : 'dist', 'api/motions.json');
+if (!existsSync(index)) throw new Error(`no ${index}: npm run dev or npm run build in site/ writes it`);
 
 /** The index's rows, ordered by id. */
 export const rows = JSON.parse(readFileSync(index, 'utf8')).motions;
