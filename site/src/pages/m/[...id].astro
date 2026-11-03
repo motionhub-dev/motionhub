@@ -77,7 +77,6 @@ const uses = [
             <a class="person" href={creatorPath(a.github)}>
               <img src={`https://github.com/${a.github}.png?size=64`} alt="" width="32" height="32" loading="lazy">
               <span><b>{a.name}</b><small>@{a.github} · {n} {n === 1 ? 'motion' : 'motions'}</small></span>
-              {!row.scope && <span class="official" title="Published by motionhub's maintainers">OFFICIAL</span>}
             </a>
           );
         })}

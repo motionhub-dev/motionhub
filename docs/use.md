@@ -7,7 +7,7 @@ Pick a motion on [motionhub.dev](https://motionhub.dev), then make your film in 
 Nothing to install. Paste this into any agent that can open a URL, with your topic and the motion you picked:
 
 ```text
-Read https://motionhub.dev/llms.txt, then make a film about "<your topic>" in the motion https://motionhub.dev/m/red-pencil/
+Read https://motionhub.dev/llms.txt, then make a film about "<your topic>" in the motion https://motionhub.dev/m/@iamsuosi/red-pencil/
 ```
 
 [/llms.txt](https://motionhub.dev/llms.txt) tells the agent how: it fetches the motion, checks it against its SHA-256, reads `MOTION.md` and `tokens.json` whole, and makes your film in its look with whatever engine it uses.
@@ -23,10 +23,10 @@ npx skills add motionhub-dev/motions -g
 Leave out `-g` to install it in the current project only. Then call it by name:
 
 ```text
-/motionhub make a film about <your topic> in red-pencil
+/motionhub make a film about <your topic> in @iamsuosi/red-pencil
 ```
 
-An agent without slash commands takes the same request in words: "Make a film about … in the motion red-pencil".
+An agent without slash commands takes the same request in words: "Make a film about … in the motion @iamsuosi/red-pencil".
 
 ## Share a look of your own
 
@@ -42,10 +42,10 @@ It writes the motion as `@<your GitHub login>/<slug>`, takes the look from the p
 
 ```sh
 npx @motionhub/cli search hand-drawn    # motions with every word
-npx @motionhub/cli get red-pencil       # into ./motion, checked against its SHA-256
+npx @motionhub/cli get @iamsuosi/red-pencil   # into ./motion, checked against its SHA-256
 ```
 
-`get` takes an official id (`red-pencil`) or a creator's (`@ana/ledger-pencil`). The [command line](cli.md) page has every command.
+`get` takes a motion's id: its creator's GitHub name and its slug, `@iamsuosi/red-pencil`. The [command line](cli.md) page has every command.
 
 ## In Remotion or HyperFrames
 

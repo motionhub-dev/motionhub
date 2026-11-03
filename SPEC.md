@@ -49,7 +49,7 @@ A JSON object with these members and no others, except extension members (§7).
 
 ### Identity
 
-A motion's **id** is `@<scope>/<slug>` when it has a scope, and `<slug>` when it does not: `@ana/ledger-pencil`, `red-pencil`. Two motions under different scopes may have the same slug. Only the owner of a GitHub account publishes under its scope; what an unscoped id means is for the collection that holds it to say (motionhub keeps them for its maintainers' official motions). Tools name, fetch and credit a motion by its id.
+A motion's **id** is `@<scope>/<slug>` when it has a scope, and `<slug>` when it does not: `@ana/ledger-pencil`, `red-pencil`. Two motions under different scopes may have the same slug. Only the owner of a GitHub account publishes under its scope; what an unscoped id means is for the collection that holds it to say (motionhub accepts none: every motion there has a scope). Tools name, fetch and credit a motion by its id.
 
 ### Building on another motion
 

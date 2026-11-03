@@ -21,7 +21,7 @@ motions/@<scope>/<slug>/   创作者的 motion，id 为 @<scope>/<slug>
 
 ```sh
 npx @motionhub/cli search hand-drawn    # 搜索含有所有关键词的 motion
-npx @motionhub/cli get red-pencil       # 下载到 ./motion，并核对 SHA-256
+npx @motionhub/cli get @iamsuosi/red-pencil   # 下载到 ./motion，并核对 SHA-256
 ```
 
 任何 agent 都可以读一个 motion 的 `MOTION.md` 和 `tokens.json`，在自己的引擎里照着做，就像照着一套设计规范做界面一样。带 `react/` 的 motion 还附带组件，通过 [`@motionhub/runtime`](packages/runtime/README.md) 可以原样用在 Remotion（[`@motionhub/remotion`](packages/remotion/README.md)）和 HyperFrames（[`@motionhub/hyperframes`](packages/hyperframes/README.md)）里。

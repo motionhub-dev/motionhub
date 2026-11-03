@@ -1,0 +1,29 @@
+{
+  "spec": "motion/0.3",
+  "scope": "iamsuosi",
+  "slug": "stage-light",
+  "version": "1.0.4",
+  "name": {
+    "en": "Stage Light",
+    "zh-CN": "聚光台"
+  },
+  "line": {
+    "en": "A dark matte stage where one soft light follows what is being said and everything else waits in shadow; large condensed figures."
+  },
+  "authors": [
+    {
+      "name": "SuoSi",
+      "github": "iamsuosi"
+    }
+  ],
+  "license": {
+    "text": "CC-BY-4.0",
+    "code": "MIT"
+  },
+  "lang": "en",
+  "tags": [
+    "minimal",
+    "modern",
+    "dark"
+  ]
+}

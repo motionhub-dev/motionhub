@@ -12,7 +12,7 @@ const filter = (r) => ({'data-id': r.slug, 'data-text': text(r), 'data-tags': r.
 const n = rows.length;
 
 // the looks the try card offers, far apart from each other; any that is gone is left out
-const TRY = ['clay-world', 'ink-scroll', 'drafting-table', 'field-atlas', 'lab-notebook'];
+const TRY = ['@iamsuosi/clay-world', '@iamsuosi/ink-scroll', '@iamsuosi/drafting-table', '@iamsuosi/field-atlas', '@iamsuosi/lab-notebook'];
 const tries = TRY.map((id) => rows.find((r) => r.slug === id)).filter(Boolean);
 if (tries.length === 0) tries.push(...rows.slice(0, 5));
 const first = tries[0];
@@ -208,7 +208,7 @@ const engines = [...new Set(rows.flatMap((r) => r.tools.flatMap(toolEngines)))];
   const choose = (b: HTMLButtonElement, focus = false) => {
     for (const x of looks) { x.setAttribute('aria-checked', String(x === b)); x.tabIndex = x === b ? 0 : -1; }
     $('#try-name')!.textContent = b.dataset.name!;
-    target.textContent = target.textContent!.replace(/\/m\/[^/]+\/$/, `/m/${b.dataset.id}/`);
+    target.textContent = target.textContent!.replace(/\/m\/.+\/$/, `/m/${b.dataset.id}/`);
     if (focus) b.focus();
   };
   looks.forEach((b, i) => {

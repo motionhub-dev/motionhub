@@ -1,0 +1,30 @@
+{
+  "spec": "motion/0.3",
+  "scope": "iamsuosi",
+  "slug": "pixel-quest",
+  "version": "1.0.5",
+  "name": {
+    "en": "Pixel Quest",
+    "zh-CN": "像素关卡"
+  },
+  "line": {
+    "en": "A 16-bit game screen at dusk."
+  },
+  "authors": [
+    {
+      "name": "SuoSi",
+      "github": "iamsuosi"
+    }
+  ],
+  "license": {
+    "text": "CC-BY-4.0",
+    "code": "MIT"
+  },
+  "lang": "en",
+  "tags": [
+    "pixel",
+    "retro",
+    "playful",
+    "dark"
+  ]
+}

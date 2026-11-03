@@ -10,6 +10,7 @@ import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {build} from 'esbuild';
 import {resolveTokens, tokenVariables} from '../../packages/runtime/tokens.js';
+import {listMotions} from '../../tools/check.mjs';
 
 const HERE = resolve(fileURLToPath(import.meta.url), '..');
 const ROOT = resolve(HERE, '../..'), SITE = resolve(HERE, '..');
@@ -124,7 +125,7 @@ async function player(id) {
 }
 
 const wanted = process.argv.slice(2);
-const ids = readdirSync(join(ROOT, 'motions'), {withFileTypes: true}).filter((e) => e.isDirectory() && existsSync(join(ROOT, 'motions', e.name, 'react/reel.tsx'))).map((e) => e.name)
+const ids = listMotions(join(ROOT, 'motions')).filter((id) => existsSync(join(ROOT, 'motions', id, 'react/reel.tsx')))
   .filter((id) => !wanted.length || wanted.includes(id)).sort();
 for (const id of ids) {
   const missing = await player(id);

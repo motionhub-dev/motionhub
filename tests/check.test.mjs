@@ -15,11 +15,13 @@ function jpeg(width, height) {
 }
 
 const color = (hex) => ({colorSpace: 'srgb', components: [0.5, 0.5, 0.5], hex});
+// every motion on the hub has a scope (its author's GitHub login); UNSCOPED is the format's plainest motion
 const MANIFEST = {
-  spec: 'motion/0.1', slug: 'test-motion', version: '1.0.0',
+  spec: 'motion/0.2', scope: 'tester', slug: 'test-motion', version: '1.0.0',
   name: {en: 'Test Motion', 'zh-CN': '测试风格'}, line: {en: 'A plain motion for the checker\'s tests.'},
   authors: [{name: 'Tester', github: 'tester'}], license: {text: 'CC-BY-4.0'}, tags: ['light'],
 };
+const {scope: _scope, ...UNSCOPED} = {...MANIFEST, spec: 'motion/0.1'};
 const TOKENS = {
   color: {$type: 'color', ground: {$value: color('#FFFFFF')}, ink: {$value: color('#000000')}, accent: {$value: '{color.ink}'}},
   font: {$type: 'fontFamily', sans: {$value: ['Inter', 'sans-serif']}},
@@ -69,9 +71,9 @@ test('only the format\'s files, translations and tool directories sit at the top
   assert.ok(codes(motion({extra: {'React/a.txt': 'hi'}})).includes('format.extra'));
 });
 
-test('in the catalogue the directory is the slug; a project\'s copy may be named otherwise', () => {
-  assert.ok(codes(motion({dir: 'motions/other-name'})).includes('hub.slug'));
-  assert.deepEqual(codes(motion({dir: 'motions/test-motion'})).filter((c) => c.endsWith('slug')), []);
+test('in the catalogue the directory is the id; a project\'s copy may be named otherwise', () => {
+  assert.ok(codes(motion({dir: 'motions/@tester/other-name'})).includes('hub.slug'));
+  assert.deepEqual(codes(motion({dir: 'motions/@tester/test-motion'})).filter((c) => c.endsWith('slug')), []);
   assert.deepEqual(codes(motion({dir: 'project/motion'})).filter((c) => c.endsWith('slug')), []);
 });
 
@@ -93,13 +95,13 @@ test('the manifest\'s members, slug, version, localized strings and licence', ()
 test('a scope is a lowercase GitHub username, since motion/0.2, and a catalogue keeps a motion at motions/<id>/', () => {
   const scoped = {...MANIFEST, spec: 'motion/0.2', scope: 'tester'};
   assert.deepEqual(codes(motion({manifest: scoped}), {hub: false}), []);
-  assert.deepEqual(codes(motion({manifest: {...MANIFEST, spec: 'motion/0.2'}}), {hub: false}), [], 'a 0.2 motion may be unscoped');
+  assert.deepEqual(codes(motion({manifest: {...UNSCOPED, spec: 'motion/0.2'}}), {hub: false}), [], 'the format lets a 0.2 motion be unscoped');
   assert.ok(codes(motion({manifest: {...scoped, spec: 'motion/0.1'}}), {hub: false}).includes('manifest.member'), 'scope is not a 0.1 member');
   assert.ok(codes(motion({manifest: {...scoped, scope: 'Tester'}}), {hub: false}).includes('manifest.scope'));
   assert.ok(codes(motion({manifest: {...scoped, scope: '-x'}}), {hub: false}).includes('manifest.scope'));
   assert.deepEqual(codes(motion({dir: 'motions/@tester/test-motion', manifest: scoped})), []);
   assert.ok(codes(motion({dir: 'motions/@other/test-motion', manifest: scoped})).includes('hub.slug'));
-  assert.ok(codes(motion({dir: 'motions/@tester/test-motion'})).includes('hub.slug'), 'an unscoped motion is not kept under a scope');
+  assert.ok(codes(motion({dir: 'motions/@tester/test-motion', manifest: UNSCOPED})).includes('hub.slug'), 'an unscoped motion is not kept under a scope');
   assert.ok(codes(motion({dir: 'motions/test-motion', manifest: scoped})).includes('hub.slug'), 'a scoped motion is not kept at the top');
   assert.deepEqual(codes(motion({dir: 'project/motion', manifest: scoped}), {hub: false}), [], 'a copy in a project may be named otherwise');
 });
@@ -124,12 +126,12 @@ test('basedOn names the motions this one builds on, since motion/0.3, and in the
   assert.deepEqual(codes(motion({dir: 'project/motion', manifest: based})), [], 'outside a catalogue there is nothing to look up');
 });
 
-test('only maintainers publish an unscoped id, and only its owner a new scoped one', () => {
-  const scoped = {...MANIFEST, spec: 'motion/0.2', scope: 'tester'};
-  assert.ok(codes(motion(), {author: 'Tester'}).includes('hub.scope'));
-  assert.deepEqual(codes(motion(), {author: 'Tester', official: true}), []);
-  assert.deepEqual(codes(motion({manifest: scoped}), {author: 'Tester'}), [], 'the scope compares without regard to case');
-  const other = {...scoped, authors: [...scoped.authors, {name: 'Bo', github: 'bo'}]};
+test('every motion on the hub has a scope, and only its owner publishes a new one', () => {
+  assert.ok(codes(motion({manifest: UNSCOPED})).includes('hub.scope'), 'an unscoped motion is not accepted, whoever opens it');
+  assert.ok(codes(motion({manifest: UNSCOPED}), {author: 'Tester'}).includes('hub.scope'));
+  assert.deepEqual(codes(motion({manifest: UNSCOPED}), {hub: false}), [], 'the format itself allows it');
+  assert.deepEqual(codes(motion(), {author: 'Tester'}), [], 'the scope compares without regard to case');
+  const other = {...MANIFEST, authors: [...MANIFEST.authors, {name: 'Bo', github: 'bo'}]};
   assert.ok(codes(motion({manifest: other}), {author: 'bo'}).includes('hub.scope'), 'a co-author does not publish under another scope');
   assert.deepEqual(codes(motion(), {hub: true}), [], 'with no pull request author there is nothing to compare');
   assert.deepEqual(codes(motion({manifest: {...MANIFEST, version: '1.0.1'}}), {author: 'Tester', was: MANIFEST}), [], 'a change is the published authors\' (checkUpdate)');
@@ -177,7 +179,7 @@ test('the hub\'s rules: licences, author, size, media and unsafe code', () => {
   const hub = (change, options) => codes(motion(change), options);
   assert.ok(hub({manifest: {...MANIFEST, license: {text: 'CC-BY-NC-4.0'}}}).includes('hub.license'));
   assert.ok(hub({}, {author: 'someone-else'}).includes('hub.author'));
-  assert.deepEqual(hub({}, {author: 'Tester', official: true}), []);
+  assert.deepEqual(hub({}, {author: 'Tester'}), []);
   assert.ok(hub({extra: {'react/demo/clip.mp4': 'x'}}).includes('hub.video'));
   assert.ok(hub({extra: {'react/node_modules/a.js': ''}, manifest: {...MANIFEST, license: {text: 'CC-BY-4.0', code: 'MIT'}}}).includes('hub.build'));
   assert.ok(hub({extra: {'react/big.bin': Buffer.alloc(1024 * 1024 + 1)}}).includes('hub.size'));

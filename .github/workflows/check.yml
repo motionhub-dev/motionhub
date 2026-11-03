@@ -39,18 +39,16 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha }}
           AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
-          # a motion is motions/<slug>/ or motions/@<scope>/<slug>/; maintainers come from the base branch
+          # a motion is motions/@<scope>/<slug>/
           dirs=$(git diff --name-only "$BASE"...HEAD -- motions | awk -F/ '{print ($2 ~ /^@/) ? $2"/"$3 : $2}' | sort -u)
-          official=""
-          if git show "$BASE:.github/maintainers" 2>/dev/null | grep -v '^#' | grep -qix "$AUTHOR"; then official="--official"; fi
           status=0
           for d in $dirs; do
             [ -d "motions/$d" ] || continue
             if git cat-file -e "$BASE:motions/$d/motion.json" 2>/dev/null; then
               git show "$BASE:motions/$d/motion.json" > "$RUNNER_TEMP/was.json"
-              node tools/check.mjs "motions/$d" --author "$AUTHOR" $official --was "$RUNNER_TEMP/was.json" || status=1
+              node tools/check.mjs "motions/$d" --author "$AUTHOR" --was "$RUNNER_TEMP/was.json" || status=1
             else
-              node tools/check.mjs "motions/$d" --author "$AUTHOR" $official || status=1
+              node tools/check.mjs "motions/$d" --author "$AUTHOR" || status=1
             fi
           done
           exit $status

@@ -5,7 +5,7 @@ description: Find a motion (a reusable look for narrated and explanatory video) 
 
 # Making a film in a motion
 
-A **motion** is a look for narrated and explanatory video, written down: how a film looks (ground, colour, type) and how it moves (how things arrive, change and leave). It holds no film: no story, script, scenes or timings. You bring the story; the motion decides how it looks and moves. The format is [SPEC.md](https://github.com/motionhub-dev/motions/blob/main/SPEC.md) (`motion/0.3`). A motion is named by its id: `red-pencil` for an official one, `@ana/ledger-pencil` for one a creator published.
+A **motion** is a look for narrated and explanatory video, written down: how a film looks (ground, colour, type) and how it moves (how things arrive, change and leave). It holds no film: no story, script, scenes or timings. You bring the story; the motion decides how it looks and moves. The format is [SPEC.md](https://github.com/motionhub-dev/motions/blob/main/SPEC.md) (`motion/0.3`). A motion is named by its id, its creator's GitHub name and its slug: `@iamsuosi/red-pencil`. On motionhub every id has both.
 
 A motion is a directory:
 
@@ -78,7 +78,7 @@ If the motion also has a directory for your engine (`remotion/`), its pieces add
 
 - Install the faces `CREDITS.md` names, from their sources and under their licences. If one is unavailable, use the closest open face in the same role and tell the person which.
 - Assets named in `CREDITS.md` are used under their licences, with the credit they ask for.
-- `license.text` covers the motion's words, tokens and pictures; `CC-BY-4.0` and `CC-BY-SA-4.0` ask for credit. Put a line like this in the film's description or end credits: *Look: Ink Scroll by SuoSi, motionhub.dev/m/ink-scroll, CC BY 4.0.* `license.code` covers the code in tool directories.
+- `license.text` covers the motion's words, tokens and pictures; `CC-BY-4.0` and `CC-BY-SA-4.0` ask for credit. Put a line like this in the film's description or end credits: *Look: Ink Scroll by SuoSi, motionhub.dev/m/@iamsuosi/ink-scroll, CC BY 4.0.* `license.code` covers the code in tool directories.
 
 ## 7. Changing it, and sharing a look of your own
 
@@ -92,7 +92,7 @@ To publish a look the person made (only when they ask):
 4. Optionally the reusable components, in `react/parts/` as [CONTRIBUTING.md](https://github.com/motionhub-dev/motions/blob/main/CONTRIBUTING.md) describes: React components that import only `react` and `@motionhub/runtime` (in Remotion, `useTime()` and `useVideoConfig()` from it instead of Remotion's), take what changes as props, and hold nothing of this film's story.
 5. `npx @motionhub/cli share <slug>` runs the checks its pull request will run, as the person's GitHub account. Show them the result; with their yes, `npx @motionhub/cli share <slug> --pr` opens the pull request from their fork.
 
-To build on someone else's motion, publish yours under your own scope, name theirs in `motion.json`'s `basedOn` (`[{"id": "red-pencil", "version": "1.0.2"}]`) and say in `CREDITS.md` what you took and changed; only its authors change the original.
+To build on someone else's motion, publish yours under your own scope, name theirs in `motion.json`'s `basedOn` (`[{"id": "@iamsuosi/red-pencil", "version": "1.0.2"}]`) and say in `CREDITS.md` what you took and changed; only its authors change the original.
 
 ## 8. Check before you hand it over
 

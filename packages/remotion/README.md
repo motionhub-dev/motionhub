@@ -3,7 +3,7 @@
 Use a motion from [motionhub.dev](https://motionhub.dev) in Remotion. Its React components (`motion/react/parts/`) run as they are, drawn by Remotion's frame; its tokens become Remotion values for anything you draw yourself.
 
 ```sh
-npx @motionhub/cli get stage-light        # into ./motion
+npx @motionhub/cli get @iamsuosi/stage-light   # into ./motion
 npm i @motionhub/remotion
 ```
 
