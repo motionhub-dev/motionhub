@@ -4,7 +4,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync} from 'node:fs';
+import {cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -61,6 +61,28 @@ test('the served files and llms.txt are written', () => {
   const llms = readFileSync(join(out, 'llms.txt'), 'utf8');
   assert.ok(llms.startsWith('# '));
   assert.ok(!llms.includes('description:'));
+});
+
+test('a scoped motion is built at m/@<scope>/<slug>/, its package rooted there, after the unscoped ones', () => {
+  const root = mkdtempSync(join(tmpdir(), 'scoped-'));
+  mkdirSync(join(root, 'skills/motionhub'), {recursive: true});
+  writeFileSync(join(root, 'skills/motionhub/SKILL.md'), '---\nname: motionhub\n---\n# Skill\n');
+  cpSync(join(ROOT, 'motions', SLUGS[0]), join(root, 'motions', SLUGS[0]), {recursive: true});
+  const dir = join(root, 'motions/@ana/plain-paper');
+  cpSync(join(ROOT, 'motions', SLUGS[0]), dir, {recursive: true});
+  const manifest = JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8'));
+  writeFileSync(join(dir, 'motion.json'), JSON.stringify({...manifest, spec: 'motion/0.2', scope: 'ana', slug: 'plain-paper'}));
+  const out = join(root, 'dist'), built = build(out, root);
+  assert.deepEqual(built.map((r) => r.slug), ['@ana/plain-paper', SLUGS[0]]);
+  const row = built[0];
+  assert.equal(row.scope, 'ana');
+  assert.equal(row.spec, 'motion/0.2');
+  assert.equal(row.package.url, '/m/@ana/plain-paper/1.0.1.tgz'.replace('1.0.1', manifest.version));
+  assert.ok(existsSync(join(out, 'm/@ana/plain-paper/MOTION.md')));
+  const into = mkdtempSync(join(tmpdir(), 'unpack-'));
+  execFileSync('tar', ['-xzf', join(out, row.package.url), '-C', into]);
+  assert.ok(existsSync(join(into, '@ana/plain-paper/motion.json')));
+  assert.equal(JSON.parse(readFileSync(join(out, 'api/motions.json'), 'utf8')).spec, 'motion/0.1', 'readers of the 0.1 index still read it');
 });
 
 test('nothing is built while a motion has an issue', () => {

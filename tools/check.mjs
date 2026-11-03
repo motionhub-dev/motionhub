@@ -2,25 +2,30 @@
 // The motion checker: the rules of SPEC.md (code `format.*` and the rest without a `hub.` prefix) and the hub's
 // acceptance rules of CONTRIBUTING.md (`hub.*`), with no dependencies.
 //
-//   node tools/check.mjs [dir ...] [--format-only] [--author <github-login>] [--was <motion.json>]
+//   node tools/check.mjs [dir ...] [--format-only] [--author <github-login>] [--official] [--was <motion.json>]
 //   npx @motionhub/cli check ...                  the same, from the published package (bin/motionhub.mjs)
 //
-// With no directory it checks the current directory when it is a motion, else every motion under ./motions/.
+// With no directory it checks the current directory when it is a motion, else every motion under ./motions/ (a scoped
+// motion sits in ./motions/@<scope>/<slug>/).
 // `--format-only` skips the hub's rules (a tool checking a motion it did not get from this repository wants only the
 // format). `--author` also requires that login among the motion's authors (the pull request's checks pass the opener's
-// login). `--was` names the motion.json already published for this slug: a change must then come from one of its
+// login); `--official` says that login is one of the hub's maintainers, who alone publish unscoped motions. `--was` names the motion.json already published for this slug: a change must then come from one of its
 // authors and carry a higher version (SPEC.md §9). Exit status 1 when any issue is found.
 
 import {readFileSync, readdirSync, statSync, existsSync} from 'node:fs';
-import {join, basename, resolve, relative, extname} from 'node:path';
+import {join, basename, dirname, resolve, relative, extname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-export const SPEC = 'motion/0.1';
+/** The newest version of the format; every version before it is still read (SPEC.md §9). */
+export const SPEC = 'motion/0.2';
+export const SPECS = ['motion/0.1', 'motion/0.2'];
+const SCOPE = /^[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,38}$/;
 const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const LANG = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{1,8})*$/;
 const GITHUB = /^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$/;
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
 const MEMBERS = new Set(['spec', 'slug', 'version', 'name', 'line', 'authors', 'license', 'lang', 'tags']);
+const MEMBERS_SINCE = {scope: 'motion/0.2'};
 const FILES = ['motion.json', 'MOTION.md', 'tokens.json', 'poster.jpg', 'CREDITS.md'];
 const HEADINGS = [['essence'], ['colour', 'color'], ['type'], ['motion'], ['avoid']];
 const DOC_BYTES = 16 * 1024;
@@ -50,7 +55,7 @@ const UNSAFE = [
 ];
 
 /** Check one motion directory; returns its issues, each `{code, at, message}` with `at` relative to the directory. */
-export function checkMotion(dir, {hub = true, author, was} = {}) {
+export function checkMotion(dir, {hub = true, author, official = false, was} = {}) {
   const issues = [];
   const add = (code, at, message) => issues.push({code, at, message});
   if (!existsSync(dir) || !statSync(dir).isDirectory()) return add('format.dir', '.', 'not a directory'), issues;
@@ -75,7 +80,7 @@ export function checkMotion(dir, {hub = true, author, was} = {}) {
     if (code.length) add('format.license.code', 'motion.json', `license.code is required: the motion has code (${code[0]})`);
   }
 
-  if (hub) checkHub(dir, manifest, {author}, add);
+  if (hub) checkHub(dir, manifest, {author, official, was}, add);
   if (hub && was) checkUpdate(manifest, was, author, add);
   return issues;
 }
@@ -94,12 +99,18 @@ function readJson(path, at, add) {
 
 function checkManifest(m, add) {
   const at = 'motion.json';
+  const known = SPECS.includes(m.spec);
   for (const key of Object.keys(m)) {
     if (MEMBERS.has(key)) continue;
+    if (key in MEMBERS_SINCE) {
+      if (known && SPECS.indexOf(m.spec) < SPECS.indexOf(MEMBERS_SINCE[key])) add('manifest.member', at, `"${key}" is a member since ${MEMBERS_SINCE[key]}; spec is ${m.spec}`);
+      continue;
+    }
     if (/^x-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(key)) continue;
     add('manifest.member', at, `unknown member "${key}" (a tool's own members go under "x-<tool>")`);
   }
-  if (m.spec !== SPEC) add('manifest.spec', at, `spec must be "${SPEC}"`);
+  if (!known) add('manifest.spec', at, `spec must be one of ${SPECS.map((v) => `"${v}"`).join(', ')}`);
+  if (m.scope !== undefined && (typeof m.scope !== 'string' || !SCOPE.test(m.scope))) add('manifest.scope', at, 'scope is a GitHub username in lowercase');
   if (typeof m.slug !== 'string' || !NAME.test(m.slug) || m.slug.length < 3 || m.slug.length > 40) add('manifest.slug', at, 'slug is 3 to 40 characters of a-z, 0-9 and single hyphens');
   if (typeof m.version !== 'string' || !SEMVER.test(m.version)) add('manifest.version', at, 'version is a Semantic Versioning 2.0 version such as "1.0.0"');
   localized(m.name, 'name', 60, at, add);
@@ -260,23 +271,41 @@ export function compareVersions(a, b) {
 function checkUpdate(manifest, was, author, add) {
   const github = (list) => (Array.isArray(list) ? list : []).map((a) => String(a?.github ?? '').toLowerCase());
   if (author && !github(was.authors).includes(author.toLowerCase())) {
-    add('hub.owner', 'motion.json', `this motion is published by ${github(was.authors).join(', ') || 'nobody'}; only one of them may change it (make your own under a new slug and credit it in CREDITS.md)`);
+    add('hub.owner', 'motion.json', `this motion is published by ${github(was.authors).join(', ') || 'nobody'}; only one of them may change it (make your own under your own scope and credit it in CREDITS.md)`);
   }
   if (typeof manifest?.version === 'string' && SEMVER.test(manifest.version) && typeof was.version === 'string' && SEMVER.test(was.version) && compareVersions(manifest.version, was.version) <= 0) {
     add('hub.version', 'motion.json', `version ${manifest.version} is not above the published ${was.version}: a published version never changes`);
   }
 }
 
-function checkHub(dir, manifest, {author}, add) {
-  // in the catalogue a motion is motions/<slug>/ (HUB.md); a copy in a project (./motion/) may be named otherwise
-  const path = resolve(dir), name = basename(path);
-  if (basename(resolve(path, '..')) === 'motions' && typeof manifest?.slug === 'string' && manifest.slug !== name) add('hub.slug', 'motion.json', `slug "${manifest.slug}" must equal the directory name "${name}" in motions/`);
+/** A motion's id on a hub: `@<scope>/<slug>` with a scope, else `<slug>` (SPEC.md §3). */
+export const motionId = (manifest) => (manifest?.scope ? `@${manifest.scope}/${manifest.slug}` : manifest?.slug);
+
+/** The motion directories under a collection's root: `<slug>/` and `@<scope>/<slug>/`, as paths relative to it, sorted. */
+export function listMotions(root) {
+  if (!existsSync(root)) return [];
+  const dirs = (dir) => readdirSync(dir, {withFileTypes: true}).filter((e) => e.isDirectory()).map((e) => e.name);
+  return dirs(root).flatMap((d) => (d.startsWith('@') ? dirs(join(root, d)).map((s) => `${d}/${s}`) : [d])).sort();
+}
+
+function checkHub(dir, manifest, {author, official, was}, add) {
+  // in the catalogue a motion is motions/<id>/: motions/<slug>/ or motions/@<scope>/<slug>/ (HUB.md); a copy in a
+  // project (./motion/) may be named otherwise
+  const path = resolve(dir), name = basename(path), parent = basename(dirname(path));
+  const inCatalogue = parent === 'motions' || (parent.startsWith('@') && basename(dirname(dirname(path))) === 'motions');
+  const at = parent.startsWith('@') ? `${parent}/${name}` : name;
+  if (inCatalogue && typeof manifest?.slug === 'string' && motionId(manifest) !== at) add('hub.slug', 'motion.json', `the motion ${motionId(manifest)} sits at motions/${motionId(manifest)}/ in the catalogue, not motions/${at}/`);
   if (manifest?.license && typeof manifest.license === 'object') {
     if (spdx(manifest.license.text) && !spdxIds(manifest.license.text).every((id) => TEXT_LICENSES.has(id))) add('hub.license', 'motion.json', `license.text must be one of ${[...TEXT_LICENSES].join(', ')}`);
     if (spdx(manifest.license.code) && !spdxIds(manifest.license.code).every((id) => CODE_LICENSES.has(id))) add('hub.license', 'motion.json', `license.code must be one of ${[...CODE_LICENSES].join(', ')}`);
   }
   if (author && Array.isArray(manifest?.authors) && !manifest.authors.some((a) => typeof a?.github === 'string' && a.github.toLowerCase() === author.toLowerCase())) {
     add('hub.author', 'motion.json', `the pull request's author "${author}" must be among the authors`);
+  }
+  // who may publish under an id: unscoped ids are the hub's own, a scope is its owner's; a change is checkUpdate's
+  if (author && !was && manifest && typeof manifest === 'object') {
+    if (manifest.scope === undefined && !official) add('hub.scope', 'motion.json', `an unscoped id is published by the hub's maintainers only: publish yours as @${author.toLowerCase()}/${manifest.slug ?? '<slug>'} ("scope": "${author.toLowerCase()}")`);
+    else if (typeof manifest.scope === 'string' && manifest.scope !== author.toLowerCase()) add('hub.scope', 'motion.json', `the scope "${manifest.scope}" belongs to that GitHub account; publish yours as @${author.toLowerCase()}/${manifest.slug ?? '<slug>'}`);
   }
   let total = 0;
   for (const rel of walk(dir)) {
@@ -306,16 +335,16 @@ function checkHub(dir, manifest, {author}, add) {
 export function main(args) {
   const hub = !args.includes('--format-only');
   const value = (flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : undefined; };
-  const author = value('--author'), wasPath = value('--was');
+  const author = value('--author'), wasPath = value('--was'), official = args.includes('--official');
   const was = wasPath ? JSON.parse(readFileSync(wasPath, 'utf8')) : undefined;
   let dirs = args.filter((a, i) => !a.startsWith('--') && !['--author', '--was'].includes(args[i - 1]));
   if (!dirs.length) {
     const root = resolve('motions');
-    dirs = existsSync('motion.json') ? ['.'] : existsSync(root) ? readdirSync(root, {withFileTypes: true}).filter((e) => e.isDirectory()).map((e) => join(root, e.name)) : [];
+    dirs = existsSync('motion.json') ? ['.'] : listMotions(root).map((d) => join(root, d));
   }
   let count = 0;
   for (const dir of dirs) {
-    const issues = checkMotion(dir, {hub, author, was});
+    const issues = checkMotion(dir, {hub, author, official, was});
     const name = relative(process.cwd(), resolve(dir)) || '.';
     for (const i of issues) console.log(`${name}/${i.at}  ${i.code}  ${i.message}`);
     if (!issues.length) console.log(`${name}  ok`);

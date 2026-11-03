@@ -33,6 +33,22 @@ test('a package unpacks to its motion, and is refused when its SHA-256, paths or
   assert.throws(() => unpack(linked.row, linked.gz), /link/);
 });
 
+test('a scoped motion is got by its id, and a bare slug never picks it', async () => {
+  const {row, gz} = pkg('@ana/plain-paper');
+  const server = createServer((req, res) => {
+    if (req.url === '/api/motions.json') res.end(JSON.stringify({spec: 'motion/0.1', motions: [row]}));
+    else if (req.url === row.package.url) res.end(gz);
+    else { res.statusCode = 404; res.end(); }
+  });
+  await new Promise((done) => server.listen(0, '127.0.0.1', done));
+  const base = `http://127.0.0.1:${server.address().port}`, root = mkdtempSync(join(tmpdir(), 'scoped-'));
+  try {
+    assert.equal((await getMotion('@ana/plain-paper', join(root, 'motion'), base)).slug, '@ana/plain-paper');
+    assert.equal(readFileSync(join(root, 'motion', 'remotion', 'index.ts'), 'utf8'), 'export const theme = {};\n');
+    await assert.rejects(getMotion('plain-paper', join(root, 'other'), base), /@<login>\/plain-paper/);
+  } finally { server.close(); }
+});
+
 test('search needs every word', () => {
   const {row} = pkg('plain-paper');
   assert.equal(search([row], ['PLAIN', 'light']).length, 1);
@@ -67,16 +83,17 @@ test('a new motion starts as every required file but the poster, and shares only
   let published;
   const server = createServer((req, res) => {
     if (req.url === '/api/motions.json') res.end(JSON.stringify({spec: 'motion/0.1', motions: published ? [published.row] : []}));
-    else if (req.url === '/m/plain-ink/motion.json') res.end(JSON.stringify(published.manifest));
+    else if (req.url === '/m/@ana/plain-ink/motion.json') res.end(JSON.stringify(published.manifest));
     else { res.statusCode = 404; res.end(); }
   });
   await new Promise((done) => server.listen(0, '127.0.0.1', done));
   const base = `http://127.0.0.1:${server.address().port}`;
   try {
-    assert.match(await share(dir, {github: 'ana'}, base), /passes the hub's checks as ana\. Nothing is published yet/);
-    await assert.rejects(share(dir, {github: 'bo'}, base), /hub\.author/);
+    assert.equal(JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8')).scope, 'ana', 'a new motion is scoped to its author');
+    assert.match(await share(dir, {github: 'ana'}, base), /@ana\/plain-ink 1\.0\.0 passes the hub's checks as ana\. Nothing is published yet/);
+    await assert.rejects(share(dir, {github: 'bo'}, base), /hub\.author[\s\S]*hub\.scope/);
     const manifest = JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8'));
-    published = {manifest, row: {...pkg('plain-ink').row, version: '1.0.0', authors: manifest.authors}};
+    published = {manifest, row: {...pkg('plain-ink').row, slug: '@ana/plain-ink', version: '1.0.0', authors: manifest.authors}};
     await assert.rejects(share(dir, {github: 'ana'}, base), /hub\.version/);
     writeFileSync(join(dir, 'motion.json'), JSON.stringify({...manifest, version: '1.0.1'}));
     assert.match(await share(dir, {github: 'ana'}, base), /after 1\.0\.0/);

@@ -5,9 +5,10 @@
 //   node tools/build.mjs [out]      default out: dist/
 //
 // It writes:
-//   api/motions.json                 the index, one row per motion, ordered by slug
-//   m/<slug>/<file>                  the newest version's motion.json, MOTION*.md, tokens.json, CREDITS.md, poster.jpg
-//   m/<slug>/<version>.tgz           the whole motion, its paths under <slug>/; the same files always give the same bytes
+//   api/motions.json                 the index, one row per motion, ordered by id (`slug` in a row is the motion's id:
+//                                    `<slug>` or `@<scope>/<slug>`, so clients that only know motion/0.1 never confuse two)
+//   m/<id>/<file>                    the newest version's motion.json, MOTION*.md, tokens.json, CREDITS.md, poster.jpg
+//   m/<id>/<version>.tgz             the whole motion, its paths under <id>/; the same files always give the same bytes
 //   llms.txt                         the generic skill, for agents (skills/motionhub/SKILL.md without its front matter)
 //   index.html, m/<slug>/index.html  the gallery and a page per motion, with 404.html, site.css, icon.svg, _headers,
 //                                    robots.txt and sitemap.xml (tools/site.mjs)
@@ -20,7 +21,10 @@ import {copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, 
 import {dirname, join, relative, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {gzipSync} from 'node:zlib';
-import {SPEC, checkMotion} from './check.mjs';
+import {checkMotion, listMotions, motionId} from './check.mjs';
+
+/** The index's own format. A row adds members over time and says its motion's `spec`; readers of motion/0.1 still read it. */
+export const INDEX_SPEC = 'motion/0.1';
 import {writeSite} from './site.mjs';
 
 const ROOT = resolve(fileURLToPath(import.meta.url), '../..');
@@ -72,12 +76,12 @@ export function tgz(entries) {
 /** The index row for one motion, and its package. */
 export function pack(dir) {
   const manifest = JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8'));
-  const {slug, version} = manifest;
+  const {version} = manifest, slug = motionId(manifest);
   const names = files(dir);
   const archive = tgz(names.map((n) => [`${slug}/${n}`, readFileSync(join(dir, n))]));
   const tools = readdirSync(dir, {withFileTypes: true}).filter((e) => e.isDirectory()).map((e) => e.name).sort();
   const row = {
-    slug, version, name: manifest.name, line: manifest.line, lang: manifest.lang ?? 'en', tags: manifest.tags ?? [],
+    slug, ...(manifest.scope ? {scope: manifest.scope} : {}), spec: manifest.spec, version, name: manifest.name, line: manifest.line, lang: manifest.lang ?? 'en', tags: manifest.tags ?? [],
     authors: manifest.authors, license: manifest.license, poster: `/m/${slug}/poster.jpg`, tools,
     package: {url: `/m/${slug}/${version}.tgz`, sha256: createHash('sha256').update(archive).digest('hex'), bytes: archive.length},
   };
@@ -86,7 +90,7 @@ export function pack(dir) {
 
 export function build(out, root = ROOT) {
   const motions = join(root, 'motions');
-  const dirs = existsSync(motions) ? readdirSync(motions, {withFileTypes: true}).filter((e) => e.isDirectory()).map((e) => e.name).sort() : [];
+  const dirs = listMotions(motions);
   const issues = dirs.flatMap((d) => checkMotion(join(motions, d)).map((i) => `motions/${d}/${i.at}  ${i.code}  ${i.message}`));
   if (issues.length) throw new Error(`not built, the motions have issues:\n${issues.join('\n')}`);
 
@@ -94,6 +98,7 @@ export function build(out, root = ROOT) {
   const rows = [];
   for (const d of dirs) {
     const {row, archive, served} = pack(join(motions, d));
+    if (row.slug !== d) throw new Error(`motions/${d} holds the motion ${row.slug}: a motion sits at motions/<its id>/`);
     const at = join(out, 'm', row.slug);
     mkdirSync(at, {recursive: true});
     for (const n of served) copyFileSync(join(motions, d, n), join(at, n));
@@ -101,7 +106,7 @@ export function build(out, root = ROOT) {
     rows.push(row);
   }
   mkdirSync(join(out, 'api'), {recursive: true});
-  writeFileSync(join(out, 'api/motions.json'), JSON.stringify({spec: SPEC, motions: rows}, null, 2) + '\n');
+  writeFileSync(join(out, 'api/motions.json'), JSON.stringify({spec: INDEX_SPEC, motions: rows}, null, 2) + '\n');
   const skill = readFileSync(join(root, 'skills/motionhub/SKILL.md'), 'utf8');
   writeFileSync(join(out, 'llms.txt'), skill.replace(/^---\n[\s\S]*?\n---\n+/, ''));
   writeSite(out, rows, motions, readFileSync(join(ROOT, 'tools/site.css'), 'utf8'));
