@@ -9,9 +9,10 @@
     "preview": "npm run build && npx --yes wrangler@4.154.0 dev"
   },
   "dependencies": {
-    "astro": "7.4.1",
     "@fontsource/inter": "5.3.0",
+    "@fontsource/jetbrains-mono": "5.3.0",
     "@fontsource/noto-sans-sc": "5.3.1",
-    "@fontsource/jetbrains-mono": "5.3.0"
+    "astro": "7.4.1",
+    "marked": "18.1.1"
   }
 }
