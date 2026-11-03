@@ -32,19 +32,20 @@ button, input, select { font: inherit; color: inherit; }
 .nav a { text-decoration: none; padding: 6px 10px; border-radius: var(--radius-md); color: var(--color-text-2); }
 .nav a:hover { background: var(--color-surface); color: var(--color-text); }
 .nav a[aria-current="page"] { background: var(--color-surface); color: var(--color-text); }
-.search { flex: 0 1 320px; min-width: 0; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; border: 1px solid var(--color-line); border-radius: var(--radius-lg); background: var(--color-surface); color: var(--color-muted); }
+.search { flex: 0 1 320px; margin-left: auto; min-width: 0; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; border: 1px solid var(--color-line); border-radius: var(--radius-lg); background: var(--color-surface); color: var(--color-muted); }
 .search:focus-within { border-color: var(--color-text-2); }
 .search input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; color: var(--color-text); }
 .search input::-webkit-search-cancel-button { display: none; }
 .search kbd { font-size: var(--size-xs); padding: 0 6px; border: 1px solid var(--color-line); border-radius: var(--radius-sm); }
-.actions { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; }
+.actions { display: flex; align-items: center; gap: 8px; flex: none; }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 12px; border: 1px solid var(--color-line); border-radius: var(--radius-lg); background: transparent; font-weight: var(--weight-medium); text-decoration: none; cursor: pointer; white-space: nowrap; }
 .btn:hover { background: var(--color-surface); color: var(--color-text); }
 .btn.primary { background: var(--color-text); color: var(--color-bg); border-color: var(--color-text); }
 .btn.primary:hover { opacity: 0.88; color: var(--color-bg); }
 @media (max-width: 860px) {
   .top .wrap { height: auto; flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; gap: 10px 16px; }
-  .search { order: 5; flex-basis: 100%; }
+  .search { order: 5; flex-basis: 100%; margin-left: 0; }
+  .nav { margin-left: auto; }
   .actions .btn span.long { display: none; }
 }
 @media (max-width: 480px) {
