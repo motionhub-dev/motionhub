@@ -10,6 +10,14 @@ import {Heading} from './parts/heading.tsx';
 
 export const reel = {seconds: 20, width: 1920, height: 1080};
 
+/** What happens when, for the motion's sound (sound.json): light runs out and splits, labels and glass land, the camera walks the table, the slit closes, white comes back */
+export const cues = [
+  {at: 0.2, role: 'draw', dur: 0.9}, {at: 1.0, role: 'move', dur: 5.5}, {at: 1.6, role: 'land'}, {at: 2.4, role: 'cut'},
+  {at: 3.4, role: 'land'}, {at: 4.6, role: 'draw', dur: 0.9}, {at: 6.5, role: 'move', dur: 3.1}, {at: 8.1, role: 'land'},
+  {at: 8.3, role: 'draw', dur: 2.0}, {at: 11.0, role: 'land'}, {at: 11.8, role: 'land'}, {at: 13.5, role: 'out'},
+  {at: 15.4, role: 'move', dur: 3.8}, {at: 16.4, role: 'land'}, {at: 16.9, role: 'count'},
+];
+
 const ease = Easing.inOutSine, out = Easing.outQuart, lin = Easing.linear;
 /** A value that goes from a to b between two seconds */
 const at = (t: number, from: number, to: number, a: number, b: number, easing = ease) => interpolate(t, [from, to], [a, b], {easing});

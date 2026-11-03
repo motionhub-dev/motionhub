@@ -13,6 +13,14 @@ import {Box} from './parts/box.tsx';
 import {Click} from './parts/click.tsx';
 
 export const reel = {seconds: 20, width: 1920, height: 1080};
+/** What happens when, for the motion's sound (sound.json): a mark is drawn, the shot cuts, a number is written and double-underlined, a tick lands, the click rings */
+export const cues = [
+  {at: 0.05, role: 'draw', dur: 0.85}, {at: 1.3, role: 'draw', dur: 0.42}, {at: 2.1, role: 'draw', dur: 1.1}, {at: 4.2, role: 'cut'},
+  {at: 4.35, role: 'draw', dur: 0.7}, {at: 5.3, role: 'draw', dur: 0.65}, {at: 6.6, role: 'cut'}, {at: 6.75, role: 'draw', dur: 1.4},
+  {at: 8.25, role: 'draw', dur: 0.45}, {at: 8.7, role: 'count'}, {at: 9.6, role: 'cut'}, {at: 9.7, role: 'draw', dur: 1.0},
+  {at: 11.0, role: 'draw', dur: 1.2}, {at: 12.6, role: 'cut'}, {at: 12.7, role: 'draw', dur: 0.8}, {at: 14.5, role: 'count'},
+  {at: 14.6, role: 'land'}, {at: 15.4, role: 'draw', dur: 0.6}, {at: 16.82, role: 'count'},
+];
 
 const lin = Easing.linear, out = Easing.outCubic;
 /** a stroke's progress from `a` over `dur`: a hand starts fast and slows into the end */

@@ -1,0 +1,53 @@
+{
+ "bpm": 84,
+ "root": 110,
+ "kit": [
+  "kick",
+  "hat",
+  "pad"
+ ],
+ "roles": {
+  "land": [
+   {
+    "voice": "click",
+    "lo": 1500,
+    "hi": 5000,
+    "len": 0.03,
+    "gain": 0.7
+   },
+   {
+    "voice": "thump",
+    "freq": 140,
+    "len": 0.15,
+    "drop": 0.5,
+    "gain": 0.3
+   }
+  ],
+  "move": {
+   "voice": "swell",
+   "freq": 82,
+   "gain": 1
+  },
+  "draw": {
+   "voice": "swish",
+   "lo": 800,
+   "hi": 4000,
+   "rise": 0.5,
+   "gain": 0.4
+  },
+  "count": {
+   "voice": "click",
+   "lo": 1200,
+   "hi": 4000,
+   "len": 0.035,
+   "gain": 1
+  },
+  "cut": {
+   "voice": "click",
+   "lo": 2000,
+   "hi": 8000,
+   "len": 0.025,
+   "gain": 1
+  }
+ }
+}

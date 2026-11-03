@@ -1,0 +1,42 @@
+{
+ "bpm": 72,
+ "root": 175,
+ "kit": [
+  "pad",
+  "pluck"
+ ],
+ "roles": {
+  "land": {
+   "voice": "chime",
+   "freq": 1397,
+   "len": 1.2,
+   "gain": 1
+  },
+  "move": {
+   "voice": "noise",
+   "lo": 300,
+   "hi": 3000,
+   "fade": "swell",
+   "gain": 1
+  },
+  "draw": {
+   "voice": "swish",
+   "lo": 500,
+   "hi": 3500,
+   "rise": 0.5,
+   "gain": 1
+  },
+  "count": {
+   "voice": "chime",
+   "freq": 1046,
+   "len": 1.0,
+   "gain": 1
+  },
+  "cut": {
+   "voice": "chime",
+   "freq": 1568,
+   "len": 0.8,
+   "gain": 1
+  }
+ }
+}

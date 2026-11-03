@@ -11,6 +11,13 @@ import {Figure} from './parts/figure.tsx';
 import {Crumbs} from './parts/crumbs.tsx';
 
 export const reel = {seconds: 20, width: 1920, height: 1080};
+/** What happens when, for the motion's sound (sound.json): a branch rolls out, a blossom and a critter land, a clay figure counts up, the apple hits the ground, the cut opens, a tree grows */
+export const cues = [
+  {at: 0, role: 'draw', dur: 1.4}, {at: 1.9, role: 'land'}, {at: 2.4, role: 'move', dur: 1.8}, {at: 4.2, role: 'land'}, {at: 4.5, role: 'count'},
+  {at: 6.4, role: 'move', dur: 2.4}, {at: 6.6, role: 'land'}, {at: 7.9, role: 'count'}, {at: 9.5, role: 'land'}, {at: 10.8, role: 'draw', dur: 1.2},
+  {at: 12, role: 'cut'}, {at: 12.1, role: 'move', dur: 1.7}, {at: 13.6, role: 'land'}, {at: 14.2, role: 'count'}, {at: 16.2, role: 'draw', dur: 1},
+  {at: 16.2, role: 'land'}, {at: 16.8, role: 'draw', dur: 1}, {at: 18, role: 'land'}, {at: 18.8, role: 'land'},
+];
 
 type Ease = (v: number) => number;
 type P3 = [number, number, number];

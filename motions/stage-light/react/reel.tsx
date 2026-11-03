@@ -10,6 +10,13 @@ import {Meter} from './parts/meter.tsx';
 import {Ranking} from './parts/ranking.tsx';
 
 export const reel = {seconds: 20, width: 1920, height: 1080};
+/** What happens when, for the motion's sound (sound.json): a plate lands, the light moves, a figure lands, a bar grows */
+export const cues = [
+  {at: 0.3, role: 'land'}, {at: 2.0, role: 'count'}, {at: 3.0, role: 'move', dur: 1.2}, {at: 3.0, role: 'draw', dur: 1.0}, {at: 3.6, role: 'land'},
+  {at: 5.2, role: 'count'}, {at: 7.0, role: 'cut'}, {at: 8.3, role: 'land'}, {at: 8.3, role: 'move', dur: 0.6}, {at: 9.6, role: 'land'},
+  {at: 9.6, role: 'move', dur: 0.6}, {at: 10.9, role: 'land'}, {at: 10.9, role: 'move', dur: 0.6}, {at: 13.0, role: 'move', dur: 0.8},
+  {at: 13.2, role: 'land'}, {at: 13.6, role: 'draw', dur: 1.3}, {at: 14.9, role: 'count'},
+];
 
 const ease = Easing.inOutSine, out = Easing.outQuart;
 const at = (t: number, from: number, to: number, a: number, b: number, easing = ease) => interpolate(t, [from, to], [a, b], {easing});

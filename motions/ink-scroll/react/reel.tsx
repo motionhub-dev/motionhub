@@ -11,6 +11,14 @@ import {rng} from './parts/ink.ts';
 
 export const reel = {seconds: 20, width: 1920, height: 1080};
 
+/** What happens when, for the motion's sound (sound.json): the scroll unrolls and travels, ink blooms and the brush runs, an era mark lands, the seal is pressed */
+export const cues = [
+  {at: 0.0, role: 'move', dur: 1.1}, {at: 2.2, role: 'land'}, {at: 3.0, role: 'draw', dur: 1.6}, {at: 4.6, role: 'draw', dur: 1.2},
+  {at: 6.0, role: 'move', dur: 2.0}, {at: 7.8, role: 'land'}, {at: 9.2, role: 'move', dur: 1.6}, {at: 10.0, role: 'draw', dur: 1.4},
+  {at: 12.4, role: 'move', dur: 1.6}, {at: 13.2, role: 'land'}, {at: 13.4, role: 'draw', dur: 1.4}, {at: 15.2, role: 'draw', dur: 1.3},
+  {at: 16.9, role: 'land'}, {at: 17.4, role: 'move', dur: 1.6},
+];
+
 type Pts = [number, number][];
 type Ease = (v: number) => number;
 const sine = Easing.inOutSine, out = Easing.outCubic, linear = Easing.linear;

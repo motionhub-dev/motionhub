@@ -13,6 +13,15 @@ import {Exploded} from './parts/exploded.tsx';
 import {Stroke, ACCENT, LINE, hatchLines, phase, settle} from './parts/draft.ts';
 
 export const reel = {seconds: 20, width: 1920, height: 1080};
+/** What happens when, for the motion's sound (sound.json): a line draws, the view pulls back, a section is hatched, a part clicks into place, a dimension measures out */
+export const cues = [
+  {at: 0.05, role: 'draw', dur: 1.45}, {at: 1.5, role: 'move', dur: 1.1}, {at: 2.4, role: 'draw', dur: 0.5}, {at: 2.7, role: 'draw', dur: 1.2},
+  {at: 3.7, role: 'draw', dur: 0.9}, {at: 4.7, role: 'land'}, {at: 5.2, role: 'land'}, {at: 6, role: 'count'}, {at: 6.6, role: 'cut'},
+  {at: 7.8, role: 'land'}, {at: 9, role: 'move', dur: 0.9}, {at: 9.6, role: 'move', dur: 1.2}, {at: 10.6, role: 'draw', dur: 0.6},
+  {at: 11.2, role: 'move', dur: 1.4}, {at: 12.6, role: 'move', dur: 0.9}, {at: 13.5, role: 'count'}, {at: 14, role: 'cut'},
+  {at: 14.3, role: 'move', dur: 1.4}, {at: 16, role: 'move', dur: 1}, {at: 17.2, role: 'land'}, {at: 18, role: 'draw', dur: 0.9},
+  {at: 18.9, role: 'count'},
+];
 
 const ease = Easing.inOutSine, out = Easing.outQuart, lin = Easing.linear;
 const at = (t: number, from: number, to: number, a = 0, b = 1, easing = ease) => interpolate(t, [from, to], [a, b], {easing});

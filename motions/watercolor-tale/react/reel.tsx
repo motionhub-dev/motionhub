@@ -12,6 +12,13 @@ import {Spatter} from './parts/spatter.tsx';
 import {blob, maple, stroke, type Pt} from './parts/paint.ts';
 
 export const reel = {seconds: 20, width: 1920, height: 1080};
+/** What happens when, for the motion's sound (sound.json): a brush writes, a page turns, washes paint, the swatches fill, leaves fall on a gust */
+export const cues = [
+  {at: 0.1, role: 'draw', dur: 1.5}, {at: 1.2, role: 'land'}, {at: 3.1, role: 'cut'}, {at: 4.4, role: 'draw', dur: 1.4}, {at: 5.2, role: 'draw', dur: 1.5},
+  {at: 7.0, role: 'land'}, {at: 7.2, role: 'draw', dur: 0.9}, {at: 7.6, role: 'count'}, {at: 8.2, role: 'cut'}, {at: 9.8, role: 'draw', dur: 1.0},
+  {at: 11.4, role: 'draw', dur: 1.4}, {at: 12.9, role: 'draw', dur: 1.1}, {at: 13.0, role: 'count'}, {at: 13.8, role: 'cut'}, {at: 13.9, role: 'count'},
+  {at: 15.6, role: 'move', dur: 2.3}, {at: 18.0, role: 'move', dur: 0.9}, {at: 18.2, role: 'land'},
+];
 
 type Ease = (v: number) => number;
 const sine = Easing.inOutSine, out = Easing.outCubic, linear = Easing.linear;

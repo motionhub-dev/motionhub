@@ -1,7 +1,7 @@
 {
   "spec": "motion/0.1",
   "slug": "depth-stage",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "name": {
     "en": "Depth Stage",
     "zh-CN": "景深舞台"

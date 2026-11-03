@@ -1,0 +1,34 @@
+{
+ "bpm": 76,
+ "root": 131,
+ "kit": [
+  "pad",
+  "pluck"
+ ],
+ "roles": {
+  "land": {
+   "voice": "chime",
+   "freq": 1046,
+   "len": 0.9,
+   "gain": 1
+  },
+  "move": {
+   "voice": "swell",
+   "freq": 65,
+   "gain": 1
+  },
+  "draw": {
+   "voice": "swish",
+   "lo": 600,
+   "hi": 3000,
+   "rise": 0.5,
+   "gain": 1
+  },
+  "count": {
+   "voice": "pluck",
+   "freq": 523,
+   "len": 0.6,
+   "gain": 1
+  }
+ }
+}

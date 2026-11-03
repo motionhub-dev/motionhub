@@ -12,6 +12,12 @@ import {Callout} from './parts/callout.tsx';
 import {Heading} from './parts/heading.tsx';
 
 export const reel = {seconds: 22, width: 1920, height: 1080};
+/** What happens when, for the motion's sound (sound.json): a card arrives, the camera sinks stop by stop, living light sparks, the last line lands; nothing at the pull-back until Everest */
+export const cues = [
+  {at: 0.1, role: 'land'}, {at: 1.8, role: 'move', dur: 1.8}, {at: 3.2, role: 'land'}, {at: 5.0, role: 'move', dur: 2.2}, {at: 6.9, role: 'land'},
+  {at: 8.4, role: 'move', dur: 2.2}, {at: 9.2, role: 'draw', dur: 1.6}, {at: 10.4, role: 'land'}, {at: 12.0, role: 'move', dur: 2.2}, {at: 13.4, role: 'land'},
+  {at: 15.0, role: 'move', dur: 2.2}, {at: 16.7, role: 'land'}, {at: 19.9, role: 'land'},
+];
 
 const ease = Easing.inOutSine;
 /** A value through keyframes [time, value], eased between each pair */

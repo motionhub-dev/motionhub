@@ -14,6 +14,14 @@ import {DeviceScreen} from './parts/screen.tsx';
 import {Wipe} from './parts/wipe.tsx';
 
 export const reel = {seconds: 20, width: 1920, height: 1080};
+/** What happens when, for the motion's sound (sound.json): a title drops, a card lands, a chest opens and a clear chimes, the wipe sweeps, the boss crashes and is hit, the quest log lands */
+export const cues = [
+  {at: 0.0, role: 'draw', dur: 1.2}, {at: 2.6, role: 'out'}, {at: 3.0, role: 'land'}, {at: 4.7, role: 'draw', dur: 0.8}, {at: 5.8, role: 'land'},
+  {at: 6.0, role: 'count'}, {at: 6.6, role: 'move', dur: 0.6}, {at: 7.4, role: 'move', dur: 1.2}, {at: 8.4, role: 'move', dur: 1.4},
+  {at: 9.4, role: 'land'}, {at: 10.0, role: 'land'}, {at: 10.5, role: 'land'}, {at: 11.0, role: 'land'}, {at: 11.5, role: 'land'},
+  {at: 12.0, role: 'land'}, {at: 12.4, role: 'cut'}, {at: 13.6, role: 'land'}, {at: 13.8, role: 'count'}, {at: 14.9, role: 'move', dur: 0.6},
+  {at: 15.8, role: 'land'}, {at: 16.1, role: 'draw', dur: 0.7}, {at: 17.4, role: 'count'},
+];
 
 // Every tween is linear: the parts step it on twos in whole pixels themselves (MOTION.md §5).
 /** `a` to `b` between seconds `from` and `to` */

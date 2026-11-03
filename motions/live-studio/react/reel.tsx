@@ -14,6 +14,13 @@ import {Readout} from './parts/readout.tsx';
 import {Sting} from './parts/sting.tsx';
 
 export const reel = {seconds: 20, width: 1920, height: 1080};
+/** What happens when, for the motion's sound (sound.json): a strap lands, a score row ticks, the stinger sweeps and cuts, a headline flips, a name lands, the figure settles */
+export const cues = [
+  {at: 0.2, role: 'land'}, {at: 0.9, role: 'land'}, {at: 4.2, role: 'land'}, {at: 5.6, role: 'count'}, {at: 6.8, role: 'count'},
+  {at: 7.2, role: 'land'}, {at: 9.4, role: 'count'}, {at: 10.0, role: 'move', dur: 1.6}, {at: 10.8, role: 'cut'}, {at: 11.2, role: 'land'},
+  {at: 13.15, role: 'count'}, {at: 14.5, role: 'land'}, {at: 15.1, role: 'land'}, {at: 15.7, role: 'land'}, {at: 16.6, role: 'land'},
+  {at: 18.3, role: 'count'},
+];
 
 const lin = Easing.linear, out = Easing.outQuart, ease = Easing.inOutSine;
 /** a piece's `show`: on from `on` over `dur` (the part paces its own layers), pulled off from `off` over 0.35 s, the entrance reversed */

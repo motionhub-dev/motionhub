@@ -11,6 +11,14 @@ import {Frame} from './parts/frame.tsx';
 
 export const reel = {seconds: 18, width: 1920, height: 1080};
 
+/** What happens when, for the motion's sound (sound.json): the pen draws a line or writes, a tab is stuck on, the page turns, the result is boxed */
+export const cues = [
+  {at: 0.0, role: 'draw', dur: 1.1}, {at: 1.1, role: 'draw', dur: 0.7}, {at: 1.8, role: 'draw', dur: 0.6}, {at: 2.5, role: 'draw', dur: 0.7},
+  {at: 3.5, role: 'draw', dur: 1.2}, {at: 5.3, role: 'draw', dur: 0.6}, {at: 6.3, role: 'land'}, {at: 8.0, role: 'cut'},
+  {at: 8.9, role: 'draw', dur: 2.0}, {at: 10.9, role: 'draw', dur: 0.9}, {at: 12.1, role: 'land'}, {at: 12.5, role: 'draw', dur: 0.6},
+  {at: 12.9, role: 'draw', dur: 1.6}, {at: 14.7, role: 'draw', dur: 0.8}, {at: 16.3, role: 'count'},
+];
+
 const hand = Easing.inOutSine, lin = Easing.linear;
 /** A drawing's progress: the hand eases in and out of a line; writing is linear */
 const at = (t: number, a: number, b: number, to = 1, from = 0, easing = hand) => interpolate(t, [a, b], [from, to], {easing});
