@@ -230,3 +230,11 @@ test('a motion\'s own faces are WOFF2, named in fonts.json and credited', () => 
   assert.ok(faces({'react/fonts/fonts.json': list}, 'No assets.\n').includes('hub.font'));
   assert.ok(faces({'react/fonts/fonts.json': list, 'react/fonts/other.ttf': 'x'}).includes('hub.font'));
 });
+
+test('a motion\'s sound names only roles, voices and instruments the synthesiser has', () => {
+  const sound = (json) => codes(motion({extra: {'react/sound.json': JSON.stringify(json)}}));
+  assert.deepEqual(sound({bpm: 90, kit: ['kick'], roles: {land: {voice: 'click'}}}).filter((c) => c === 'hub.sound'), []);
+  assert.ok(sound({kit: ['banjo']}).includes('hub.sound'));
+  assert.ok(sound({roles: {land: {voice: 'violin'}}}).includes('hub.sound'));
+  assert.ok(sound({roles: {jump: {voice: 'click'}}}).includes('hub.sound'));
+});

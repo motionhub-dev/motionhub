@@ -22,4 +22,8 @@ You do not use this package on its own: an engine binding provides it.
 
 A component colours with `var(--color-<name>)` and sets type with `var(--font-<name>)`, reads its time from `useTime()`, never from a clock, a timer or `Math.random`, and takes what changes (words, a progress from 0 to 1, a video's `src`) as props. So the same moment draws the same picture every time.
 
+## Sound
+
+`@motionhub/runtime/sound` synthesises a motion's sound, with no React and no audio API: `renderSound({seconds, cues, sound, rate})` returns mono samples from the motion's `react/sound.json` (a bed at a tempo, and a voice for each role: `land`, `move`, `draw`, `count`, `cut`, `out`) and a list of cues (`[{at, role, dur}]`, a reel's `export const cues`). The same input gives the same samples, so a player plays them and a renderer can write them to a WAV for Remotion's `<Audio>` or a HyperFrames track.
+
 An engine binding passes `<MotionRuntimeProvider value>` an object with `useTime` and `useCompositionTime` (hooks returning seconds), `fps`, `width`, `height`, `tokens` (resolved) and, if it plays video, `Video`.

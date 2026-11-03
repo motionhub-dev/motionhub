@@ -1,14 +1,20 @@
 // The reel player: a motion's react/reel.tsx drawn live by @motionhub/runtime at the time this clock is at, scaled to
-// the frame, with play, pause and a scrubber. It runs in a sandboxed frame (site/player/build.mjs, _headers).
+// the frame, with play, pause and a scrubber, and the motion's sound (react/sound.json) on the reel's cues when the viewer turns
+// it on. It runs in a sandboxed frame (site/player/build.mjs, _headers).
 import {useEffect, useRef, useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {MotionRoot, MotionRuntimeProvider} from '@motionhub/runtime';
-import Reel, {reel} from 'motionhub:reel';
+import * as R from 'motionhub:reel';
+import sound from 'motionhub:sound';
+import {renderSound} from 'motionhub:sound-lib';
 import tokens from 'motionhub:tokens';
 
 // a reel plays no footage (the catalogue holds no video): a component's <Video> is a quiet stand-in of its size
 const Footage = ({style}) => <div style={{width: '100%', height: '100%', background: 'radial-gradient(120% 90% at 50% 35%, #5b6068, #2a2d33 60%, #17191d)', ...style}} />;
 
+const Reel = R.default, reel = R.reel, cues = Array.isArray(R.cues) ? R.cues : [];
+// a reel sounds when its motion has a sound and it says when things happen
+const audible = !!sound && cues.length > 0;
 const W = reel.width ?? 1920, H = reel.height ?? 1080, LENGTH = reel.seconds;
 const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
 // a reel that draws in 3D waits for a tap on a device that would struggle with it: few cores, little memory, or a phone
@@ -24,6 +30,33 @@ function Player() {
   const [seen, setSeen] = useState(true);
   const [scale, setScale] = useState(1);
   const last = useRef(0);
+  // the sound: off until the viewer turns it on (a browser plays nothing before a gesture); rendered once, then played from where the picture is
+  const [muted, setMuted] = useState(true);
+  const audio = useRef({ctx: null, buffer: null, src: null, startedAt: 0});
+  const tRef = useRef(t);
+  tRef.current = t;
+  const stopSound = () => { try { audio.current.src?.stop(); } catch {} audio.current.src = null; };
+  const startSound = (at) => {
+    stopSound();
+    const a = audio.current;
+    if (!a.ctx) {
+      a.ctx = new AudioContext();
+      const samples = renderSound({seconds: LENGTH, cues, sound, rate: a.ctx.sampleRate});
+      a.buffer = a.ctx.createBuffer(1, samples.length, a.ctx.sampleRate);
+      a.buffer.copyToChannel(samples, 0);
+    }
+    a.ctx.resume();
+    a.src = a.ctx.createBufferSource();
+    a.src.buffer = a.buffer;
+    a.src.connect(a.ctx.destination);
+    a.src.start(0, Math.min(at, LENGTH - 0.01));
+    a.startedAt = a.ctx.currentTime - at;
+  };
+  useEffect(() => {
+    if (muted || !playing || !seen) { stopSound(); return; }
+    startSound(tRef.current);
+    return stopSound;
+  }, [muted, playing, seen]);
   useEffect(() => {
     const fit = () => setScale(Math.min(innerWidth / W, innerHeight / H));
     fit();
@@ -43,7 +76,11 @@ function Player() {
       // a hidden tab or a throttled frame resumes where it was, not seconds later
       const dt = Math.min(0.1, (now - last.current) / 1000);
       last.current = now;
-      setT((v) => (v + dt) % LENGTH);
+      const a = audio.current;
+      // while the sound plays, its clock is the picture's, so the two never drift
+      let next = a.src ? a.ctx.currentTime - a.startedAt : tRef.current + dt;
+      if (next >= LENGTH) { next -= LENGTH * Math.floor(next / LENGTH); if (a.src) startSound(next); }
+      setT(next);
       id = requestAnimationFrame(tick);
     };
     id = requestAnimationFrame(tick);
@@ -71,6 +108,11 @@ function Player() {
         </button>
         <input type="range" min="0" max={LENGTH} step="0.01" value={t} aria-label="Time" onChange={(e) => { setPlaying(false); setT(Number(e.target.value)); }} />
         <span className="time">{clock(t)} / {clock(LENGTH)}</span>
+        {audible && <button type="button" aria-label={muted ? 'Sound on' : 'Sound off'} aria-pressed={!muted} onClick={() => setMuted((m) => !m)}>
+          {muted
+            ? <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4zM16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            : <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>}
+        </button>}
       </div>
     </>
   );

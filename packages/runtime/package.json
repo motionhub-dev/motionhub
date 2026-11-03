@@ -1,6 +1,6 @@
 {
   "name": "@motionhub/runtime",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "What a motion's React components draw with (time, frame, tokens, seeded randomness, video, caption), in any engine that provides it.",
   "license": "MIT",
   "repository": {
@@ -17,12 +17,15 @@
       "types": "./index.d.ts",
       "default": "./index.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./sound": "./sound.js"
   },
   "files": [
     "index.js",
     "tokens.js",
+    "sound.js",
     "index.d.ts",
+    "sound.d.ts",
     "README.md"
   ],
   "scripts": {
