@@ -228,20 +228,21 @@ const {title, description, path, image = '/og-default.png', current, q = ''} = A
     });
   }
 
-  // a copy button on every block marked data-copy; data-copy="icon" draws it as an icon, for a narrow block
+  // a copy icon on every code block: those marked data-copy, and every block in a rendered document
   const COPY = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
   const DONE = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>';
-  for (const pre of document.querySelectorAll<HTMLElement>('[data-copy]')) {
-    const icon = pre.dataset.copy === 'icon';
+  for (const pre of document.querySelectorAll<HTMLElement>('pre[data-copy], .doc pre')) {
+    let box = pre.parentElement!;
+    if (!box.classList.contains('code')) { box = document.createElement('div'); box.className = 'code'; pre.replaceWith(box); box.append(pre); }
     const b = document.createElement('button');
-    b.type = 'button'; b.className = icon ? 'copy icon' : 'copy';
-    const show = (text: string, svg: string) => { if (icon) { b.innerHTML = svg; b.setAttribute('aria-label', text); b.title = text; } else b.textContent = text; };
+    b.type = 'button'; b.className = 'copy';
+    const show = (text: string, svg: string) => { b.innerHTML = svg; b.setAttribute('aria-label', text); b.title = text; };
     show('Copy', COPY);
     b.addEventListener('click', async () => {
       try { await navigator.clipboard.writeText(pre.innerText.trim()); show('Copied', DONE); } catch { show('Select and copy', COPY); }
       setTimeout(() => show('Copy', COPY), 1600);
     });
-    pre.parentElement?.append(b);
+    box.append(b);
   }
 </script>
 </body>

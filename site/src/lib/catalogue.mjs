@@ -51,6 +51,11 @@ export const aka = (localized) => Object.entries(localized ?? {}).filter(([k, v]
 /** What a tool directory lets a person use, by engine. A tool not named here shows as its own name. */
 const TOOL_ENGINES = {react: ['Remotion', 'HyperFrames']};
 export const toolEngines = (tool) => TOOL_ENGINES[tool] ?? [tool];
+/** The engines a motion's components run in: their makers' own sites, repositories and agent skills, credited where they appear. */
+export const ENGINE_LINKS = {
+  Remotion: {site: 'https://www.remotion.dev', repo: 'https://github.com/remotion-dev/remotion', skills: 'https://www.remotion.dev/docs/ai/skills', guide: '/docs/remotion/'},
+  HyperFrames: {site: 'https://hyperframes.heygen.com', repo: 'https://github.com/heygen-com/hyperframes', skills: 'https://github.com/heygen-com/hyperframes#readme', guide: '/docs/hyperframes/'},
+};
 export const toolLabel = (tool) => (TOOL_ENGINES[tool] ? `Components for ${toolEngines(tool).join(' and ')}` : `Pieces for ${tool}`);
 
 /** The prompt that works in any agent, and the skill that makes it shorter: installed for every agent by skills. */

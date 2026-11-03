@@ -49,10 +49,10 @@ npx @motionhub/cli get @iamsuosi/red-pencil   # into ./motion, checked against i
 
 ## In Remotion or HyperFrames
 
-A motion's tokens become values in either engine, and a motion with `react/` brings components that run in both unchanged:
+A motion's tokens become values in either engine, and a motion with `react/` brings components that run in both unchanged. Each engine's guide starts from its own agent skills beside motionhub's:
 
-- **Remotion**: [`@motionhub/remotion`](../packages/remotion/README.md)
-- **HyperFrames**: [`@motionhub/hyperframes`](../packages/hyperframes/README.md)
+- **[Remotion](remotion.md)**: with Remotion's skills, or by hand with [`@motionhub/remotion`](../packages/remotion/README.md)
+- **[HyperFrames](hyperframes.md)**: with HyperFrames' skills, or by hand with [`@motionhub/hyperframes`](../packages/hyperframes/README.md)
 
 Both provide [`@motionhub/runtime`](../packages/runtime/README.md), which is all a motion's components import besides React.
 

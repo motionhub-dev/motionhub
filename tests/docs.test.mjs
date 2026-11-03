@@ -15,7 +15,7 @@ test('every page is a document in the repository with a # title, at a route of i
   for (const p of PAGES) {
     assert.ok(existsSync(join(ROOT, p.file)), p.file);
     assert.match(readFileSync(join(ROOT, p.file), 'utf8').replace(/^---\n[\s\S]*?\n---\n+/, ''), /^# \S/, `${p.file} starts with its title`);
-    assert.match(p.slug, /^[a-z]+$/);
+    assert.match(p.slug, /^[a-z]+(-[a-z]+)*$/);
   }
   assert.equal(pagePath(PAGES[0]), '/docs/');
   assert.equal(twinPath(PAGES[0]), '/docs/index.md');
@@ -24,7 +24,8 @@ test('every page is a document in the repository with a # title, at a route of i
 test('links resolve to a page, a twin, GitHub or stay as they are', () => {
   assert.equal(resolveLink(ROOT, 'CONTRIBUTING.md', 'SPEC.md#7-extensions'), '/docs/spec/#7-extensions');
   assert.equal(resolveLink(ROOT, 'CONTRIBUTING.md', 'SPEC.md', 'md'), 'https://motionhub.dev/docs/spec.md');
-  assert.equal(resolveLink(ROOT, 'packages/runtime/README.md', '../remotion/README.md'), '/docs/remotion/');
+  assert.equal(resolveLink(ROOT, 'packages/runtime/README.md', '../remotion/README.md'), '/docs/remotion-binding/');
+  assert.equal(resolveLink(ROOT, 'docs/use.md', 'remotion.md'), '/docs/remotion/');
   assert.equal(resolveLink(ROOT, 'skills/motionhub/SKILL.md', 'https://github.com/motionhub-dev/motions/blob/main/SPEC.md'), '/docs/spec/');
   assert.equal(resolveLink(ROOT, 'README.md', 'LICENSE'), 'https://github.com/motionhub-dev/motions/blob/main/LICENSE');
   assert.equal(resolveLink(ROOT, 'README.md', 'skills/motionhub'), 'https://github.com/motionhub-dev/motions/tree/main/skills/motionhub');

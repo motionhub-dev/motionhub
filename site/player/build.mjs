@@ -75,16 +75,37 @@ const page = (name, id, heavy) => `<!doctype html>
 <link rel="stylesheet" href="reel.css">
 <style>
 html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
-#player { position: fixed; inset: 0; }
+#player, .shell { position: fixed; inset: 0; }
+.shell.idle { cursor: none; }
 .frame { position: absolute; left: 50%; top: 50%; transform-origin: 50% 50%; overflow: hidden; cursor: pointer; }
-.bar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 10px; padding: 18px 14px 10px;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.55)); color: #fff; font: 12px/1 system-ui, sans-serif; opacity: 0; transition: opacity 0.2s; }
-#player:hover .bar, .bar:focus-within { opacity: 1; }
-@media (hover: none) { .bar { opacity: 1; } }
-.bar button { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.16); color: inherit; cursor: pointer; }
-.bar input { flex: 1; accent-color: #fff; }
-.big { position: absolute; left: 50%; top: 50%; width: 72px; height: 72px; margin: -36px 0 0 -36px; display: grid; place-items: center; padding: 0 0 0 4px; border: 0; border-radius: 50%; background: rgba(0, 0, 0, 0.55); color: #fff; cursor: pointer; }
-.time { font-variant-numeric: tabular-nums; opacity: 0.85; }
+button { font: inherit; color: inherit; }
+button:focus-visible, .scrub:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.bar { position: absolute; left: 0; right: 0; bottom: 0; padding: 36px 14px 8px; display: flex; flex-direction: column; gap: 4px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.62)); color: #fff; font: 500 13px/1 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  opacity: 1; transition: opacity 0.25s ease; }
+.shell.idle .bar { opacity: 0; pointer-events: none; }
+.row { display: flex; align-items: center; gap: 4px; }
+.row .gap { flex: 1; }
+.row button { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 8px; background: transparent; cursor: pointer; }
+.row button:hover { background: rgba(255, 255, 255, 0.16); }
+.time { margin-left: 6px; font-variant-numeric: tabular-nums; }
+.time span { opacity: 0.7; }
+.scrub { --p: 0%; width: 100%; height: 16px; margin: 0; background: transparent; cursor: pointer; -webkit-appearance: none; appearance: none; }
+.scrub::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(90deg, #fff var(--p), rgba(255, 255, 255, 0.32) var(--p)); transition: height 0.12s; }
+.scrub:hover::-webkit-slider-runnable-track { height: 6px; }
+.scrub::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5px; border: 0; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4); }
+.scrub:hover::-webkit-slider-thumb { margin-top: -4px; }
+.scrub::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.32); }
+.scrub::-moz-range-progress { height: 4px; border-radius: 2px; background: #fff; }
+.scrub::-moz-range-thumb { width: 14px; height: 14px; border: 0; border-radius: 50%; background: #fff; }
+.big { position: absolute; left: 50%; top: 50%; width: 76px; height: 76px; margin: -38px 0 0 -38px; display: grid; place-items: center; padding: 0 0 0 4px;
+  border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 50%; background: rgba(0, 0, 0, 0.5); color: #fff; cursor: pointer;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); transition: transform 0.15s ease, background 0.15s ease; }
+.big:hover { transform: scale(1.06); background: rgba(0, 0, 0, 0.65); }
+.big svg { width: 34px; height: 34px; }
+.chip { position: absolute; top: 12px; right: 12px; display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px 0 10px; border: 0; border-radius: 17px;
+  background: rgba(0, 0, 0, 0.6); color: #fff; font: 500 13px/1 system-ui, sans-serif; cursor: pointer; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.chip svg { width: 18px; height: 18px; }
 </style>
 </head>
 <body>

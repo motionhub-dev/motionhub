@@ -1,7 +1,8 @@
 ---
 import Base from '../../layouts/Base.astro';
 import BrandSheet from '../../components/BrandSheet.astro';
-import {REPO} from '../../lib/catalogue.mjs';
+import Engine from '../../components/Engine.astro';
+import {ENGINE_LINKS, REPO} from '../../lib/catalogue.mjs';
 import {DOCS, PAGES, pagePath, renderDoc, twinPath} from '../../lib/docs.mjs';
 
 export function getStaticPaths() {
@@ -9,6 +10,8 @@ export function getStaticPaths() {
 }
 
 const {p} = Astro.props;
+// an engine's guide credits the project first: its logo, its site, its repository and its agent skills
+const engine = p.engine && ENGINE_LINKS[p.engine];
 const {title, html, toc} = renderDoc(p);
 const i = PAGES.indexOf(p);
 const prev = PAGES[i - 1], next = PAGES[i + 1];
@@ -55,6 +58,16 @@ const description = plain(html.match(/<p>([\s\S]*?)<\/p>/)?.[1] ?? title).replac
           <a class="btn sm mono" href={twinPath(p)}>{twinPath(p).split('/').pop()}</a>
         </div>
       </div>
+      {engine && (
+        <div class="enginecard">
+          <Engine name={p.engine} class="engine big" />
+          <span class="links">
+            <a href={engine.site}>{new URL(engine.site).host.replace(/^www\./, '')}</a>
+            <a href={engine.repo}>{engine.repo.replace('https://', '')}</a>
+            <a href={engine.skills}>Agent skills</a>
+          </span>
+        </div>
+      )}
       {p.slug === 'brand' && <BrandSheet />}
       <div class="doc docbody" set:html={html} />
       <nav class="pager" aria-label="Pages">
