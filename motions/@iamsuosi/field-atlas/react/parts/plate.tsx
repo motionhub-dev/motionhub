@@ -17,7 +17,7 @@ export const meta = {
     size: {type: 'px', default: 92, doc: 'the title\'s size'},
     show: {type: 'progress', default: 0, doc: 'its entrance: the rules draw out, then the words'},
   },
-  preview: 2.4,
+  preview: 21.6,
 };
 
 export function Plate({kicker, title, sub, x = 96, y = 96, size = 92, show = 0}: {kicker: string; title: string; sub?: string; x?: number; y?: number; size?: number; show?: number}) {

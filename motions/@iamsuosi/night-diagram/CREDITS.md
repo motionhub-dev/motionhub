@@ -1,6 +1,6 @@
 # Credits
 
-Night Diagram is an original motion by SuoSi.
+Night Diagram is an original motion by SuoSi. `react/parts/optics.ts`, the ray tracer behind Bent light, comes from the same author's Light Bench, which it replaces in the catalogue.
 
 ## Fonts
 

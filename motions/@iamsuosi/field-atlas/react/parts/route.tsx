@@ -19,7 +19,7 @@ export const meta = {
     corridor: {type: 'progress', default: 1, doc: '1 fills the corridor; toward 0 the fill gives way to its two limits as dashed lines, for a close view inside it'},
     shade: {type: 'km', default: 0, doc: 'optional: a soft shadow this many km across the head\'s path, dark at its core, that sweeps the land as the line draws (a moon\'s shadow, a storm, night); it leaves with `head`'},
   },
-  preview: 6.2,
+  preview: 6.0,
 };
 
 const mix = (told: number, red: string, ink: string) => `color-mix(in oklab, ${red}, ${ink} ${Math.round(unit(told) * 100)}%)`;

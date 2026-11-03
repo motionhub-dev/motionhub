@@ -15,7 +15,7 @@ export const meta = {
     zoom: {type: 'number', default: 0, doc: 'how close the small globe is: 0 is the whole hemisphere filling the disc; more crops closer'},
     show: {type: 'progress', default: 1, doc: 'its opacity; it also waits for the main camera to be close'},
   },
-  preview: 27.0,
+  preview: 16.6,
 };
 
 export function Locator({x = 1660, y = 250, r = 120, zoom = 0, show = 1}: {x?: number; y?: number; r?: number; zoom?: number; show?: number}) {

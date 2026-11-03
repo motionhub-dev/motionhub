@@ -1,5 +1,6 @@
-// The light on the bench is computed, never drawn by eye: each colour is traced through the elements by Snell's law, in the plane of the beam.
-// Glass is the dense flint SF11, by Schott's Sellmeier formula, which gives its published nd of 1.78472 at 587.6 nm.
+// Light through glass, computed rather than drawn by eye: each colour is traced through the elements by Snell's law, in the picture's plane,
+// in px. Glass is the dense flint SF11, by Schott's Sellmeier formula, which gives its published nd of 1.78472 at 587.6 nm.
+// Carried over from the author's Light Bench (@iamsuosi/light-bench), without its jaws and its 3D.
 export type P2 = [number, number];
 export type Wave = {nm: number; color: [number, number, number]; css: string};
 /** Seven colours whose light adds up to white where they overlap, so a white beam is simply all of them on one path. */
@@ -15,14 +16,13 @@ export const indexOf = (nm: number) => {
 export type Optic =
   | {kind: 'prism'; at: P2; rot?: number; side?: number; flip?: boolean; in?: number}
   | {kind: 'lens'; at: P2; rot: number; f: number; dia?: number; in?: number}
-  | {kind: 'jaws'; at: P2; rot: number; slit: number; close?: number; width?: number; in?: number}
   | {kind: 'card'; at: P2; rot: number; w?: number; in?: number};
 
 const rad = (d: number) => (d * Math.PI) / 180;
 const norm = ([x, z]: P2): P2 => { const l = Math.hypot(x, z) || 1; return [x / l, z / l]; };
 export const dirOf = (deg: number): P2 => [Math.cos(rad(deg)), Math.sin(rad(deg))];
 /** The three corners of a prism: apex towards -z before it is turned; `flip` puts the apex the other way. */
-export const prismCorners = ({at, rot = 0, side = 2.4, flip}: {at: P2; rot?: number; side?: number; flip?: boolean}): P2[] => {
+export const prismCorners = ({at, rot = 0, side = 300, flip}: {at: P2; rot?: number; side?: number; flip?: boolean}): P2[] => {
   const h = (side * Math.sqrt(3)) / 2, s = flip ? -1 : 1, c = Math.cos(rad(rot)), n = Math.sin(rad(rot));
   return ([[0, (-h * 2 * s) / 3], [side / 2, (h * s) / 3], [-side / 2, (h * s) / 3]] as P2[]).map(([x, z]) => [at[0] + x * c - z * n, at[1] + x * n + z * c]);
 };
@@ -43,20 +43,16 @@ const refract = (d: P2, normal: P2, n1: number, n2: number): {dir: P2; reflected
 };
 /** Whether something has landed: the light changes the moment it touches down. */
 export const landed = (o: Optic) => (o.in ?? 1) >= 0.985;
-/** How long each blade of a pair of jaws is: past it, light goes by. */
-export const BLADE = 1.2;
-/** How far either side of the slit a pair of jaws stands open. */
-export const jawOpen = (o: {close?: number; width?: number}) => 1.2 * (1 - (o.close ?? 1)) + (o.width ?? 0.12) / 2;
 
-export type Traced = {pts: P2[]; ended: 'free' | 'card' | 'jaws'; wave: Wave};
+export type Traced = {pts: P2[]; ended: 'free' | 'card'; wave: Wave};
 /** One colour's path from `from` along `dir`, through every element that is fully in place, out to `far`. */
-export function trace(from: P2, dir: P2, wave: Wave, optics: Optic[], far = 30): Traced {
+export function trace(from: P2, dir: P2, wave: Wave, optics: Optic[], far = 4000): Traced {
   const pts: P2[] = [from], live = optics.filter(landed), n = indexOf(wave.nm);
   let o = from, d = norm(dir), inside: Optic | null = null;
   for (let bounce = 0; bounce < 12; bounce++) {
     let best: {t: number; normal: P2; optic: Optic; u: number} | null = null;
     for (const optic of live) {
-      const segs: Array<[P2, P2]> = optic.kind === 'prism' ? prismCorners(optic).map((c, i, all) => [c, all[(i + 1) % 3]] as [P2, P2]) : [across(optic.at, optic.rot, optic.kind === 'lens' ? (optic.dia ?? 1.4) / 2 : optic.kind === 'card' ? (optic.w ?? 3) / 2 : 12)];
+      const segs: Array<[P2, P2]> = optic.kind === 'prism' ? prismCorners(optic).map((c, i, all) => [c, all[(i + 1) % 3]] as [P2, P2]) : [across(optic.at, optic.rot, optic.kind === 'lens' ? (optic.dia ?? 260) / 2 : (optic.w ?? 300) / 2)];
       for (const [a, b] of segs) { const h = hitLine(o, d, a, b); if (h && (!best || h.t < best.t)) best = {...h, optic}; }
     }
     if (!best) { pts.push([o[0] + d[0] * far, o[1] + d[1] * far]); return {pts, ended: 'free', wave}; }
@@ -64,11 +60,7 @@ export function trace(from: P2, dir: P2, wave: Wave, optics: Optic[], far = 30):
     pts.push(hit);
     const e = best.optic;
     if (e.kind === 'card') return {pts, ended: 'card', wave};
-    if (e.kind === 'jaws') {
-      const half = 12, along = (best.u - 0.5) * 2 * half;
-      const off = Math.abs(along - e.slit);
-      if (off > jawOpen(e) && off < jawOpen(e) + BLADE) return {pts, ended: 'jaws', wave};
-    } else if (e.kind === 'lens') {
+    if (e.kind === 'lens') {
       const axis = dirOf(e.rot), tan = dirOf(e.rot + 90), h = (hit[0] - e.at[0]) * tan[0] + (hit[1] - e.at[1]) * tan[1];
       const a = d[0] * axis[0] + d[1] * axis[1], b = d[0] * tan[0] + d[1] * tan[1], slope = b / Math.abs(a) - h / e.f, way = Math.sign(a) || 1;
       d = norm([way * axis[0] + tan[0] * slope, way * axis[1] + tan[1] * slope]);

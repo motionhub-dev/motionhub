@@ -18,7 +18,7 @@ Not Stage Light (a dark stage, one spot and big figures: there is no picture to 
 ## Colour roles
 
 - `bg`, `panel`, `panel2`: the field, darkest to lightest. Bodies are mixes of them.
-- `grad` (ember) and `data` (ice) are the two sides of whatever opposes: positive and negative, hot and cold, up and down. A scene that has no opposition uses one.
+- `grad` (ember) and `data` (ice) are the two sides of whatever opposes: positive and negative, hot and cold, up and down. A scene that has no opposition uses one. A spectrum is the one gradient between them: ember at the red end, ice at the violet end (`Refraction`).
 - `text`: names and figures. `muted`: notes and numerals. `border`: the card's edge.
 - White belongs to the brightest light. Never fill a large area in ember or ice, and never add a third accent.
 
@@ -48,6 +48,7 @@ Light gets the only loud sounds: a crack, a late rumble. Music is sparse and dro
 - **data** — Reading card (`react/parts/reading.tsx`): A dark glass card with one measured number: what it is, the figure rolling up, a comparison, and its source. Fits: the one number a scene is about; one on screen at a time
 - **ground** — Night sky (`react/parts/sky.tsx`): A deep blue field, lighter at the horizon, with fine stars and a dark land line; a light in the scene pools on it. Fits: every scene
 - **mark** — Light path (`react/parts/arc.tsx`): A line of real light, a white core in two blooms of colour, that runs along a path on the word and can fork. Fits: a stroke of lightning, a nerve signal, a current
+- **mark** — Bent light (`react/parts/refraction.tsx`): A beam of real light traced through glass by Snell's law: it bends where it enters and leaves, and white light fans out from ember red to ice violet. Fits: a prism splitting white light, a lens bringing rays to a focus, a rainbow's drop, why a straw looks broken in water: light through glass, computed, not drawn
 - **mark** — Pressure rings (`react/parts/pulse.tsx`): Thin rings that leave a point one after another and thin out as they spread, cut at the ground if there is one. Fits: something spreading at a speed: thunder, a heartbeat, a signal
 - **mark** — Instrument ruler (`react/parts/ruler.tsx`): A thin vertical scale with real units beside the subject, with a level line that can cross the picture. Fits: height, depth, time, temperature: any picture whose size is the point
 - **open** — Glowing mass (`react/parts/mass.tsx`): A big body of soft overlapping rounds, lit on top, that swells from its base and can light from within. Fits: a storm cloud, a nebula, a lung: the large subject whose inside the film explains
@@ -63,6 +64,7 @@ Light gets the only loud sounds: a crack, a late rumble. Music is sparse and dro
 - **The strike.** After a slow build, one path of light runs in a blink, lights everything near it, flickers, and decays while a reading rolls up. *Fits content like:* lightning; a nerve firing; a star igniting.
 - **The ring goes out.** Rings leave a source at a steady speed, and a reading says how fast. *Fits content like:* thunder; an earthquake's wave; a radio signal.
 - **Pull back to the planet.** One move from the event to the world it happens on, and the event repeats all over it. *Fits content like:* how often lightning strikes; how many heartbeats a day; every volcano now erupting.
+- **Through the glass.** White light meets a prism, bends in and out, and leaves as a fan from ember to ice; pins name the two ends where they land on a card. Fits content like: why a prism makes a spectrum; how a lens focuses; why a rainbow has its order.
 - **Mark the level.** A dashed line crosses the whole picture at a value on the ruler, and what is above and below it changes meaning. *Fits content like:* freezing height; sea level; a safe dose.
 
 ## Avoid: pitfalls

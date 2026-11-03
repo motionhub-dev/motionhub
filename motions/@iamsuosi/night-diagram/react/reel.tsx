@@ -1,4 +1,4 @@
-// Night Diagram's reel: twenty seconds of its components at a brisk pace, for a player. Not a template: read it for how the parts move.
+// Night Diagram's reel: twenty-five seconds of its components at a brisk pace, for a player. Not a template: read it for how the parts move.
 import {Easing, interpolate, useTime} from '@motionhub/runtime';
 import {C, smooth} from './parts/night.ts';
 import {Sky} from './parts/sky.tsx';
@@ -12,14 +12,15 @@ import {Lens} from './parts/lens.tsx';
 import {Heading} from './parts/heading.tsx';
 import {Pulse} from './parts/pulse.tsx';
 import {Dive} from './parts/dive.tsx';
+import {Refraction} from './parts/refraction.tsx';
 
-export const reel = {seconds: 20, width: 1920, height: 1080};
+export const reel = {seconds: 25, width: 1920, height: 1080};
 /** What happens when, for the motion's sound (sound.json): the cloud grows, a collision happens, the stroke strikes, the air rolls out, the planet comes up, a reading settles */
 export const cues = [
   {at: 0.0, role: 'move', dur: 1.5}, {at: 0.3, role: 'draw', dur: 0.9}, {at: 1.7, role: 'land'}, {at: 3.0, role: 'count'}, {at: 4.8, role: 'land'},
   {at: 5.6, role: 'land'}, {at: 7.0, role: 'cut'}, {at: 7.4, role: 'land'}, {at: 8.4, role: 'count'}, {at: 9.6, role: 'move', dur: 2.2},
   {at: 10.0, role: 'draw', dur: 3.0}, {at: 11.2, role: 'land'}, {at: 11.8, role: 'count'}, {at: 14.6, role: 'move', dur: 3.2},
-  {at: 17.2, role: 'land'}, {at: 18.5, role: 'count'},
+  {at: 17.2, role: 'land'}, {at: 18.5, role: 'count'}, {at: 20.2, role: 'cut'}, {at: 20.8, role: 'draw', dur: 1.2}, {at: 22.4, role: 'land'},
 ];
 
 const ease = Easing.inOutSine, out = Easing.outQuart, lin = Easing.linear;
@@ -74,7 +75,7 @@ const Globe = () => <svg width={1920} height={1080} viewBox="0 0 1920 1080" styl
   </g>
 </svg>;
 
-const STRIKE = 7.0, CLOSE = 9.6, PLANET = 14.6;
+const STRIKE = 7.0, CLOSE = 9.6, PLANET = 14.6, GLASS = 20.2;
 
 /** The storm charges: the lens shows one collision, charge separates and is named, then the strike, and the channel's heat rolls up */
 function Storm({t}: {t: number}) {
@@ -132,12 +133,27 @@ function Planet({t}: {t: number}) {
   </>;
 }
 
+// a dense flint prism, apex up, the light meeting its left face from below at about its angle of least deviation, and a card past it
+const PRISM = {kind: 'prism' as const, at: [960, 520] as [number, number], side: 340};
+const CARD = {kind: 'card' as const, at: [1440, 720] as [number, number], rot: 0, w: 320};
+
+/** A new question in the same dark: white light into glass, and the colours leaving it at their own angles */
+function Glass({t}: {t: number}) {
+  return <>
+    <Refraction from={[400, 800]} aim={-33} glass={[{...PRISM, in: at(t, GLASS + 0.1, GLASS + 0.7, 0, 1, out)}, {...CARD, in: at(t, GLASS + 0.3, GLASS + 0.9, 0, 1, out)}]}
+      reach={at(t, GLASS + 0.8, GLASS + 2.0, 0, 1500)} power={at(t, GLASS + 0.8, GLASS + 1.0)} />
+    <Pin at={[1440, 712]} elbow={[1560, 600]} to={1840} text="Red bends least" note="690 nm" color={C.ember} t={at(t, GLASS + 2.2, GLASS + 2.8)} />
+    <Pin at={[1440, 792]} elbow={[1560, 860]} to={1840} text="Violet bends most" note="410 nm" color={C.ice} t={at(t, GLASS + 2.6, GLASS + 3.2)} />
+    <Heading text="Why does glass split white light?" size={64} show={at(t, GLASS, GLASS + 0.5)} />
+  </>;
+}
+
 export default function Reel() {
   const t = useTime();
   // the field: a light that builds, blazes with the strike and pools, then fades with the stars as the planet comes up
   const light = t < STRIKE ? at(t, 5.9, STRIKE, 0, 0.18, Easing.bezier(0.55, 0, 1, 0.45)) : t < PLANET ? keys(t, [[STRIKE, 1], [STRIKE + 0.35, 1], [STRIKE + 1.9, 0.5]], out) : at(t, PLANET, PLANET + 1.2, 0.5, 0);
   return <>
-    <Sky land={FLOOR} fade={at(t, PLANET, PLANET + 1.4, 1, 0)} stars={110} glow={[1030, 700, 700]} light={light} />
-    {t < CLOSE ? <Storm t={t} /> : t < PLANET ? <Thunder t={t} /> : <Planet t={t} />}
+    <Sky land={t < GLASS ? FLOOR : null} fade={t < GLASS ? at(t, PLANET, PLANET + 1.4, 1, 0) : at(t, GLASS, GLASS + 0.8, 0, 1)} stars={110} glow={[1030, 700, 700]} light={t < GLASS ? light : 0} />
+    {t < CLOSE ? <Storm t={t} /> : t < PLANET ? <Thunder t={t} /> : t < GLASS ? <Planet t={t} /> : <Glass t={t} />}
   </>;
 }

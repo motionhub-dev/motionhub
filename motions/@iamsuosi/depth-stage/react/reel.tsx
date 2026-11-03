@@ -1,4 +1,4 @@
-// Depth Stage's reel: twenty seconds of its components at a brisk pace, for a player. Not a template: read it for how the parts move.
+// Depth Stage's reel: twenty-five seconds of its components at a brisk pace, for a player. Not a template: read it for how the parts move.
 import type {CSSProperties, ReactNode} from 'react';
 import {Easing, Sequence, interpolate, useTime} from '@motionhub/runtime';
 import {Stage, Plane, Ahead} from './parts/stage.tsx';
@@ -11,15 +11,19 @@ import {Parting} from './parts/parting.tsx';
 import {Motes} from './parts/motes.tsx';
 import {Mileposts} from './parts/mileposts.tsx';
 import {Section} from './parts/section.tsx';
+import {Term} from './parts/term.tsx';
+import {Columns} from './parts/columns.tsx';
+import {Thread} from './parts/thread.tsx';
 
-export const reel = {seconds: 20, width: 1920, height: 1080};
+export const reel = {seconds: 25, width: 1920, height: 1080};
 /** What happens when, for the motion's sound (sound.json): the camera dollies, focus racks, a light kindles, a figure lands, a section builds, the posts pass by */
 export const cues = [
-  {at: 0, role: 'move', dur: 3.6}, {at: 1.2, role: 'land'}, {at: 3, role: 'count'}, {at: 3.6, role: 'move', dur: 1}, {at: 5.4, role: 'cut'},
-  {at: 5.8, role: 'draw', dur: 0.8}, {at: 6, role: 'move', dur: 2.2}, {at: 6, role: 'land'}, {at: 7.8, role: 'count'},
-  {at: 9.8, role: 'draw', dur: 1.5}, {at: 11.4, role: 'draw', dur: 0.8}, {at: 13, role: 'land'}, {at: 13.5, role: 'land'},
-  {at: 13.7, role: 'move', dur: 2.7}, {at: 14, role: 'land'}, {at: 15.6, role: 'cut'}, {at: 16.4, role: 'move', dur: 1.7}, {at: 17.4, role: 'land'},
-  {at: 17.9, role: 'count'}, {at: 18.2, role: 'land'},
+  {at: 0, role: 'move', dur: 4.2}, {at: 1.2, role: 'land'}, {at: 2.6, role: 'draw', dur: 1.4}, {at: 4.2, role: 'move', dur: 1}, {at: 6.0, role: 'cut'},
+  {at: 6.4, role: 'draw', dur: 0.8}, {at: 6.6, role: 'move', dur: 2.2}, {at: 6.6, role: 'land'}, {at: 8.4, role: 'count'},
+  {at: 10.4, role: 'draw', dur: 1.8}, {at: 12.2, role: 'land'},
+  {at: 13.6, role: 'draw', dur: 1.5}, {at: 15.2, role: 'draw', dur: 0.8}, {at: 16.2, role: 'land'},
+  {at: 18.4, role: 'land'}, {at: 18.9, role: 'land'}, {at: 19.1, role: 'move', dur: 2.7}, {at: 19.4, role: 'land'}, {at: 21.0, role: 'cut'},
+  {at: 21.8, role: 'move', dur: 1.7}, {at: 22.8, role: 'land'}, {at: 23.3, role: 'count'}, {at: 23.6, role: 'land'},
 ];
 
 type Ease = (v: number) => number;
@@ -46,14 +50,15 @@ const CENTURIES = [
   {label: 'AD 1748', note: 'the first dig'},
 ];
 
-/** The bay at rest: the title in focus, a rack to the mountain, then the dolly into the fog */
+/** The bay at rest: the title in focus, a rack to the mountain and a thread from it to the town, then the dolly into the fog */
 function Bay() {
   const t = useTime();
   return (
-    <Stage cam={t < 3.6 ? keys(t, [0, 3.6], [0, 220]) : keys(t, [3.6, 4.6], [220, 2000], inQuad)} focus={keys(t, [1.8, 3.0], [420, 2600])} panX={keys(t, [0, 3.6], [-80, 50])}
-      veil={keys(t, [3.9, 4.6], [0, 1], inSine)} lightX={1420} lightY={430} rays={0.7}>
+    <Stage cam={t < 4.2 ? keys(t, [0, 4.2], [0, 220]) : keys(t, [4.2, 5.2], [220, 2000], inQuad)} focus={keys(t, [1.8, 3.0], [420, 2600])} panX={keys(t, [0, 4.2], [-80, 50])}
+      veil={keys(t, [4.5, 5.2], [0, 1], inSine)} lightX={1420} lightY={430} rays={0.7}>
       <Plane z={5200}><Ridge shape="peaks" seed="apennines" top={560} relief={150} mist={0.8} /></Plane>
       <Plane z={2600}><Ridge shape="cone" seed="vesuvius" top={300} relief={420} at={1180} mist={0.5} rim={0.5} /></Plane>
+      <Plane z={2600}><Thread from={[1180, 312]} to={[560, 500]} bend={130} label="Pompeii, about 10 km away" draw={keys(t, [2.6, 4.0], [0, 1], linear)} /></Plane>
       <Plane z={1500}><Ridge shape="town" seed="pompeii-upper" top={520} relief={150} at={900} mist={0.4} rim={0.4} /></Plane>
       <Plane z={900}><Ridge shape="town" seed="pompeii" top={570} relief={170} at={700} mist={0.3} rim={0.5} /></Plane>
       <Plane z={420}><Title x={290} y={190} kicker="The Bay of Naples · AD 79" title="Pompeii" size={150} show={keys(t, [0.05, 1.2, 2.4, 3.0], [0, 1, 1, 0], outSine)} /></Plane>
@@ -81,13 +86,33 @@ function Eruption() {
   );
 }
 
+const SCALE = [
+  {label: 'Everest', value: 8.8, note: '8.8 km'},
+  {label: 'An airliner', value: 11, note: '11 km'},
+  {label: 'The column', value: 30, note: '30 km'},
+];
+
+/** For scale: the column of ash stood beside the highest mountain and a cruising airliner, risen one after another */
+function Scale() {
+  const t = useTime();
+  return (
+    <Stage cam={keys(t, [0, 3.2], [0, 140])} focus={700} veil={keys(t, [0, 0.6, 2.7, 3.2], [0.85, 0, 0, 0.85], outSine)} lightX={1500} lightY={300} glow={0.55} haze={1.1}>
+      <Plane z={4800}><Ridge shape="peaks" seed="apennines-3" top={640} relief={130} mist={0.8} /></Plane>
+      <Plane z={700}><Columns items={SCALE} max={30} x={560} gap={400} base={850} height={560} warm={2} rise={keys(t, [0.4, 2.2], [0, 1], linear)} /></Plane>
+      <Plane z={160}><Ridge shape="bank" seed="scale" top={900} relief={60} mist={0} /></Plane>
+      <Motes kind="ash" seed="scale" near={-100} far={2400} count={20} amount={0.5} />
+    </Stage>
+  );
+}
+
 /** The town buried: the section lays pumice, then the surge, over the old surface */
 function Buried() {
   const t = useTime();
   return (
-    <Stage cam={keys(t, [0, 3.4], [0, 120])} focus={400} veil={keys(t, [0, 0.7], [0.85, 0], outSine)} lightX={1180} lightY={360} glow={0.5}>
+    <Stage cam={keys(t, [0, 5.0], [0, 160])} focus={400} veil={keys(t, [0, 0.7, 4.6, 5.0], [0.85, 0, 0, 0.85], outSine)} lightX={1180} lightY={360} glow={0.5}>
       <Plane z={3200}><Ridge shape="cone" seed="vesuvius" top={330} relief={330} at={1180} mist={0.6} rim={0.3} /></Plane>
       <Plane z={400}><Section bands={DEPOSIT} walls={4} labelX={1250} built={keys(t, [0.4, 1.9, 2.0, 2.8], [0, 1, 1, 2])} /></Plane>
+      <Plane z={400}><Term x={180} y={170} word="Pyroclastic surge" meaning="a cloud of hot ash and gas that races along the ground" size={84} show={keys(t, [2.6, 4.0, 4.6, 5.0], [0, 1, 1, 0], outSine)} /></Plane>
       <Motes kind="ash" seed="rain" near={-100} far={2600} count={36} />
     </Stage>
   );
@@ -129,11 +154,12 @@ function Found() {
 export default function Reel() {
   return (
     <>
-      <Sequence from={0} duration={4.6}><Bay /></Sequence>
-      <Sequence from={4.6} duration={4.8}><Eruption /></Sequence>
-      <Sequence from={9.4} duration={3.4}><Buried /></Sequence>
-      <Sequence from={12.8} duration={3.6}><Forgotten /></Sequence>
-      <Sequence from={16.4}><Found /></Sequence>
+      <Sequence from={0} duration={5.2}><Bay /></Sequence>
+      <Sequence from={5.2} duration={4.8}><Eruption /></Sequence>
+      <Sequence from={10.0} duration={3.2}><Scale /></Sequence>
+      <Sequence from={13.2} duration={5.0}><Buried /></Sequence>
+      <Sequence from={18.2} duration={3.6}><Forgotten /></Sequence>
+      <Sequence from={21.8}><Found /></Sequence>
     </>
   );
 }

@@ -22,7 +22,7 @@ export const meta = {
     show: {type: 'progress', default: 0, doc: 'its entrance, on the word that names it'},
     ripple: {type: 'progress', default: 0, doc: 'a point only: 0 to 1 sends three red rings out from it, on the word that lands it'},
   },
-  preview: 22.4,
+  preview: 16.6,
 };
 
 const DEFAULT = {town: 36, country: 32, region: 30, water: 36, point: 40} as const;
