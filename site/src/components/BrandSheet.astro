@@ -1,0 +1,77 @@
+---
+// brand/ as the Brand docs page shows it above BRAND.md: the logo files to download, the colours of both themes from
+// brand.tokens.json, and the type. Nothing here is decided here.
+import {readFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {ROOT} from '../lib/catalogue.mjs';
+
+const tokens = JSON.parse(readFileSync(join(ROOT, 'brand/brand.tokens.json'), 'utf8'));
+const theme = (t) => Object.entries(tokens.color[t]).filter(([k]) => !k.startsWith('$')).map(([name, v]) => ({name, hex: v.$value.hex, about: v.$description}));
+const light = theme('light'), dark = theme('dark');
+const logos = [
+  {file: 'logo.svg', label: 'Lockup, on paper', ground: light[0].hex},
+  {file: 'logo-dark.svg', label: 'Lockup, on ink', ground: dark[0].hex},
+  {file: 'icon.svg', label: 'Icon', ground: light[0].hex, small: true},
+  {file: 'icon-light.svg', label: 'Icon on paper', ground: dark[0].hex, small: true},
+  {file: 'icon-16.svg', label: '16 px and below', ground: light[0].hex, small: true},
+  {file: 'mark.svg', label: 'Mark', ground: light[0].hex, small: true},
+];
+---
+<section class="sheet" aria-label="The brand at a glance">
+  <div class="logos">
+    {logos.map((l) => (
+      <figure class={l.small ? 'small' : undefined}>
+        <a href={`/brand/${l.file}`} download style={`background:${l.ground}`}><img src={`/brand/${l.file}`} alt={l.label}></a>
+        <figcaption>{l.label} <a href={`/brand/${l.file}`} download class="mono">{l.file}</a></figcaption>
+      </figure>
+    ))}
+  </div>
+  <p class="files">Every file: <a href="/brand/brand.tokens.json" class="mono">brand.tokens.json</a> · <a href="/brand/tokens.css" class="mono">tokens.css</a> · <a href="https://github.com/motionhub-dev/motions/tree/main/brand">brand/ on GitHub</a></p>
+
+  <div class="themes">
+    {[['Light', light], ['Dark', dark]].map(([label, colours]) => (
+      <div class="theme" style={`background:${colours[0].hex};color:${colours.find((c) => c.name === 'text').hex}`}>
+        <b>{label}</b>
+        <ul>
+          {colours.map((c) => <li title={c.about}><i style={`background:${c.hex}`}></i><span>{c.name}</span><code>{c.hex}</code></li>)}
+        </ul>
+      </div>
+    ))}
+  </div>
+
+  <div class="specimen">
+    <p class="s600">Inter 600 · Find the look for your next film</p>
+    <p class="s500">Inter 500 · Motions, creators, docs 0123456789</p>
+    <p class="s400">Inter 400 · Reusable looks for narrated and explainer video. 中文由系统字体显示：可复用的视频风格。</p>
+    <p class="mono">JetBrains Mono · npx @motionhub/cli get red-pencil</p>
+  </div>
+</section>
+
+<style>
+  .sheet { display: flex; flex-direction: column; gap: 16px; margin: 0 0 28px; }
+  .logos { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .logos figure { margin: 0; grid-column: span 2; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .logos figure.small { grid-column: span 1; }
+  .logos figure > a { display: grid; place-items: center; aspect-ratio: 2 / 1; border: 1px solid var(--color-line); border-radius: var(--radius-lg); padding: 16px; }
+  .logos figure.small > a { aspect-ratio: 1; }
+  .logos img { max-width: 78%; max-height: 64px; }
+  .logos figure.small img { max-height: 48px; }
+  .logos figure.small figcaption { flex-direction: column; gap: 0; }
+  figcaption { font-size: var(--size-xs); color: var(--color-muted); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  figcaption a, .files a { color: var(--color-muted); }
+  .files { margin: 0; font-size: var(--size-xs); color: var(--color-muted); }
+  .themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .theme { border: 1px solid var(--color-line); border-radius: var(--radius-lg); padding: 14px; font-size: var(--size-xs); }
+  .theme b { font-size: var(--size-sm); }
+  .theme ul { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .theme li { display: flex; align-items: center; gap: 8px; }
+  .theme i { width: 18px; height: 18px; border-radius: 4px; outline: 1px solid rgb(128 128 128 / 0.35); flex: none; }
+  .theme code { margin-left: auto; opacity: 0.75; font-size: inherit; background: none; border: 0; }
+  .specimen { border: 1px solid var(--color-line); border-radius: var(--radius-lg); padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; color: var(--color-text); }
+  .specimen p { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .s600 { font-size: var(--size-lg); font-weight: var(--weight-semibold); }
+  .s500 { font-size: var(--size-md); font-weight: var(--weight-medium); }
+  .s400 { font-size: var(--size-base); }
+  .specimen .mono { font-size: var(--size-sm); }
+  @media (max-width: 640px) { .logos { grid-template-columns: repeat(2, minmax(0, 1fr)); } .themes { grid-template-columns: 1fr; } .specimen p { white-space: normal; } }
+</style>

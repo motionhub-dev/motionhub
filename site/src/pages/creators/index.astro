@@ -28,7 +28,7 @@ const n = creators.length;
           <span><b>{c.name}</b><small>@{c.login}</small></span>
         </span>
         <span class="strip">
-          {c.motions.slice(0, 4).map((r) => <img class="poster" src={r.poster} alt={en(r.name)} loading="lazy" decoding="async" width="960" height="540">)}
+          {c.motions.slice(0, 4).map((r) => <img class="poster" src={r.poster.replace(/\.jpg$/, '-480.webp')} alt={en(r.name)} loading="lazy" decoding="async" width="960" height="540">)}
         </span>
         <span class="nums">
           <span>{c.motions.length} {c.motions.length === 1 ? 'motion' : 'motions'}</span>

@@ -1,7 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Card from '../../components/Card.astro';
-import {REPO, SITE, builtOn, builtOnBy, byAuthor, colours, creatorPath, en, faces, kb, markdown, other, read, rows, translations} from '../../lib/catalogue.mjs';
+import {REPO, SITE, posterSet, builtOn, builtOnBy, byAuthor, colours, creatorPath, en, faces, kb, markdown, other, read, rows, translations} from '../../lib/catalogue.mjs';
 
 export function getStaticPaths() {
   return rows.map((row) => ({params: {id: row.slug}, props: {row}}));
@@ -33,9 +33,9 @@ const uses = [
 
   <section class="head">
     <div class="media">
-      <img class="poster" src={row.poster} alt={`A frame of a film in ${name}`} width="960" height="540" fetchpriority="high">
+      <img class="poster" src={row.poster} srcset={posterSet(row.poster)} sizes="(max-width: 1040px) calc(100vw - 32px), 900px" alt={`A frame of a film in ${name}`} width="960" height="540" fetchpriority="high">
     </div>
-    <aside>
+    <div class="side">
       <div>
         <h1>{name}{zh && <small>{zh}</small>}</h1>
         <p class="line">{en(row.line)}</p>
@@ -77,7 +77,7 @@ const uses = [
         <dt>Ready for</dt><dd>{row.tools.map((t) => <span class="badge">{t}</span>)}<span>{row.tools.length ? '· ' : ''}any agent, from MOTION.md</span></dd>
         <dt>Package</dt><dd>{kb(row.package.bytes)}, <code class="hash" title={`SHA-256 ${row.package.sha256}`}>sha256:{row.package.sha256.slice(0, 12)}</code></dd>
       </dl>
-    </aside>
+    </div>
   </section>
 
   <section class="section" id="use">
@@ -88,7 +88,7 @@ const uses = [
     {uses.map((u, i) => (
       <div class="panel" role="tabpanel" id={`use-${u.id}`} aria-labelledby={`tab-${u.id}`} hidden={i !== 0}>
         <p>{u.lead}{u.more && <> <a href={u.more}>How to use it</a></>}</p>
-        <div class="code"><pre data-copy><code>{u.code}</code></pre></div>
+        <div class="code"><pre data-copy tabindex="0"><code>{u.code}</code></pre></div>
       </div>
     ))}
   </section>
@@ -104,7 +104,7 @@ const uses = [
       </div>
       <div class="doc" set:html={doc} />
     </article>
-    <aside>
+    <div class="side">
       <div>
         <h2 class="s">Colours <small><a href={`/m/${id}/tokens.json`}>tokens.json</a></small></h2>
         <ul class="swatches">
@@ -123,7 +123,7 @@ const uses = [
           <div class="doc small" set:html={credits} />
         </div>
       )}
-    </aside>
+    </div>
   </section>
 
   {more.length > 0 && (

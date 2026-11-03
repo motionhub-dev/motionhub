@@ -42,15 +42,18 @@ one vermilion that belongs to the logo. Everything here is the source the site a
 
 ## Type
 
-- **Inter** for Latin and figures, **Noto Sans SC** for Chinese, falling back to PingFang SC, Microsoft YaHei and the
-  system's sans. One family for the whole interface, at 400, 500 and 600.
+- **Inter** for Latin and figures, at 400, 500 and 600. Chinese is set in **Noto Sans SC** where it is installed and
+  otherwise in the system's own: PingFang SC on Apple devices, Microsoft YaHei on Windows, Noto Sans CJK on Android.
+  The site does not download a Chinese font: its pieces would be most of a page's weight, and every system has a good
+  one.
 - **JetBrains Mono** for commands, file names, versions and hex values.
 - Sizes are few: 12, 13, 14 (body), 16, 20, 26 and 30 px. The interface is compact; a motion's name is the largest
   thing on its page.
 - **Instrument Serif** is the wordmark's typeface and appears nowhere else. It ships as outlines in the logo files,
   never as a font on a page.
 
-All four are under the SIL Open Font License 1.1. The site serves its fonts itself, not from a font service.
+All four are under the SIL Open Font License 1.1. The site serves Inter and JetBrains Mono itself, not from a font
+service.
 
 ## The logo
 

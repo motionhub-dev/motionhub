@@ -40,6 +40,6 @@ export function renderDoc(p) {
       },
     },
   });
-  const html = marked.parse(body).replace(/<table>/g, '<div class="table"><table>').replace(/<\/table>/g, '</table></div>');
+  const html = marked.parse(body).replace(/<pre>/g, '<pre tabindex="0">').replace(/<table>/g, '<div class="table"><table>').replace(/<\/table>/g, '</table></div>');
   return {title, html, toc, text: body};
 }

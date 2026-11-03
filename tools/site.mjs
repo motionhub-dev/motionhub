@@ -40,7 +40,7 @@ export function markdown(text) {
       flush();
       const body = [];
       while (++i < lines.length && !/^```/.test(lines[i])) body.push(lines[i]);
-      out.push(`<pre><code>${esc(body.join('\n'))}</code></pre>`);
+      out.push(`<pre tabindex="0"><code>${esc(body.join('\n'))}</code></pre>`);
     } else if ((m = /^(#{1,4})\s+(.*)$/.exec(line))) {
       flush();
       out.push(`<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`);
@@ -87,6 +87,7 @@ const HEADERS = `/api/*
   Cache-Control: public, max-age=300
 /m/*
   Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=3600
 /_astro/*
   Cache-Control: public, max-age=31536000, immutable
 /llms.txt
