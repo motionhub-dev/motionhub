@@ -20,7 +20,7 @@ export const meta = {
     y: {type: 'px', default: 96, doc: 'its top'},
     show: {type: 'progress', default: 0, doc: 'the whole key\'s entrance'},
   },
-  preview: 20.4,
+  preview: 9.4,
 };
 
 export function Legend({title, steps, max = 1, shown = 0, paths = [], source, x = 1440, y = 96, show = 0}: {title: string; steps: Array<{value: number; label: string}>; max?: number; shown?: number; paths?: Array<{label: string; told?: number; show?: number}>; source?: string; x?: number; y?: number; show?: number}) {

@@ -1,6 +1,6 @@
 # Depth Stage
 
-A place at dusk built from flat silhouette layers under a perspective camera: haze pales what is far, the lens softens all but one depth, and the camera travels through the layers instead of cutting.
+A place at dusk built from flat silhouette layers under a perspective camera: haze pales what is far, the lens softens all but one depth, and the camera travels through the layers instead of cutting. It tells history, places and journeys, and explains on the way: a term defined in the air, things measured side by side, a thread from one place to another.
 
 ## Essence, and what it is not
 
@@ -43,14 +43,17 @@ A low wind bed, far sounds softened by the haze, one clear near sound when the f
 
 ## Components
 
+- **compare** — Columns of light (`react/parts/columns.tsx`): Two to four slender columns standing on one plane, rising one after another to heights in proportion; the one the sentence is about is warm, the rest hazed. Fits: how high or deep or long things are against each other: a column of ash against a mountain, a tower against a cathedral, then against now
 - **data** — Figure in depth (`react/parts/figure.tsx`): A large light serif figure with its unit and label, on the plane of what it measures, counting up as it is said. Fits: the height of a column, a depth, a distance, a span of years
 - **ground** — Motes in the air (`react/parts/motes.tsx`): Dust, falling ash or rising embers on several depths: near ones soft discs of light, far ones fine specks, so the air shows the depth. Fits: dust in a low sun, ash after an eruption, sparks over a fire, snow
 - **ground** — Silhouette layer (`react/parts/ridge.tsx`): One flat silhouette of the land (hills, peaks, a volcano, a town, trees, boughs), paled and softened by its depth. Fits: the far mountains, the middle town and the near trees of a place; three to five of them, each on its own plane, make the depth
 - **ground** — Depth stage (`react/parts/stage.tsx`): A dusk sky and its haze seen through one camera that dollies, pans and racks focus; every other component stands on a plane in it. Fits: every scene: one per scene, holding that scene's planes; tween cam to dolly through the layers, focus to rack between them
+- **link** — Thread between places (`react/parts/thread.tsx`): A dashed hairline arcing from one place to another on one plane, a spark leading it, a ring where it lands and its words at the top of the arc. Fits: what travelled from one place to the next (ash on the wind, a road, a message, a cause and what it caused); how far apart two things are
 - **mark** — Distant light (`react/parts/beacon.tsx`): A warm point of light kindling far off in the dusk, its halo carried by the haze. Fits: a crater waking, a first lamp, a signal fire, a star
 - **mark** — Depth pin (`react/parts/pin.tsx`): A ring on a place and a hairline rising to its name, on that place's plane: sharp only while the focus is there. Fits: a forum, a summit, a crater, a house
 - **steps** — Mileposts into the depth (`react/parts/mileposts.tsx`): Slender posts, each a date or a stage, one behind another into the haze; the camera dollies past them as they are counted. Fits: centuries passing, the stages of a journey, distances along a route, eras of a history
 - **steps** — Cross-section (`react/parts/section.tsx`): The ground cut open: layers laid one on another as they are named, each labelled, burying what stood on the old surface. Fits: how a city was buried, how strata form, sediment over a fossil
+- **term** — Word in the haze (`react/parts/term.tsx`): A term in italic serif with a hairline drawn under it and its meaning in plain type, on a plane of the world; the meaning comes into focus on its own beat. Fits: a word the narration defines (a pyroclastic surge, a caldera, a stratum, an era); what a name means
 - **title** — Title in the haze (`react/parts/title.tsx`): A serif title under a small spaced line, on a plane of the world; it comes into focus out of the haze, letter by letter. Fits: the place and year a story opens on; a chapter; the question a film asks
 - **transition** — Parting layer (`react/parts/parting.tsx`): A covering layer (buried ground, cloud) cracks and slides apart to reveal what lies behind. Fits: ash lifted off a city, rock opened on a fossil, cloud parting on a summit
 
@@ -59,6 +62,9 @@ A low wind bed, far sounds softened by the haze, one clear near sound when the f
 - **Dolly through the layers into the next place.** The near layers grow, soften and pass the lens; the next set, built `Ahead`, lands at its rest framing. Fits content like: a journey's next stop; centuries passing; down a valley.
 - **Rack focus between depths.** The sharp plane moves from near to far (or back) on the word that names it. Fits content like: a town, then the mountain behind it; a clue, then the suspect; a moon, then its planet.
 - **Layers part on what lies between them.** A covering layer (`Parting`) cracks and slides apart to reveal the plane behind. Fits content like: ash lifted off a city; rock opened on a fossil; cloud parting on a summit.
+- **Stand them side by side.** Columns rise one after another on one plane in focus, the subject's warm and last. Fits content like: the column of ash against Everest; a cathedral against a tower; a sea level then and now.
+- **Name it in the air.** A term comes into focus over the place it belongs to, a hairline draws under it, and its meaning follows on its own word. Fits content like: a pyroclastic surge; a caldera; a stratum.
+- **A thread from here to there.** A spark draws an arc from one place to another on the plane in focus and lands a ring. Fits content like: ash carried to a town; a road between two cities; the cause and the place it struck.
 - **A light kindles far off.** A warm point (`Beacon`) appears in the dusk and the haze carries its halo. Fits content like: a crater waking; the first lamp of a settlement; a star that is not where it should be.
 
 ## Avoid: pitfalls

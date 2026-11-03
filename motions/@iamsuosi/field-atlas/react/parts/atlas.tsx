@@ -22,7 +22,7 @@ export const meta = {
     scale: {type: 'progress', default: 1, doc: 'the scale bar\'s opacity'},
     under: {type: 'node', doc: 'what is drawn on the land below the borders and rivers: Regions'},
   },
-  preview: 40.6,
+  preview: 1.5,
 };
 
 /** A step of the graticule that keeps about six lines across the frame */

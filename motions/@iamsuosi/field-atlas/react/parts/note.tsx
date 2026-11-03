@@ -20,7 +20,7 @@ export const meta = {
     accent: {type: 'boolean', default: false, doc: 'the figure that matters, in red; the other stays ink'},
     show: {type: 'progress', default: 0, doc: 'its entrance'},
   },
-  preview: 34.5,
+  preview: 10.9,
 };
 
 export function Note({value, digits = 0, unit: u, label, x = 120, y = 420, lon, lat, accent = false, show = 0}: {
