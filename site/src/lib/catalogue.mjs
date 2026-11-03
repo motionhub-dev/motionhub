@@ -67,3 +67,7 @@ export const creators = (() => {
 })();
 export const creatorPath = (login) => `/creators/${login.toLowerCase()}/`;
 export const avatar = (login, size = 64) => `https://github.com/${login}.png?size=${size}`;
+
+/** A poster's smaller copies (site/thumbs.mjs) as a srcset, the poster itself the largest. */
+export const posterSet = (poster) => `${poster.replace(/\.jpg$/, '-480.webp')} 480w, ${poster.replace(/\.jpg$/, '-960.webp')} 960w, ${poster} 1920w`;
+export const CARD_SIZES = '(max-width: 520px) calc(100vw - 32px), (max-width: 900px) 45vw, 260px';

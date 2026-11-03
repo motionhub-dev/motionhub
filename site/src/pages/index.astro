@@ -44,7 +44,7 @@ const n = rows.length;
   <p class="count" id="count" aria-live="polite">{n} {n === 1 ? 'motion' : 'motions'}, A to Z</p>
 
   <div class="grid" id="grid">
-    {rows.map((r) => <Card row={r} {...filter(r)} />)}
+    {rows.map((r, i) => <Card row={r} eager={i < 5} {...filter(r)} />)}
   </div>
 
   <div class="table" id="list" hidden>
@@ -53,7 +53,7 @@ const n = rows.length;
       <tbody>
         {rows.map((r) => (
           <tr {...filter(r)}>
-            <td class="p"><a href={`/m/${r.slug}/`} tabindex="-1" aria-hidden="true"><img src={r.poster} alt="" loading="lazy" decoding="async" width="96" height="54"></a></td>
+            <td class="p"><img src={r.poster.replace(/\.jpg$/, '-480.webp')} alt="" loading="lazy" decoding="async" width="96" height="54"></td>
             <td class="n"><a href={`/m/${r.slug}/`}>{en(r.name)}</a>{other(r.name) && <small>{other(r.name)}</small>}<div>{en(r.line)}</div></td>
             <td>{r.tags.join(', ')}</td>
             <td>{r.tools.map((t) => <span class="badge">{t}</span>)}</td>

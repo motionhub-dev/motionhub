@@ -16,6 +16,7 @@
 //                                    m/<id>/index.html and 404.html, are site/'s Astro build over these files
 //   favicon.svg, favicon-32.png, apple-touch-icon.png, icon-192.png, icon-512.png, site.webmanifest, og-default.png
 //                                    the brand's icons and default share card, copied from brand/
+//   brand/<logo file>, brand/brand.tokens.json, brand/tokens.css   the logo files and tokens, for anyone who shows motionhub
 //   .assetsignore                    keeps the packages out of the deployed assets: the Worker serves them from R2
 // It refuses to build while any motion has an issue (tools/check.mjs). Publishing must never replace a package that is
 // already at its URL (HUB.md): that is the deploy's rule, since this build only knows the newest versions.
@@ -122,6 +123,10 @@ export function build(out, root = ROOT) {
   for (const [dir, names] of [['favicon', ['favicon.svg', 'favicon-32.png', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'site.webmanifest']], ['social', ['og-default.png']]]) {
     for (const name of names) copyFileSync(join(ROOT, 'brand', dir, name), join(out, name));
   }
+  // the logo files and tokens, for anyone who shows motionhub (brand/BRAND.md)
+  mkdirSync(join(out, 'brand'), {recursive: true});
+  for (const name of readdirSync(join(ROOT, 'brand/logo'))) copyFileSync(join(ROOT, 'brand/logo', name), join(out, 'brand', name));
+  for (const name of ['brand.tokens.json', 'tokens.css']) copyFileSync(join(ROOT, 'brand', name), join(out, 'brand', name));
   writeFileSync(join(out, '.assetsignore'), '*.tgz\n');
   return rows;
 }

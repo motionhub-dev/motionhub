@@ -27,7 +27,7 @@
   },
   "font": {
     "$type": "fontFamily",
-    "ui": { "$value": ["Inter", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "system-ui", "sans-serif"], "$description": "everything but code: Latin and figures in Inter, Chinese in Noto Sans SC" },
+    "ui": { "$value": ["Inter", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "system-ui", "sans-serif"], "$description": "everything but code: Latin and figures in Inter (served by the site); Chinese in Noto Sans SC where installed, else the system's own" },
     "mono": { "$value": ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"], "$description": "commands, file names, versions, hex values" },
     "wordmark": { "$value": ["Instrument Serif", "serif"], "$description": "the wordmark only, shipped as outlines in the logo files; never set as text" }
   },

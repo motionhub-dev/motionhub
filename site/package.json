@@ -4,19 +4,19 @@
   "type": "module",
   "description": "The pages of motionhub.dev, built with Astro over the files tools/build.mjs writes.",
   "scripts": {
-    "build": "node ../tools/build.mjs ../dist && node player/build.mjs && astro build && node merge.mjs",
-    "dev": "node ../tools/build.mjs ../dist && MOTIONHUB_DEV=1 astro dev",
+    "build": "node ../tools/build.mjs ../dist && node thumbs.mjs && node player/build.mjs && astro build && node merge.mjs",
+    "dev": "node ../tools/build.mjs ../dist && node thumbs.mjs && MOTIONHUB_DEV=1 astro dev",
     "preview": "npm run build && npx --yes wrangler@4.154.0 dev"
   },
   "dependencies": {
     "@fontsource/inter": "5.3.0",
     "@fontsource/jetbrains-mono": "5.3.0",
-    "@fontsource/noto-sans-sc": "5.3.1",
     "astro": "7.4.1",
     "esbuild": "0.25.12",
     "marked": "18.1.1",
     "react": "19.1.1",
     "react-dom": "19.1.1",
+    "sharp": "0.35.5",
     "three": "0.187.0"
   }
 }

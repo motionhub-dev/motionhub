@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import BrandSheet from '../../components/BrandSheet.astro';
 import {REPO} from '../../lib/catalogue.mjs';
 import {DOCS, PAGES, pagePath, renderDoc, twinPath} from '../../lib/docs.mjs';
 
@@ -52,6 +53,7 @@ const description = plain(html.match(/<p>([\s\S]*?)<\/p>/)?.[1] ?? title).replac
           <a class="btn sm mono" href={twinPath(p)}>{twinPath(p).split('/').pop()}</a>
         </div>
       </div>
+      {p.slug === 'brand' && <BrandSheet />}
       <div class="doc docbody" set:html={html} />
       <nav class="pager" aria-label="Pages">
         {prev ? <a href={pagePath(prev)}>← {prev.label}</a> : <span></span>}
