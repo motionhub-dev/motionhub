@@ -23,7 +23,7 @@ one vermilion that belongs to the logo and to the one action a page asks for. Ev
 | Token | Light | Dark | Used for |
 | --- | --- | --- | --- |
 | `bg` | `#F3EEE4` | `#1A1714` | the page: paper |
-| `surface` | `#FBF8F2` | `#221E1A` | inputs, code, panels on the page |
+| `surface` | `#FBF8F2` | `#221E1A` | inputs, panels on the page |
 | `surface-2` | `#EAE2D4` | `#2C2722` | selected and hover |
 | `line` | `#DDD3C3` | `#3B342D` | borders and rules |
 | `text` | `#2A2622` | `#F1EBE0` | headings, primary buttons |
@@ -33,6 +33,8 @@ one vermilion that belongs to the logo and to the one action a page asks for. Ev
 | `like` | `#C24A33` | `#FF7A5E` | a like that has been given, and nothing else |
 | `accent` | `#C4381F` | `#FF6A4D` | the one call to action a page has (Copy prompt), and nothing else |
 | `on-accent` | `#FBF8F2` | `#1A1714` | text on `accent` |
+| `code` | `#2A2622` | `#C9BEAE` | the ground of a code block: the theme turned over |
+| `on-code` | `#F3EEE4` | `#1A1714` | text on `code` |
 
 - The interface is ink on paper. Buttons, links and focus are `text`, not a colour (`accent` aside): colour on the page is the
   motions' posters and samples.

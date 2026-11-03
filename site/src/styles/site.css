@@ -96,7 +96,7 @@ a.pill:hover { border-color: var(--color-text-2); }
 .thumbs button:hover { border-color: var(--color-line); }
 .thumbs button[aria-checked="true"] { border-color: var(--color-text); }
 .thumbs img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--radius-sm); background: var(--color-surface-2); }
-pre.prompt { padding: 12px 14px; white-space: pre-wrap; overflow-wrap: break-word; background: var(--color-text); color: var(--color-bg); border-color: var(--color-text); }
+pre.prompt { padding: 12px 14px; white-space: pre-wrap; overflow-wrap: break-word; }
 pre.prompt-plain { white-space: pre-wrap; overflow-wrap: break-word; }
 /* the part of a prompt the visitor fills in */
 pre .nb { white-space: nowrap; }
@@ -179,7 +179,7 @@ pre .nb { white-space: nowrap; }
 .make { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 1px solid var(--color-line); border-radius: var(--radius-xl); background: var(--color-surface); }
 .make .btn.accent { height: 40px; }
 .make .skill { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--color-line); font-size: var(--size-xs); color: var(--color-muted); }
-.make .skill .code { display: flex; align-items: center; border: 1px solid var(--color-line); border-radius: var(--radius-lg); background: var(--color-bg); }
+.make .skill .code { display: flex; align-items: center; border: 1px solid var(--color-code); border-radius: var(--radius-lg); background: var(--color-code); }
 .make .skill pre { flex: 1; min-width: 0; font-size: 11px; padding: 8px 0 8px 10px; letter-spacing: -0.01em; border: 0; background: transparent; white-space: nowrap; }
 .make .skill .copy { position: static; flex: none; width: 28px; height: 30px; border: 0; background: transparent; }
 .make .skill code { font-size: inherit; }
@@ -212,11 +212,13 @@ h2.s small { font-weight: var(--weight-regular); font-size: var(--size-sm); colo
 .no-js .tabs { display: none; }
 .no-js .panel[hidden] { display: flex !important; }
 .code { position: relative; }
-pre { margin: 0; padding: 12px 14px; background: var(--color-surface); border: 1px solid var(--color-line); border-radius: var(--radius-lg); overflow-x: auto; font-size: 12.5px; line-height: 1.6; }
+/* a code block is the theme turned over */
+pre { margin: 0; padding: 12px 14px; background: var(--color-code); color: var(--color-on-code); border: 1px solid var(--color-code); border-radius: var(--radius-lg); overflow-x: auto; font-size: 12.5px; line-height: 1.6; }
 .code pre, .doc .code pre { padding-right: 48px; }
 /* every code block's copy button: an icon at its top right (Base.astro) */
-.copy { position: absolute; top: 6px; right: 6px; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 1px solid var(--color-line); border-radius: var(--radius-md); background: var(--color-bg); color: var(--color-muted); cursor: pointer; }
-.copy:hover { color: var(--color-text); }
+.copy { position: absolute; top: 6px; right: 6px; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 1px solid var(--color-muted); border-radius: var(--radius-md); background: var(--color-code); color: var(--color-line); cursor: pointer; }
+.copy:hover { color: var(--color-on-code); }
+.copy:focus-visible { outline-color: var(--color-on-code); outline-offset: -3px; }
 .split { display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start; }
 .split > article { flex: 999 1 600px; min-width: 0; max-width: 780px; }
 .split > aside, .split > .side { flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 24px; }
@@ -279,9 +281,9 @@ pre { margin: 0; padding: 12px 14px; background: var(--color-surface); border: 1
 .foot .brand { margin-right: 4px; }
 .foot a.mono { font-size: var(--size-xs); }
 .foot .wrap { align-items: center; }
+.foot .theme { margin-left: auto; }
 .theme { display: flex; border: 1px solid var(--color-line); border-radius: var(--radius-pill); padding: 2px; gap: 2px; }
 .theme button { display: grid; place-items: center; width: 26px; height: 24px; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--color-muted); cursor: pointer; }
-.foot .theme { margin-left: auto; }
 .theme button:hover { color: var(--color-text); }
 .theme button[aria-checked="true"] { background: var(--color-surface-2); color: var(--color-text); }
 

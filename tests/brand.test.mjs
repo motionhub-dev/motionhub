@@ -31,6 +31,7 @@ test('text reads on every ground at WCAG AA, the mark, a like and the accent sta
       for (const ink of ['mark', 'like', 'accent']) assert.ok(contrast(c[ink], c[ground]) >= 3, `${theme} ${ink} on ${ground}: ${contrast(c[ink], c[ground]).toFixed(2)}`);
     }
     assert.ok(contrast(c['on-accent'], c.accent) >= 4.5, `${theme} on-accent on accent: ${contrast(c['on-accent'], c.accent).toFixed(2)}`);
+    assert.ok(contrast(c['on-code'], c.code) >= 4.5, `${theme} on-code on code: ${contrast(c['on-code'], c.code).toFixed(2)}`);
   }
 });
 
