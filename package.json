@@ -1,6 +1,6 @@
 {
   "name": "@motionhub/cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Search, get and check motions, reusable looks for narrated video, from motionhub.dev.",
   "keywords": ["motion", "design-tokens", "video", "agent-skills"],
   "homepage": "https://motionhub.dev",

@@ -4,7 +4,7 @@
 
 Motions are reusable looks for narrated and explanatory video: how a film looks and how it moves, written so that a person or an agent can make a new film in it with any engine. This repository is the open format and the public catalogue behind [motionhub.dev](https://motionhub.dev).
 
-- **[SPEC.md](SPEC.md)**: the motion format, `motion/0.2`. Five files: `motion.json`, `MOTION.md`, `tokens.json` (W3C DTCG), `poster.jpg`, `CREDITS.md`, and a directory for each tool that wants one.
+- **[SPEC.md](SPEC.md)**: the motion format, `motion/0.3`. Five files: `motion.json`, `MOTION.md`, `tokens.json` (W3C DTCG), `poster.jpg`, `CREDITS.md`, and a directory for each tool that wants one.
 - **[CONTRIBUTING.md](CONTRIBUTING.md)**: how to add a motion by pull request, what is accepted and how it is reviewed.
 - **[HUB.md](HUB.md)**: how the catalogue is published and fetched (planned).
 

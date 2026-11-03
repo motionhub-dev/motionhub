@@ -4,7 +4,7 @@
 
 Motion（风格）是讲解类、叙事类视频可以反复使用的一套外观和动法：片子长什么样、画面怎么动。它写成的样子，让人或 agent 都能用任何引擎照着做出一部新片子。这个仓库是 motion 的开放格式，也是 [motionhub.dev](https://motionhub.dev) 背后的公共目录。
 
-- **[SPEC.md](SPEC.md)**：motion 格式 `motion/0.2`。五个文件：`motion.json`、`MOTION.md`、`tokens.json`（W3C DTCG 格式）、`poster.jpg`、`CREDITS.md`，另外每个需要的工具各有一个自己的目录。
+- **[SPEC.md](SPEC.md)**：motion 格式 `motion/0.3`。五个文件：`motion.json`、`MOTION.md`、`tokens.json`（W3C DTCG 格式）、`poster.jpg`、`CREDITS.md`，另外每个需要的工具各有一个自己的目录。
 - **[CONTRIBUTING.md](CONTRIBUTING.md)**：怎么用 pull request 投稿一个 motion，接受什么，怎么审核。
 - **[HUB.md](HUB.md)**：目录怎么发布、怎么取用（计划中）。
 

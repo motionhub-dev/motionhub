@@ -1,7 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Card from '../../components/Card.astro';
-import {REPO, SITE, byAuthor, colours, en, faces, kb, markdown, other, read, rows, translations} from '../../lib/catalogue.mjs';
+import {REPO, SITE, builtOn, builtOnBy, byAuthor, colours, creatorPath, en, faces, kb, markdown, other, read, rows, translations} from '../../lib/catalogue.mjs';
 
 export function getStaticPaths() {
   return rows.map((row) => ({params: {id: row.slug}, props: {row}}));
@@ -15,6 +15,7 @@ const credits = markdown(read(id, 'CREDITS.md').replace(/^# .*\n+/, ''));
 const react = row.tools.includes('react');
 const more = [...new Map(row.authors.flatMap((a) => byAuthor.get(a.github) ?? []).filter((r) => r.slug !== id).map((r) => [r.slug, r])).values()].slice(0, 6);
 const source = `${REPO}/tree/main/motions/${id}`;
+const on = builtOn(row), by = builtOnBy(id);
 
 const uses = [
   {id: 'agent', label: 'Any agent', lead: 'Ask any agent that has the motionhub skill, or can read llms.txt. It fetches the motion, checks it and makes your film in its look.',
@@ -44,7 +45,7 @@ const uses = [
         {row.authors.map((a) => {
           const n = byAuthor.get(a.github)?.length ?? 0;
           return (
-            <a class="person" href={`https://github.com/${a.github}`}>
+            <a class="person" href={creatorPath(a.github)}>
               <img src={`https://github.com/${a.github}.png?size=64`} alt="" width="32" height="32" loading="lazy">
               <span><b>{a.name}</b><small>@{a.github} · {n} {n === 1 ? 'motion' : 'motions'}</small></span>
               {!row.scope && <span class="official" title="Published by motionhub's maintainers">OFFICIAL</span>}
@@ -67,6 +68,8 @@ const uses = [
 
       <dl class="facts">
         <dt data-stat hidden>Downloads</dt><dd data-stat hidden id="downloads" data-id={id}></dd>
+        {on.length > 0 && <><dt>Built on</dt><dd>{on.map((b, i) => <>{i > 0 && ', '}<a href={`/m/${b.id}/`}>{en(b.row.name)}</a>{b.version && <span class="mono"> {b.version}</span>}</>)}</dd></>}
+        {by.length > 0 && <><dt>Built on by</dt><dd>{by.map((r, i) => <>{i > 0 && ', '}<a href={`/m/${r.slug}/`}>{en(r.name)}</a></>)}</dd></>}
         <dt>Version</dt><dd class="mono">{row.version}</dd>
         <dt>Format</dt><dd class="mono">{row.spec}</dd>
         <dt>Licence</dt><dd>{row.license.text} for the look{row.license.code && ` · ${row.license.code} for the code`}</dd>
@@ -125,7 +128,7 @@ const uses = [
 
   {more.length > 0 && (
     <section class="more">
-      <h2 class="s">More by {row.authors.map((a) => a.name).join(', ')}</h2>
+      <h2 class="s">More by {row.authors.map((a) => a.name).join(', ')} <small><a href={creatorPath(row.authors[0].github)}>See all</a></small></h2>
       <div class="grid">{more.map((r) => <Card row={r} small />)}</div>
     </section>
   )}
