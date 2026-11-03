@@ -48,6 +48,16 @@ test('a view is a document navigation to a motion page that exists', async () =>
   assert.deepEqual(e.points.map((p) => p.blobs.slice(0, 2)), [['view', 'red-pencil']]);
 });
 
+test('a scoped page is served at its @ address without a redirect, and counted under its id either way', async () => {
+  const asked = [];
+  const e = {...env(), ASSETS: {fetch: async (r) => { asked.push(new URL(r.url).pathname); return new Response('page', {status: new URL(r.url).pathname === '/m/%40ana/red-pencil/' ? 200 : 307}); }}};
+  const r = await worker.fetch(req('/m/@ana/red-pencil/', {'sec-fetch-dest': 'document'}), e, ctx);
+  assert.equal(r.status, 200);
+  await worker.fetch(req('/m/%40ana/red-pencil/', {'sec-fetch-dest': 'document'}), e, ctx);
+  assert.deepEqual(asked, ['/m/%40ana/red-pencil/', '/m/%40ana/red-pencil/']);
+  assert.deepEqual(e.points.map((p) => p.blobs.slice(0, 2)), [['view', '@ana/red-pencil'], ['view', '@ana/red-pencil']]);
+});
+
 test('counting never fails a request', () => {
   assert.equal(count({EVENTS: {writeDataPoint() { throw new Error('down'); }}}, req('/'), 'view', 'x'), false);
   assert.equal(count({}, req('/'), 'view', 'x'), true);

@@ -113,13 +113,24 @@ async function packageResponse(request, env, ctx, [, id, version], pathname) {
 
 export default {
   async fetch(request, env, ctx) {
-    const {pathname} = new URL(request.url);
+    const url = new URL(request.url);
+    // a motion's id starts with its scope's @, which a link keeps as it is and a browser may send as %40: the routes
+    // below read the id, so they see one spelling
+    let pathname = url.pathname;
+    try { pathname = decodeURIComponent(pathname); } catch {}
     if (pathname === '/api/stats.json') return statsResponse(request, env, ctx);
     const own = await people(request, env);
     if (own) return own;
     const pkg = PACKAGE.exec(pathname);
     if (pkg) return packageResponse(request, env, ctx, pkg, pathname);
-    const response = await env.ASSETS.fetch(request);
+    // the static files under m/@<scope>/ and play/@<scope>/ are found at the %40 spelling; asked for with @, the
+    // assets would answer with a redirect to it, so the Worker asks for it directly and the address keeps its @
+    let response;
+    if (url.pathname.includes('@')) {
+      const at = new URL(url);
+      at.pathname = url.pathname.replaceAll('@', '%40');
+      response = await env.ASSETS.fetch(new Request(at, request));
+    } else response = await env.ASSETS.fetch(request);
     // a person opening a motion's page: a document navigation that found the page
     const page = PAGE.exec(pathname);
     if (page && request.method === 'GET' && response.status === 200 && request.headers.get('sec-fetch-dest') === 'document') count(env, request, 'view', page[1]);
