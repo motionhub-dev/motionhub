@@ -30,62 +30,8 @@ const hash = (key) => {
 /** A stream of numbers in [0, 1) for `seed` (a string or a number): call it for each next number */
 export const seededRandom = (seed) => prng(typeof seed === 'number' ? seed : hash(String(seed)));
 
-// ---- the motion's tokens (W3C design tokens) as values ----
-const GENERIC = /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|math|emoji|ui-[a-z-]+)$/;
-const hex = (v) => (typeof v === 'string' ? v : v?.hex ?? `#${(v?.components ?? [0, 0, 0]).map((c) => Math.round(c * 255).toString(16).padStart(2, '0')).join('')}`);
-const color = (v) => (typeof v === 'string' ? v : v?.alpha !== undefined && v.alpha < 1 ? `color-mix(in srgb, ${hex(v)} ${+(v.alpha * 100).toFixed(2)}%, transparent)` : hex(v));
-const px = (v) => (typeof v === 'number' ? v : v?.unit === 'rem' ? v.value * 16 : v?.value);
-// a spread of 0 is left out, so a shadow works as a text-shadow too
-const shadow = (v) => [].concat(v).map((s) => (typeof s === 'string' ? s : `${s.inset ? 'inset ' : ''}${px(s.offsetX) ?? 0}px ${px(s.offsetY) ?? 0}px ${px(s.blur) ?? 0}px${px(s.spread) ? ` ${px(s.spread)}px` : ''} ${color(s.color)}`)).join(', ');
-const VALUE = {
-  color,
-  fontFamily: (v) => [].concat(v).map((f) => (GENERIC.test(f) ? f : `"${f}"`)).join(', '),
-  duration: (v) => (v?.unit === 'ms' ? v.value / 1000 : v?.value),
-  cubicBezier: (v) => v,
-  dimension: px,
-  fontWeight: (v) => v,
-  number: (v) => v,
-  shadow,
-};
-
-/**
- * A motion's tokens.json as values, group by group: a color as a CSS colour, a fontFamily as a CSS font stack, a duration in seconds, a cubicBezier as
- * [x1, y1, x2, y2], a dimension in pixels, a shadow as a CSS box-shadow; aliases (`{color.ink}`) resolved. `tokens.color.ink`, `tokens.duration.light`.
- */
-export function resolveTokens(dtcg) {
-  if (!dtcg) return {};
-  const lookup = (path) => path.split('.').reduce((o, k) => o?.[k], dtcg);
-  const out = {};
-  const walk = (node, path, inherited) => {
-    const type = node.$type ?? inherited;
-    if ('$value' in node) {
-      let value = node.$value, t = type, seen = 0;
-      while (typeof value === 'string' && /^\{[^{}]+\}$/.test(value) && seen++ < 8) {
-        const target = lookup(value.slice(1, -1));
-        value = target?.$value;
-        t = t ?? target?.$type;
-      }
-      const [group, ...rest] = path;
-      (out[group] ??= {})[rest.join('-')] = (VALUE[t] ?? ((x) => x))(value);
-      return;
-    }
-    for (const [k, child] of Object.entries(node)) if (!k.startsWith('$') && child && typeof child === 'object') walk(child, [...path, k], type);
-  };
-  for (const [group, node] of Object.entries(dtcg)) if (!group.startsWith('$') && node && typeof node === 'object') walk(node, [group], node.$type);
-  return out;
-}
-
-/** Resolved tokens as CSS custom properties, Style Dictionary's way: --color-ink, --font-display, --duration-light (s), --easing-light, --caption-size (px) */
-export function tokenVariables(tokens) {
-  const vars = {};
-  for (const [group, values] of Object.entries(tokens ?? {})) {
-    for (const [name, v] of Object.entries(values)) {
-      const key = `--${group}-${name}`;
-      vars[key] = group === 'duration' && typeof v === 'number' ? `${v}s` : Array.isArray(v) && v.length === 4 && v.every((n) => typeof n === 'number') ? `cubic-bezier(${v.join(', ')})` : typeof v === 'number' && /^(caption|size|space|radius)/.test(group) && !/weight/.test(name) ? `${v}px` : String(v);
-    }
-  }
-  return vars;
-}
+export {resolveTokens, tokenVariables} from './tokens.js';
+import {tokenVariables} from './tokens.js';
 
 // ---- the runtime an engine provides ----
 const Runtime = createContext(null);
@@ -116,6 +62,52 @@ export const Video = (props) => {
   const V = runtime().Video;
   if (!V) throw new Error(`<Video src="${props.src}">: this engine's binding plays no video`);
   return createElement(V, props);
+};
+
+// ---- timing, for a composition of components: Remotion's names, in seconds ----
+const bezier = (x1, y1, x2, y2) => {
+  const at = (a, b, t) => 3 * a * t * (1 - t) * (1 - t) + 3 * b * t * t * (1 - t) + t * t * t;
+  return (x) => {
+    if (x <= 0 || x >= 1) return Math.min(1, Math.max(0, x));
+    let lo = 0, hi = 1, t = x;
+    for (let i = 0; i < 30; i++) { t = (lo + hi) / 2; if (at(x1, x2, t) < x) lo = t; else hi = t; }
+    return at(y1, y2, t);
+  };
+};
+/** Easing curves, each from [0, 1] to [0, 1]; `Easing.bezier(x1, y1, x2, y2)` takes a motion's cubicBezier token */
+export const Easing = {
+  linear: (x) => x,
+  bezier,
+  inOutSine: (x) => -(Math.cos(Math.PI * x) - 1) / 2,
+  outCubic: (x) => 1 - (1 - x) ** 3,
+  outQuart: (x) => 1 - (1 - x) ** 4,
+  inOutCubic: (x) => (x < 0.5 ? 4 * x ** 3 : 1 - (-2 * x + 2) ** 3 / 2),
+  outBack: (x) => 1 + 2.70158 * (x - 1) ** 3 + 1.70158 * (x - 1) ** 2,
+};
+
+/**
+ * `input` mapped from the range `inputRange` onto `outputRange` (as many points in each), through `easing`, held at the ends: as Remotion's interpolate,
+ * with time in seconds. `interpolate(useTime(), [1, 2.2], [0, 2300], {easing: Easing.outQuart})`
+ */
+export function interpolate(input, inputRange, outputRange, {easing = Easing.linear, clamp = true} = {}) {
+  let i = 1;
+  while (i < inputRange.length - 1 && input > inputRange[i]) i++;
+  const [a, b] = [inputRange[i - 1], inputRange[i]], [x, y] = [outputRange[i - 1], outputRange[i]];
+  let p = b === a ? 1 : (input - a) / (b - a);
+  if (clamp) p = Math.min(1, Math.max(0, p));
+  return x + (y - x) * easing(p);
+}
+
+/**
+ * Its children from `from` seconds for `duration` seconds (to the end without one), their useTime() counting from its start: as Remotion's
+ * <Sequence>, in seconds. Outside that span it draws nothing.
+ */
+export const Sequence = ({from = 0, duration = Infinity, children}) => {
+  const parent = runtime();
+  const t = parent.useTime();
+  if (t < from || t >= from + duration) return null;
+  const value = {...parent, useTime: () => parent.useTime() - from};
+  return createElement(Runtime.Provider, {value}, children);
 };
 
 /** The ground a motion's components expect: the tokens as custom properties, filling the frame */
