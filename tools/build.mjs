@@ -87,7 +87,7 @@ export function pack(dir) {
   const tools = readdirSync(dir, {withFileTypes: true}).filter((e) => e.isDirectory()).map((e) => e.name).sort();
   const row = {
     slug, ...(manifest.scope ? {scope: manifest.scope} : {}), spec: manifest.spec, version, name: manifest.name, line: manifest.line, lang: manifest.lang ?? 'en', tags: manifest.tags ?? [],
-    authors: manifest.authors, license: manifest.license, poster: `/m/${slug}/poster.jpg`, tools,
+    authors: manifest.authors, ...(manifest.basedOn ? {basedOn: manifest.basedOn} : {}), license: manifest.license, poster: `/m/${slug}/poster.jpg`, tools,
     package: {url: `/m/${slug}/${version}.tgz`, sha256: createHash('sha256').update(archive).digest('hex'), bytes: archive.length},
     // the player of its reel (react/reel.tsx), which site/player/build.mjs writes
     ...(existsSync(join(dir, 'react/reel.tsx')) ? {reel: `/play/${slug}/`} : {}),

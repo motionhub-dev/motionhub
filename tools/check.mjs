@@ -17,15 +17,16 @@ import {join, basename, dirname, resolve, relative, extname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 /** The newest version of the format; every version before it is still read (SPEC.md §9). */
-export const SPEC = 'motion/0.2';
-export const SPECS = ['motion/0.1', 'motion/0.2'];
+export const SPEC = 'motion/0.3';
+export const SPECS = ['motion/0.1', 'motion/0.2', 'motion/0.3'];
 const SCOPE = /^[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,38}$/;
 const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const LANG = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{1,8})*$/;
 const GITHUB = /^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$/;
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
 const MEMBERS = new Set(['spec', 'slug', 'version', 'name', 'line', 'authors', 'license', 'lang', 'tags']);
-const MEMBERS_SINCE = {scope: 'motion/0.2'};
+const MEMBERS_SINCE = {scope: 'motion/0.2', basedOn: 'motion/0.3'};
+const ID = /^(?:@[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,38}\/)?[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const FILES = ['motion.json', 'MOTION.md', 'tokens.json', 'poster.jpg', 'CREDITS.md'];
 const HEADINGS = [['essence'], ['colour', 'color'], ['type'], ['motion'], ['avoid']];
 const DOC_BYTES = 16 * 1024;
@@ -128,6 +129,21 @@ function checkManifest(m, add) {
     if (m.license.code !== undefined && !spdx(m.license.code)) add('manifest.license', at, 'license.code is an SPDX license expression such as "MIT"');
   }
   if (m.lang !== undefined && (typeof m.lang !== 'string' || !LANG.test(m.lang))) add('manifest.lang', at, 'lang is a BCP 47 language tag such as "en" or "zh-CN"');
+  if (m.basedOn !== undefined) {
+    if (!Array.isArray(m.basedOn) || !m.basedOn.length || m.basedOn.length > 10) add('manifest.basedOn', at, 'basedOn is an array of 1 to 10 {id, version}');
+    else {
+      const seen = new Set();
+      m.basedOn.forEach((b, i) => {
+        if (!b || typeof b !== 'object' || Array.isArray(b)) return add('manifest.basedOn', at, `basedOn[${i}] is {id, version}`);
+        for (const key of Object.keys(b)) if (key !== 'id' && key !== 'version') add('manifest.basedOn', at, `basedOn[${i}] has only "id" and "version", not "${key}"`);
+        if (typeof b.id !== 'string' || !ID.test(b.id)) add('manifest.basedOn', at, `basedOn[${i}].id is a motion's id, such as "red-pencil" or "@ana/ledger-pencil"`);
+        else if (seen.has(b.id)) add('manifest.basedOn', at, `basedOn names ${b.id} twice`);
+        else if (typeof m.slug === 'string' && b.id === motionId(m)) add('manifest.basedOn', at, 'a motion is not based on itself');
+        seen.add(b.id);
+        if (b.version !== undefined && (typeof b.version !== 'string' || !SEMVER.test(b.version))) add('manifest.basedOn', at, `basedOn[${i}].version is a Semantic Versioning 2.0 version`);
+      });
+    }
+  }
   if (m.tags !== undefined) {
     if (!Array.isArray(m.tags) || m.tags.length > 10) add('manifest.tags', at, 'tags is an array of at most 10 keywords');
     else m.tags.forEach((t) => { if (typeof t !== 'string' || !NAME.test(t)) add('manifest.tags', at, `tag "${t}" is a keyword of a-z, 0-9 and single hyphens`); });
@@ -296,6 +312,11 @@ function checkHub(dir, manifest, {author, official, was}, add) {
   const inCatalogue = parent === 'motions' || (parent.startsWith('@') && basename(dirname(dirname(path))) === 'motions');
   const at = parent.startsWith('@') ? `${parent}/${name}` : name;
   if (inCatalogue && typeof manifest?.slug === 'string' && motionId(manifest) !== at) add('hub.slug', 'motion.json', `the motion ${motionId(manifest)} sits at motions/${motionId(manifest)}/ in the catalogue, not motions/${at}/`);
+  // a motion it is based on is one in the catalogue, so the site can link and credit it
+  if (inCatalogue && Array.isArray(manifest?.basedOn)) {
+    const root = parent.startsWith('@') ? dirname(dirname(path)) : dirname(path);
+    for (const b of manifest.basedOn) if (typeof b?.id === 'string' && ID.test(b.id) && !existsSync(join(root, b.id, 'motion.json'))) add('hub.basedOn', 'motion.json', `basedOn names ${b.id}, which is not in the catalogue`);
+  }
   if (manifest?.license && typeof manifest.license === 'object') {
     if (spdx(manifest.license.text) && !spdxIds(manifest.license.text).every((id) => TEXT_LICENSES.has(id))) add('hub.license', 'motion.json', `license.text must be one of ${[...TEXT_LICENSES].join(', ')}`);
     if (spdx(manifest.license.code) && !spdxIds(manifest.license.code).every((id) => CODE_LICENSES.has(id))) add('hub.license', 'motion.json', `license.code must be one of ${[...CODE_LICENSES].join(', ')}`);

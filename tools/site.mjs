@@ -111,6 +111,7 @@ const HEADERS = `/api/*
 export function writeSiteFiles(out, rows, docs = []) {
   writeFileSync(join(out, '_headers'), HEADERS);
   writeFileSync(join(out, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml\n`);
-  const urls = ['/', ...docs, ...rows.map((r) => `/m/${r.slug}/`)];
+  const creators = [...new Set(rows.flatMap((r) => r.authors.map((a) => a.github.toLowerCase())))].sort();
+  const urls = ['/', ...docs, '/creators/', ...creators.map((c) => `/creators/${c}/`), ...rows.map((r) => `/m/${r.slug}/`)];
   writeFileSync(join(out, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((u) => `  <url><loc>${SITE}${u}</loc></url>`).join('\n')}\n</urlset>\n`);
 }

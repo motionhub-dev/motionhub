@@ -41,3 +41,29 @@ export function chips(limit = 12) {
 export const tools = [...new Set(rows.flatMap((r) => r.tools))].sort();
 
 export const kb = (bytes) => `${Math.ceil(bytes / 1024)} KB`;
+
+/** The motions a motion builds on that are in the catalogue, and the ones that build on it. */
+const byId = new Map(rows.map((r) => [r.slug, r]));
+export const builtOn = (row) => (row.basedOn ?? []).map((b) => ({...b, row: byId.get(b.id)})).filter((b) => b.row);
+export const builtOnBy = (id) => rows.filter((r) => (r.basedOn ?? []).some((b) => b.id === id));
+
+/**
+ * The creators: every GitHub account that is an author of a motion, by login in lowercase, with the name it is
+ * credited by in its newest motion, its motions A to Z and the motions of others built on them. Most motions first.
+ */
+export const creators = (() => {
+  const map = new Map();
+  for (const r of rows) for (const a of r.authors) {
+    const key = a.github.toLowerCase();
+    const c = map.get(key) ?? {key, login: a.github, name: a.name, motions: []};
+    c.motions.push(r);
+    map.set(key, c);
+  }
+  for (const c of map.values()) {
+    const mine = new Set(c.motions.map((r) => r.slug));
+    c.builtOnBy = rows.filter((r) => !mine.has(r.slug) && (r.basedOn ?? []).some((b) => mine.has(b.id)));
+  }
+  return [...map.values()].sort((a, b) => b.motions.length - a.motions.length || (a.key < b.key ? -1 : 1));
+})();
+export const creatorPath = (login) => `/creators/${login.toLowerCase()}/`;
+export const avatar = (login, size = 64) => `https://github.com/${login}.png?size=${size}`;

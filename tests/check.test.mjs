@@ -77,7 +77,7 @@ test('in the catalogue the directory is the slug; a project\'s copy may be named
 
 test('the manifest\'s members, slug, version, localized strings and licence', () => {
   const bad = (manifest) => codes(motion({manifest: {...MANIFEST, ...manifest}}), {hub: false});
-  assert.ok(bad({spec: 'motion/0.3'}).includes('manifest.spec'));
+  assert.ok(bad({spec: 'motion/0.4'}).includes('manifest.spec'));
   assert.ok(bad({slug: 'Other'}).includes('manifest.slug'));
   assert.ok(bad({version: '1.0'}).includes('manifest.version'));
   assert.ok(bad({name: {'zh-CN': '只有中文'}}).includes('manifest.name'));
@@ -102,6 +102,26 @@ test('a scope is a lowercase GitHub username, since motion/0.2, and a catalogue 
   assert.ok(codes(motion({dir: 'motions/@tester/test-motion'})).includes('hub.slug'), 'an unscoped motion is not kept under a scope');
   assert.ok(codes(motion({dir: 'motions/test-motion', manifest: scoped})).includes('hub.slug'), 'a scoped motion is not kept at the top');
   assert.deepEqual(codes(motion({dir: 'project/motion', manifest: scoped}), {hub: false}), [], 'a copy in a project may be named otherwise');
+});
+
+test('basedOn names the motions this one builds on, since motion/0.3, and in the catalogue they are there', () => {
+  const based = {...MANIFEST, spec: 'motion/0.3', scope: 'tester', basedOn: [{id: 'red-pencil', version: '1.0.2'}, {id: '@ana/ledger'}]};
+  const fmt = (m) => codes(motion({manifest: m}), {hub: false});
+  assert.deepEqual(fmt(based), []);
+  assert.ok(fmt({...based, spec: 'motion/0.2'}).includes('manifest.member'), 'basedOn is not a 0.2 member');
+  assert.ok(fmt({...based, basedOn: []}).includes('manifest.basedOn'));
+  assert.ok(fmt({...based, basedOn: ['red-pencil']}).includes('manifest.basedOn'), 'an entry is {id, version}');
+  assert.ok(fmt({...based, basedOn: [{id: 'Red Pencil'}]}).includes('manifest.basedOn'));
+  assert.ok(fmt({...based, basedOn: [{id: 'red-pencil', version: 'one'}]}).includes('manifest.basedOn'));
+  assert.ok(fmt({...based, basedOn: [{id: 'red-pencil', why: 'x'}]}).includes('manifest.basedOn'));
+  assert.ok(fmt({...based, basedOn: [{id: 'red-pencil'}, {id: 'red-pencil'}]}).includes('manifest.basedOn'));
+  assert.ok(fmt({...based, basedOn: [{id: '@tester/test-motion'}]}).includes('manifest.basedOn'), 'not based on itself');
+  // in the catalogue, each must be a motion there
+  motion({dir: 'motions/red-pencil', manifest: {...MANIFEST, slug: 'red-pencil'}});
+  const inCatalogue = (m) => codes(motion({dir: 'motions/@tester/test-motion', manifest: m}));
+  assert.deepEqual(inCatalogue({...based, basedOn: [{id: 'red-pencil'}]}), []);
+  assert.ok(inCatalogue(based).includes('hub.basedOn'), '@ana/ledger is not in the catalogue');
+  assert.deepEqual(codes(motion({dir: 'project/motion', manifest: based})), [], 'outside a catalogue there is nothing to look up');
 });
 
 test('only maintainers publish an unscoped id, and only its owner a new scoped one', () => {
