@@ -52,7 +52,7 @@ An SPDX value is an [SPDX license expression](https://spdx.github.io/spdx-spec/v
   "version": "1.0.0",
   "name": { "en": "Lab Notebook", "zh-CN": "实验手记" },
   "line": { "en": "A squared notebook page where the diagram is drawn stroke by stroke as it is explained." },
-  "authors": [{ "name": "VisoTalk", "github": "motionhub-dev" }],
+  "authors": [{ "name": "SuoSi", "github": "iamsuosi" }],
   "license": { "text": "CC-BY-4.0", "code": "MIT" },
   "tags": ["hand-drawn", "line-art", "light"]
 }
@@ -114,8 +114,8 @@ Any other sections may follow, in any order. A number in the text says where it 
 
 Everything that belongs to one tool lives in that tool's space, and every other tool ignores it.
 
-- **Directories.** A tool keeps its files in a directory named after it (`visotalk/`, `remotion/`): 2 to 40 characters of `a-z`, `0-9` and single hyphens.
-- **Members.** A tool keeps its own `motion.json` members under one member named `x-<tool>`, for example `"x-visotalk": { "caption": {}, "pacing": {} }`.
+- **Directories.** A tool keeps its files in a directory named after it (`react/`, `remotion/`): 2 to 40 characters of `a-z`, `0-9` and single hyphens.
+- **Members.** A tool keeps its own `motion.json` members under one member named `x-<tool>`, for example `"x-remotion": { "fps": 30 }`.
 - **Rule.** A tool reading a motion ignores directories and `x-` members it does not know, and does not report them. It never writes into another tool's space.
 
 What several tools come to share moves into a later version of this format.

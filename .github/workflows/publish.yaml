@@ -1,6 +1,6 @@
 name: publish
 
-# A tag `v<version>` stages that version of @motionhub/cli on npm, as VisoTalk publishes its CLI; a tag `<package>-v<version>`
+# A tag `v<version>` stages that version of @motionhub/cli on npm; a tag `<package>-v<version>`
 # (`runtime-v0.1.1`, `remotion-v…`, `hyperframes-v…`) stages that version of @motionhub/<package> from packages/<package>. The workflow holds no npm
 # token: npm trusts this repository and this file by OpenID Connect (npm, package settings, "Trusted Publisher"), so what it
 # can do is what npm allows it. It only stages; the release goes out when a maintainer approves the staged version with 2FA

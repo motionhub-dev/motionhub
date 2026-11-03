@@ -1,6 +1,6 @@
 # @motionhub/hyperframes
 
-Use a motion from [motionhub.dev](https://motionhub.dev) in HyperFrames. Its React components (`motion/visotalk/parts/`) are drawn at the time your GSAP timeline is at; its tokens become CSS variables and GSAP eases; its faces become local files. Nothing is fetched at render.
+Use a motion from [motionhub.dev](https://motionhub.dev) in HyperFrames. Its React components (`motion/react/parts/`) are drawn at the time your GSAP timeline is at; its tokens become CSS variables and GSAP eases; its faces become local files. Nothing is fetched at render.
 
 ```sh
 npx @motionhub/cli get stage-light        # into ./motion
@@ -36,7 +36,7 @@ In a composition, a state object your timeline tweens, and one mount that draws 
 </script>
 ```
 
-- `Motion.components` holds every component and `Caption`; their props are in each file's `meta` and signature, and `motion/visotalk/demo/doc.tsx` shows each one used. Where the sample drives a prop with `useProp('x', base)` and a `<Tween>`, tween `s.x` and pass it.
+- `Motion.components` holds every component and `Caption`; their props are in each file's `meta` (what it is for, what fits it, each parameter) and signature, and `motion/react/previews/<file>.jpg` shows it. A parameter of type `progress` runs from 0 to 1: tween `s.x` and pass it. A component that draws in 3D imports `three`: `npm i three` before bundling.
 - `Motion.mount(el, draw, {width, height, fps, offset})` draws `draw(t)` into `el`; the components read `t` as their `useTime()`, and `offset + t` (the composition's start in the film) as their `useCompositionTime()`. Mount one per composition. A component that plays video (`<Video>`) is not supported here: use HyperFrames' own `<video>`.
 - `Motion.box(x, y, w, h, child)` places a component in a box of that size; `Motion.h` is React's `createElement`.
 - `Motion.tokens` are the resolved tokens; `Motion.seconds(name)` and `Motion.ease(name)` a duration and an easing for GSAP, when the motion has `duration` and `easing` tokens. `motion.css` has them all as `--color-*`, `--font-*`, `--duration-*`, `--easing-*` and `--caption-*`.

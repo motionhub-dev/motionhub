@@ -2,7 +2,7 @@
 // frame size from the engine and its values from the motion's tokens, never from a clock or a page of its own, so the same
 // moment always draws the same picture. The names follow Remotion's where it has one (useCurrentFrame, useVideoConfig),
 // the motion's tokens follow the W3C design tokens format, and their CSS custom properties follow Style Dictionary's
-// naming (--color-ink, --font-display). An engine binding (@motionhub/remotion, @motionhub/hyperframes, VisoTalk) supplies
+// naming (--color-ink, --font-display). An engine binding (@motionhub/remotion, @motionhub/hyperframes, or an engine's own) supplies
 // the runtime through <MotionRuntimeProvider>; this package holds no engine.
 import {createContext, createElement, useContext} from 'react';
 
@@ -100,7 +100,7 @@ const runtime = () => {
   return r;
 };
 
-/** Seconds since this component's sequence began (Remotion: a <Sequence>; HyperFrames: a composition; VisoTalk: a scene) */
+/** Seconds since this component's sequence began (Remotion: a <Sequence>; HyperFrames: a composition; another engine: its scene) */
 export const useTime = () => runtime().useTime();
 /** Seconds since the whole film began */
 export const useCompositionTime = () => runtime().useCompositionTime();

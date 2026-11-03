@@ -64,9 +64,9 @@ test('each required file is reported when missing', () => {
 });
 
 test('only the format\'s files, translations and tool directories sit at the top', () => {
-  assert.deepEqual(codes(motion({extra: {'MOTION.zh-CN.md': DOC, 'visotalk/parts/frame.tsx': 'export const Frame = () => null;\n'}, manifest: {...MANIFEST, license: {text: 'CC-BY-4.0', code: 'MIT'}}})), []);
+  assert.deepEqual(codes(motion({extra: {'MOTION.zh-CN.md': DOC, 'react/parts/frame.tsx': 'export const Frame = () => null;\n'}, manifest: {...MANIFEST, license: {text: 'CC-BY-4.0', code: 'MIT'}}})), []);
   assert.ok(codes(motion({extra: {'notes.txt': 'hi'}})).includes('format.extra'));
-  assert.ok(codes(motion({extra: {'Visotalk/a.txt': 'hi'}})).includes('format.extra'));
+  assert.ok(codes(motion({extra: {'React/a.txt': 'hi'}})).includes('format.extra'));
 });
 
 test('in the catalogue the directory is the slug; a project\'s copy may be named otherwise', () => {
@@ -87,11 +87,11 @@ test('the manifest\'s members, slug, version, localized strings and licence', ()
   assert.ok(bad({lang: 'chinese simplified'}).includes('manifest.lang'));
   assert.ok(bad({tags: ['Hand Drawn']}).includes('manifest.tags'));
   assert.ok(bad({official: true}).includes('manifest.member'));
-  assert.deepEqual(bad({'x-visotalk': {pacing: {lead: 0.4}}, lang: 'zh-CN'}), []);
+  assert.deepEqual(bad({'x-remotion': {pacing: {lead: 0.4}}, lang: 'zh-CN'}), []);
 });
 
 test('code in a tool directory needs license.code', () => {
-  assert.ok(codes(motion({extra: {'visotalk/parts/frame.tsx': 'export const Frame = () => null;\n'}})).includes('format.license.code'));
+  assert.ok(codes(motion({extra: {'react/parts/frame.tsx': 'export const Frame = () => null;\n'}})).includes('format.license.code'));
 });
 
 test('tokens follow DTCG: required groups, types, values, aliases and no URLs', () => {
@@ -133,15 +133,15 @@ test('the hub\'s rules: licences, author, size, media and unsafe code', () => {
   assert.ok(hub({manifest: {...MANIFEST, license: {text: 'CC-BY-NC-4.0'}}}).includes('hub.license'));
   assert.ok(hub({}, {author: 'someone-else'}).includes('hub.author'));
   assert.deepEqual(hub({}, {author: 'Tester'}), []);
-  assert.ok(hub({extra: {'visotalk/demo/clip.mp4': 'x'}}).includes('hub.video'));
-  assert.ok(hub({extra: {'visotalk/node_modules/a.js': ''}, manifest: {...MANIFEST, license: {text: 'CC-BY-4.0', code: 'MIT'}}}).includes('hub.build'));
-  assert.ok(hub({extra: {'visotalk/big.bin': Buffer.alloc(1024 * 1024 + 1)}}).includes('hub.size'));
-  const code = (src) => hub({extra: {'visotalk/parts/a.tsx': src}, manifest: {...MANIFEST, license: {text: 'CC-BY-4.0', code: 'MIT'}}});
+  assert.ok(hub({extra: {'react/demo/clip.mp4': 'x'}}).includes('hub.video'));
+  assert.ok(hub({extra: {'react/node_modules/a.js': ''}, manifest: {...MANIFEST, license: {text: 'CC-BY-4.0', code: 'MIT'}}}).includes('hub.build'));
+  assert.ok(hub({extra: {'react/big.bin': Buffer.alloc(1024 * 1024 + 1)}}).includes('hub.size'));
+  const code = (src) => hub({extra: {'react/parts/a.tsx': src}, manifest: {...MANIFEST, license: {text: 'CC-BY-4.0', code: 'MIT'}}});
   for (const src of ['fetch("/x")', 'new WebSocket(u)', 'eval(s)', 'new Function("a")', 'setTimeout("go()", 1)', 'await import("./x")', 'document.cookie', 'localStorage.setItem(a, b)']) {
     assert.ok(code(src).includes('hub.code'), src);
   }
   assert.deepEqual(code('import {useMemo} from "react";\nexport const A = () => null;\n'), []);
-  assert.ok(hub({extra: {'visotalk/icon.svg': '<svg><script>alert(1)</script></svg>'}}).includes('hub.code'));
+  assert.ok(hub({extra: {'react/icon.svg': '<svg><script>alert(1)</script></svg>'}}).includes('hub.code'));
   assert.deepEqual(codes(motion({manifest: {...MANIFEST, license: {text: 'CC-BY-NC-4.0'}}}), {hub: false}), []);
 });
 

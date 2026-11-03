@@ -1,16 +1,15 @@
 # @motionhub/runtime
 
-What a motion's React components draw with, in any engine: their time, their frame, the motion's tokens, seeded randomness, video and a caption. The components in a motion's `visotalk/parts/` import only this and React, so they run unchanged wherever an engine provides it.
+What a motion's React components draw with, in any engine: their time, their frame, the motion's tokens, seeded randomness, video and a caption. The components in a motion's `react/parts/` import only this and React, so they run unchanged wherever an engine provides it.
 
 You do not use this package on its own: an engine binding provides it.
 
 - **Remotion**: [`@motionhub/remotion`](../remotion/README.md)
 - **HyperFrames**: [`@motionhub/hyperframes`](../hyperframes/README.md)
-- **VisoTalk**: built in.
 
 | Export | What it is |
 | --- | --- |
-| `useTime()` | Seconds since the component's sequence began (a Remotion `<Sequence>`, a HyperFrames composition, a VisoTalk scene) |
+| `useTime()` | Seconds since the component's sequence began (a Remotion `<Sequence>`, a HyperFrames composition) |
 | `useCompositionTime()` | Seconds since the film began, for motion that must run on across sequences |
 | `useCurrentFrame()`, `useVideoConfig()` | As Remotion's: the sequence's frame, and `{width, height, fps}` |
 | `useTokens()` | The motion's `tokens.json` resolved: `color.ink` (a CSS colour), `font.display` (a CSS stack), `duration.light` (seconds), `easing.light` (`[x1, y1, x2, y2]`), `caption.*` |

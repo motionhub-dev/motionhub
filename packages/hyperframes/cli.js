@@ -65,7 +65,7 @@ writeFileSync(join(out, 'motion.css'), [
 
 // ---- the script: the components, React and their runtime in one file ----
 // the components: the motion's React components, wherever its tool directories keep them
-const partsDir = join(dir, 'visotalk', 'parts');
+const partsDir = join(dir, 'react', 'parts');
 const files = existsSync(partsDir) ? readdirSync(partsDir).filter((f) => /\.tsx$/.test(f)).sort() : [];
 const virtual = [
   ...files.map((f, i) => `import * as P${i} from ${JSON.stringify(join(partsDir, f))};`),
