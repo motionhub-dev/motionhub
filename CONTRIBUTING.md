@@ -4,7 +4,13 @@ A motion arrives as a pull request that adds `motions/@<you>/<slug>/` in the [fo
 
 ## The quick way
 
-With the [motionhub skill](skills/motionhub/SKILL.md) installed (`npx skills add motionhub-dev/motions -g`), ask your agent from the project whose look you want to share:
+With the [motionhub skill](skills/motionhub/SKILL.md) installed:
+
+```sh
+npx skills add motionhub-dev/motions -g
+```
+
+ask your agent from the project whose look you want to share:
 
 ```text
 /motionhub share this project's look as a motion

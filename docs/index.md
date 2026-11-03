@@ -18,7 +18,19 @@ That is all. To make it shorter, install the skill once, for every agent on your
 npx skills add motionhub-dev/motions -g
 ```
 
-and ask `/motionhub make a film about <your topic> in @iamsuosi/clay-world`; `/motionhub share this project's look as a motion` publishes a look of your own. [Use a motion](use.md) has every way: the skill, the command line, Remotion, HyperFrames and any other engine.
+then ask:
+
+```text
+/motionhub make a film about <your topic> in @iamsuosi/clay-world
+```
+
+and, to publish a look of your own:
+
+```text
+/motionhub share this project's look as a motion
+```
+
+[Use a motion](use.md) has every way: the skill, the command line, [Remotion](remotion.md), [HyperFrames](hyperframes.md) and any other engine.
 
 ## What a motion is made of
 

@@ -59,9 +59,18 @@ const uses = [
 
   <section class="head">
     <div class="media">
-      {reel
-        ? <iframe class="poster reel" src={`/play/${id}/`} title={`${name}, playing`} sandbox="allow-scripts" loading="eager" allow="fullscreen"></iframe>
-        : <img class="poster" src={row.poster} srcset={posterSet(row.poster)} sizes="(max-width: 1040px) calc(100vw - 32px), 900px" alt={`A frame of a film in ${name}`} width="960" height="540" fetchpriority="high">}
+      {reel ? (
+        <>
+          <div class="stage" id="stage" data-src={`/play/${id}/?autoplay=1&sound=1`} data-title={`${name}, playing`}>
+            <img class="poster" src={row.poster} srcset={posterSet(row.poster)} sizes="(max-width: 1040px) calc(100vw - 32px), 900px" alt={`A frame of a film in ${name}`} width="960" height="540" fetchpriority="high">
+            <button type="button" class="stage-play" id="stage-play" aria-label={`Play ${name}'s reel, with sound`}>
+              <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor"/></svg>
+            </button>
+            <div class="stage-load" id="stage-load" role="status" hidden><span class="spin" aria-hidden="true"></span><span>Loading the player</span></div>
+          </div>
+          <p class="stage-note">Plays live in your browser, drawn by web code rather than a video, so it can use your computer's processor and graphics while it runs. The sound is on.</p>
+        </>
+      ) : <img class="poster" src={row.poster} srcset={posterSet(row.poster)} sizes="(max-width: 1040px) calc(100vw - 32px), 900px" alt={`A frame of a film in ${name}`} width="960" height="540" fetchpriority="high">}
     </div>
     <div class="side">
       <div>
@@ -92,7 +101,7 @@ const uses = [
         <p>Put in your topic and paste it into any agent that can open a URL.</p>
         <div class="skill">
           <span>Or install the skill for every agent, then use <code>/motionhub</code></span>
-          <div class="code"><pre data-copy="icon" tabindex="0"><code>{skillInstall}</code></pre></div>
+          <div class="code"><pre data-copy tabindex="0"><code>{skillInstall}</code></pre></div>
         </div>
       </div>
 
@@ -220,6 +229,30 @@ const uses = [
     // a count of none says nothing a visitor can use
     if (d.total > 0) for (const el of document.querySelectorAll<HTMLElement>('[data-stat]')) el.hidden = false;
   }).catch(() => {});
+
+  // the reel: a poster and a play button until the viewer asks for it, since a live reel takes the browser's processor and
+  // graphics; then the player's frame, under a loading mark that leaves when the player reports its first frame
+  const stage = document.getElementById('stage');
+  if (stage) {
+    const play = document.getElementById('stage-play') as HTMLButtonElement, load = document.getElementById('stage-load')!;
+    play.addEventListener('click', () => {
+      play.hidden = true;
+      load.hidden = false;
+      const frame = document.createElement('iframe');
+      frame.className = 'reel';
+      frame.title = stage.dataset.title!;
+      frame.src = stage.dataset.src!;
+      // its code is the contributor's, so it runs with no origin of its own; it may play sound and go full screen
+      frame.setAttribute('sandbox', 'allow-scripts');
+      frame.allow = 'autoplay; fullscreen';
+      const ready = () => { stage.classList.add('playing'); load.hidden = true; frame.focus(); };
+      const onMessage = (e: MessageEvent) => { if (e.source === frame.contentWindow && e.data?.type === 'motionhub:ready') { removeEventListener('message', onMessage); ready(); } };
+      addEventListener('message', onMessage);
+      // a player that never reports is shown anyway once it has loaded and had a moment
+      frame.addEventListener('load', () => setTimeout(ready, 4000));
+      stage.append(frame);
+    });
+  }
 
   // the Use it tabs, with arrow keys between them (WAI-ARIA tabs); without the script every panel shows
   for (const list of document.querySelectorAll<HTMLElement>('[role="tablist"]')) {

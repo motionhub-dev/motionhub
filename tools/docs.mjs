@@ -22,8 +22,10 @@ export const DOCS = [
     {slug: 'skill', file: 'skills/motionhub/SKILL.md', label: 'Agent skill', title: 'Agent skill'},
   ]},
   {group: 'Engines', pages: [
-    {slug: 'remotion', file: 'packages/remotion/README.md', label: 'Remotion'},
-    {slug: 'hyperframes', file: 'packages/hyperframes/README.md', label: 'HyperFrames'},
+    {slug: 'remotion', file: 'docs/remotion.md', label: 'Remotion', engine: 'Remotion'},
+    {slug: 'hyperframes', file: 'docs/hyperframes.md', label: 'HyperFrames', engine: 'HyperFrames'},
+    {slug: 'remotion-binding', file: 'packages/remotion/README.md', label: 'Remotion binding'},
+    {slug: 'hyperframes-binding', file: 'packages/hyperframes/README.md', label: 'HyperFrames binding'},
     {slug: 'runtime', file: 'packages/runtime/README.md', label: 'Runtime'},
   ]},
   {group: 'About', pages: [
