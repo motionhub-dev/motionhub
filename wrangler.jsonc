@@ -17,7 +17,7 @@
   "analytics": {"binding": "ANALYTICS_SQL"},
   // signing in with GitHub and likes (site/people.mjs); GITHUB_CLIENT_SECRET is a secret set on the Worker
   "d1_databases": [{"binding": "DB", "database_name": "motionhub", "database_id": "b3cb4780-83d2-4424-9b6a-66edeec440c7", "migrations_dir": "site/migrations"}],
-  "vars": {"GITHUB_CLIENT_ID": "PENDING"},
+  "vars": {"GITHUB_CLIENT_ID": "Ov23liASjeKx0TOW1gNl"},
   "triggers": {"crons": ["7 0 * * *"]},
   "routes": [{"pattern": "motionhub.dev", "custom_domain": true}],
   "observability": {"enabled": true}
