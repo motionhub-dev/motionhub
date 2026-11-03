@@ -58,7 +58,7 @@ async function faces(families, dir) {
   return {css, missing};
 }
 
-const page = (name, id) => `<!doctype html>
+const page = (name, id, heavy) => `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -76,11 +76,12 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
 @media (hover: none) { .bar { opacity: 1; } }
 .bar button { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.16); color: inherit; cursor: pointer; }
 .bar input { flex: 1; accent-color: #fff; }
+.big { position: absolute; left: 50%; top: 50%; width: 72px; height: 72px; margin: -36px 0 0 -36px; display: grid; place-items: center; padding: 0 0 0 4px; border: 0; border-radius: 50%; background: rgba(0, 0, 0, 0.55); color: #fff; cursor: pointer; }
 .time { font-variant-numeric: tabular-nums; opacity: 0.85; }
 </style>
 </head>
 <body>
-<div id="player" data-motion="${id}"></div>
+<div id="player" data-motion="${id}"${heavy ? ' data-heavy="1"' : ''}></div>
 <script src="reel.js"></script>
 </body>
 </html>
@@ -93,9 +94,9 @@ async function player(id) {
   mkdirSync(out, {recursive: true});
   const {css, missing} = await faces(familiesOf(tokens), out);
   writeFileSync(join(out, 'reel.css'), [...css, ':root {', ...Object.entries(tokenVariables(tokens)).map(([k, v]) => `  ${k}: ${v};`), '}', ''].join('\n'));
-  await build({
+  const {metafile} = await build({
     entryPoints: [join(HERE, 'player.jsx')],
-    bundle: true, format: 'iife', minify: true, outfile: join(out, 'reel.js'), jsx: 'automatic', target: 'es2020', logLevel: 'error',
+    bundle: true, format: 'iife', minify: true, metafile: true, outfile: join(out, 'reel.js'), jsx: 'automatic', target: 'es2020', logLevel: 'error',
     nodePaths: [join(SITE, 'node_modules')],
     define: {'process.env.NODE_ENV': '"production"'},
     alias: {'@motionhub/runtime': RUNTIME},
@@ -105,7 +106,9 @@ async function player(id) {
       b.onLoad({filter: /.*/, namespace: 'motionhub'}, () => ({contents: `export default ${JSON.stringify(tokens)};`, loader: 'js'}));
     }}],
   });
-  writeFileSync(join(out, 'index.html'), page(name, id));
+  // a reel that bundles three.js draws in 3D: the player holds it on a weak device until it is tapped
+  const heavy = Object.keys(metafile.inputs).some((f) => /node_modules\/three\//.test(f));
+  writeFileSync(join(out, 'index.html'), page(name, id, heavy));
   return missing;
 }
 

@@ -11,11 +11,17 @@ const Footage = ({style}) => <div style={{width: '100%', height: '100%', backgro
 
 const W = reel.width ?? 1920, H = reel.height ?? 1080, LENGTH = reel.seconds;
 const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+// a reel that draws in 3D waits for a tap on a device that would struggle with it: few cores, little memory, or a phone
+const heavy = document.getElementById('player').dataset.heavy === '1';
+const weak = (navigator.hardwareConcurrency ?? 8) <= 4 || (navigator.deviceMemory ?? 8) <= 4 || matchMedia('(pointer: coarse)').matches;
+const wait = still || (heavy && weak);
 const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 function Player() {
-  const [t, setT] = useState(still ? (reel.poster ?? 0) : 0);
-  const [playing, setPlaying] = useState(!still);
+  const [t, setT] = useState(wait ? (reel.poster ?? 0) : 0);
+  const [playing, setPlaying] = useState(!wait);
+  // drawing stops while the frame is scrolled out of sight, and starts again where it was
+  const [seen, setSeen] = useState(true);
   const [scale, setScale] = useState(1);
   const last = useRef(0);
   useEffect(() => {
@@ -25,18 +31,24 @@ function Player() {
     return () => removeEventListener('resize', fit);
   }, []);
   useEffect(() => {
-    if (!playing) return;
+    const io = new IntersectionObserver(([e]) => setSeen(e.isIntersecting));
+    io.observe(document.getElementById('player'));
+    return () => io.disconnect();
+  }, []);
+  useEffect(() => {
+    if (!playing || !seen) return;
     let id;
     last.current = performance.now();
     const tick = (now) => {
-      const dt = (now - last.current) / 1000;
+      // a hidden tab or a throttled frame resumes where it was, not seconds later
+      const dt = Math.min(0.1, (now - last.current) / 1000);
       last.current = now;
       setT((v) => (v + dt) % LENGTH);
       id = requestAnimationFrame(tick);
     };
     id = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(id);
-  }, [playing]);
+  }, [playing, seen]);
   useEffect(() => {
     const key = (e) => { if (e.key === ' ' || e.key === 'k') { e.preventDefault(); setPlaying((p) => !p); } };
     addEventListener('keydown', key);
@@ -48,6 +60,9 @@ function Player() {
       <div className="frame" style={{width: W, height: H, transform: `translate(-50%, -50%) scale(${scale})`}} onClick={() => setPlaying((p) => !p)}>
         <MotionRuntimeProvider value={value}><MotionRoot tokens={tokens}><Reel /></MotionRoot></MotionRuntimeProvider>
       </div>
+      {!playing && <button type="button" className="big" aria-label="Play" onClick={() => setPlaying(true)}>
+        <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor"/></svg>
+      </button>}
       <div className="bar">
         <button type="button" aria-label={playing ? 'Pause' : 'Play'} onClick={() => setPlaying((p) => !p)}>
           {playing
