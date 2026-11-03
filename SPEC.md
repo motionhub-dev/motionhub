@@ -1,6 +1,6 @@
-# Motion format 0.2
+# Motion format 0.3
 
-> **Status:** Draft · **Version:** `motion/0.2` · what each version added: §10
+> **Status:** Draft · **Version:** `motion/0.3` · what each version added: §10
 
 What a motion is on disk: the files, their fields and the rules any tool can rely on. This document only grows: a later version adds to it and never changes the meaning of what is here.
 
@@ -35,7 +35,7 @@ A JSON object with these members and no others, except extension members (§7).
 
 | Member | Required | Value |
 | --- | --- | --- |
-| `spec` | yes | `"motion/0.2"`, or `"motion/0.1"` for a motion without a scope |
+| `spec` | yes | `"motion/0.3"`; or `"motion/0.2"` for a motion without `basedOn`, or `"motion/0.1"` for one without `scope` and `basedOn` |
 | `scope` | no | The GitHub username, in lowercase, of the person or organization that publishes the motion (since 0.2) |
 | `slug` | yes | 3 to 40 characters of `a-z`, `0-9` and single hyphens, starting and ending with a letter or digit; the name of the directory it is published in (§2) |
 | `version` | yes | A [Semantic Versioning 2.0](https://semver.org) version of this motion, for example `"1.0.0"` |
@@ -45,16 +45,21 @@ A JSON object with these members and no others, except extension members (§7).
 | `license` | yes | `{ "text": SPDX, "code": SPDX }`: `text` covers the documents, tokens and pictures; `code` covers any code under a tool directory and is required when there is any |
 | `lang` | no | The [BCP 47](https://www.rfc-editor.org/info/bcp47) tag of the language `MOTION.md` is written in; `"en"` when absent |
 | `tags` | no | Up to 10 keywords, each of `a-z`, `0-9` and single hyphens, in English |
+| `basedOn` | no | The motions this one builds on: an array of 1 to 10 `{ "id": string, "version": string }`, each a motion's id (Identity) and, optionally, the version built on; no id twice, and never the motion's own (since 0.3) |
 
 ### Identity
 
 A motion's **id** is `@<scope>/<slug>` when it has a scope, and `<slug>` when it does not: `@ana/ledger-pencil`, `red-pencil`. Two motions under different scopes may have the same slug. Only the owner of a GitHub account publishes under its scope; what an unscoped id means is for the collection that holds it to say (motionhub keeps them for its maintainers' official motions). Tools name, fetch and credit a motion by its id.
 
+### Building on another motion
+
+A motion made from another names it in `basedOn`, by its id and the version it started from: `"basedOn": [{ "id": "red-pencil", "version": "1.0.2" }]`. This is the credit tools show and follow; `CREDITS.md` still says what was taken and what changed, as its licence asks. A tool does not require a motion named in `basedOn` to be at hand.
+
 An SPDX value is an [SPDX license expression](https://spdx.github.io/spdx-spec/v2.3/SPDX-license-expressions/), for example `"CC-BY-4.0"` or `"MIT"`.
 
 ```json
 {
-  "spec": "motion/0.2",
+  "spec": "motion/0.3",
   "scope": "ana",
   "slug": "lab-notebook",
   "version": "1.0.0",
@@ -140,7 +145,7 @@ What several tools come to share moves into a later version of this format.
 
 A motion's `version` changes whenever any of its files change. A published version is never changed: a fix is a new version. A film that uses a motion keeps the copy it took.
 
-`spec` names the version of this format. A tool that meets a `spec` it does not know does not guess its meaning. A tool that reads a version reads every version before it: a `motion/0.1` motion is a `motion/0.2` motion without a scope.
+`spec` names the version of this format. A tool that meets a `spec` it does not know does not guess its meaning. A tool that reads a version reads every version before it: a `motion/0.1` motion is a `motion/0.2` motion without a scope, and a `motion/0.2` motion is a `motion/0.3` motion without `basedOn`.
 
 ## 10. Versions of this format
 
@@ -148,3 +153,4 @@ A motion's `version` changes whenever any of its files change. A published versi
 | --- | --- |
 | `motion/0.1` | The format: five files, `motion.json`, `tokens.json`, `MOTION.md`, extensions, languages |
 | `motion/0.2` | `scope`, and a motion's id `@<scope>/<slug>` (§3, Identity) |
+| `motion/0.3` | `basedOn`: the motions a motion builds on (§3, Building on another motion) |

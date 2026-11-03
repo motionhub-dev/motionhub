@@ -27,6 +27,7 @@ Write `MOTION.md` in English if you can, or add an English translation next to i
 - **Assets.** Your own, or CC0, CC BY or OFL, each named in `CREDITS.md` with its source. Public-domain artworks are welcome when `CREDITS.md` says where they come from.
 - **Size.** At most 1 MB for the whole motion, the poster included. No video, audio over 500 KB, or build output in the repository.
 - **Directory.** A motion sits in `motions/<slug>/`, named by its `slug` (`hub.slug`).
+- **Built on.** Every motion named in `basedOn` is one in this catalogue (`hub.basedOn`).
 - **Signed commits.** Every commit carries a `Signed-off-by:` line (`git commit -s`), certifying the [Developer Certificate of Origin](https://developercertificate.org): you have the right to contribute what it contains under its licence.
 
 ## Original work
@@ -37,7 +38,7 @@ A motion is a look of your own. You may learn from any film or project, and say 
 - No copy of another project's code, artwork, fonts or text, whatever its licence, unless that licence allows it and `CREDITS.md` names it.
 - An art movement or a painter's manner is fine. A copy of a particular protected artwork is not.
 
-Building on another motion is welcome when its licence allows it (every licence accepted here does): publish yours under your own scope, say in `CREDITS.md` what you took and what you changed, and keep its notices for any code you copied.
+Building on another motion is welcome when its licence allows it (every licence accepted here does): publish yours under your own scope, name it in `basedOn` in `motion.json` ([SPEC.md](SPEC.md) §3, a motion in this catalogue), say in `CREDITS.md` what you took and what you changed, and keep its notices for any code you copied. The motion you built on shows yours, and its creator's page counts it.
 
 A pull request that breaks these is closed. If you hold rights in something here, open an issue and it will be looked at quickly.
 

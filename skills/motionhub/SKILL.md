@@ -5,7 +5,7 @@ description: Find a motion (a reusable look for narrated and explanatory video) 
 
 # Making a film in a motion
 
-A **motion** is a look for narrated and explanatory video, written down: how a film looks (ground, colour, type) and how it moves (how things arrive, change and leave). It holds no film: no story, script, scenes or timings. You bring the story; the motion decides how it looks and moves. The format is [SPEC.md](https://github.com/motionhub-dev/motions/blob/main/SPEC.md) (`motion/0.2`). A motion is named by its id: `red-pencil` for an official one, `@ana/ledger-pencil` for one a creator published.
+A **motion** is a look for narrated and explanatory video, written down: how a film looks (ground, colour, type) and how it moves (how things arrive, change and leave). It holds no film: no story, script, scenes or timings. You bring the story; the motion decides how it looks and moves. The format is [SPEC.md](https://github.com/motionhub-dev/motions/blob/main/SPEC.md) (`motion/0.3`). A motion is named by its id: `red-pencil` for an official one, `@ana/ledger-pencil` for one a creator published.
 
 A motion is a directory:
 
@@ -92,7 +92,7 @@ To publish a look the person made (only when they ask):
 4. Optionally the reusable components, in `react/parts/` as [CONTRIBUTING.md](https://github.com/motionhub-dev/motions/blob/main/CONTRIBUTING.md) describes: React components that import only `react` and `@motionhub/runtime` (in Remotion, `useTime()` and `useVideoConfig()` from it instead of Remotion's), take what changes as props, and hold nothing of this film's story.
 5. `npx @motionhub/cli share <slug>` runs the checks its pull request will run, as the person's GitHub account. Show them the result; with their yes, `npx @motionhub/cli share <slug> --pr` opens the pull request from their fork.
 
-To build on someone else's motion, publish yours under your own scope and credit theirs, by its id, in `CREDITS.md`; only its authors change the original.
+To build on someone else's motion, publish yours under your own scope, name theirs in `motion.json`'s `basedOn` (`[{"id": "red-pencil", "version": "1.0.2"}]`) and say in `CREDITS.md` what you took and changed; only its authors change the original.
 
 ## 8. Check before you hand it over
 
