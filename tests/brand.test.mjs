@@ -24,12 +24,13 @@ test('both themes name the same colours, each a DTCG colour whose components agr
   }
 });
 
-test('text reads on every ground at WCAG AA, and the mark and a like stand out at 3:1', () => {
+test('text reads on every ground at WCAG AA, the mark, a like and the accent stand out at 3:1, and text reads on the accent', () => {
   for (const [theme, c] of [['light', light], ['dark', dark]]) {
     for (const ground of ['bg', 'surface', 'surface-2']) {
       for (const ink of ['text', 'text-2', 'muted']) assert.ok(contrast(c[ink], c[ground]) >= 4.5, `${theme} ${ink} on ${ground}: ${contrast(c[ink], c[ground]).toFixed(2)}`);
-      for (const ink of ['mark', 'like']) assert.ok(contrast(c[ink], c[ground]) >= 3, `${theme} ${ink} on ${ground}: ${contrast(c[ink], c[ground]).toFixed(2)}`);
+      for (const ink of ['mark', 'like', 'accent']) assert.ok(contrast(c[ink], c[ground]) >= 3, `${theme} ${ink} on ${ground}: ${contrast(c[ink], c[ground]).toFixed(2)}`);
     }
+    assert.ok(contrast(c['on-accent'], c.accent) >= 4.5, `${theme} on-accent on accent: ${contrast(c['on-accent'], c.accent).toFixed(2)}`);
   }
 });
 

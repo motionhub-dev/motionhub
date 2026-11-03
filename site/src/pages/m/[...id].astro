@@ -1,9 +1,11 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Card from '../../components/Card.astro';
+import Engine from '../../components/Engine.astro';
+import Prompt from '../../components/Prompt.astro';
 import {existsSync} from 'node:fs';
 import {join} from 'node:path';
-import {REPO, ROOT, SITE, SPEC, TOPIC, agentPrompt, aka, posterSet, builtOn, builtOnBy, byAuthor, colours, creatorPath, en, faces, kb, markdown, read, rows, skillInstall, toolEngines, translations} from '../../lib/catalogue.mjs';
+import {REPO, ROOT, SITE, SPEC, TOPIC, aka, posterSet, builtOn, builtOnBy, byAuthor, colours, creatorPath, en, faces, kb, markdown, read, rows, skillInstall, toolEngines, translations} from '../../lib/catalogue.mjs';
 
 export function getStaticPaths() {
   return rows.map((row) => ({params: {id: row.slug}, props: {row}}));
@@ -22,28 +24,27 @@ const source = `${REPO}/tree/main/motions/${id}`;
 const on = builtOn(row), by = builtOnBy(id);
 
 const engines = row.tools.flatMap(toolEngines);
-const prompt = agentPrompt(id);
 const get = `npx @motionhub/cli get ${id}`;
 // the ways to use it, each as steps: a label, then a command to copy or a note
 const uses = [
-  {id: 'agent', label: 'Agent', hint: 'recommended', steps: [
-    {label: 'Paste the prompt into your agent', code: prompt, note: 'Any agent that can open a URL: it reads llms.txt, fetches the motion, checks it against its SHA-256 and makes your film in whatever engine it uses.'},
+  {id: 'agent', label: 'Agent', steps: [
+    {label: 'Copy the prompt, put in your topic and paste it into your agent', prompt: true, note: 'Any agent that can open a URL: it reads llms.txt, fetches the motion, checks it against its SHA-256 and makes your film in whatever engine it uses.'},
     {label: 'Optional: install the motionhub skill, so your agent knows the steps without llms.txt', code: skillInstall,
      note: `That puts it where Claude Code finds skills for this project (~/.claude/skills/ for all of them); another agent takes the same SKILL.md wherever it keeps skills. Then the prompt can be: Make a film about ${TOPIC} in the motion ${id}`},
   ], more: {href: '/docs/skill/', text: 'What the agent does'}},
   ...(react ? [
-    {id: 'remotion', label: 'Remotion', hint: 'components', steps: [
+    {id: 'remotion', label: 'Remotion', engine: true, steps: [
       {label: 'Fetch the motion into ./motion', code: get},
       {label: 'Add the Remotion binding', code: 'npm i @motionhub/remotion'},
       {label: 'Wrap your composition, then use the parts in ./motion/react/parts/', code: "import tokens from '../motion/tokens.json';\n\n<MotionProvider tokens={tokens}>\n  <MotionFonts />\n  {/* your scenes */}\n</MotionProvider>"},
     ], more: {href: '/docs/remotion/', text: 'Remotion guide'}},
-    {id: 'hyperframes', label: 'HyperFrames', hint: 'components', steps: [
+    {id: 'hyperframes', label: 'HyperFrames', engine: true, steps: [
       {label: 'Fetch the motion into ./motion', code: get},
       {label: 'Add the HyperFrames binding and write its assets', code: 'npm i @motionhub/hyperframes\nnpx motionhub-hyperframes motion --out assets/motion'},
       {label: 'Load assets/motion/motion.css and motion.js, then draw its components from your GSAP timeline', code: 'Motion.mount(el, (t) => [/* Motion.components */]);'},
     ], more: {href: '/docs/hyperframes/', text: 'HyperFrames guide'}},
   ] : []),
-  {id: 'any', label: 'Any engine', hint: 'words and tokens', steps: [
+  {id: 'any', label: 'Any engine', steps: [
     {label: 'Get the files', code: get, note: `No Node? Download the package, or read MOTION.md and tokens.json at ${SITE}/m/${id}/.`},
     {label: 'Turn tokens.json into your engine\u2019s theme, once', note: 'W3C design tokens: colours as hex, faces as font stacks, durations in seconds, easings as cubic-bezier curves. The same values work in HTML and CSS, GSAP, Motion Canvas or a renderer of your own.'},
     {label: 'Follow MOTION.md for how things look and move', note: 'And credit the look and its fonts as CREDITS.md asks.'},
@@ -80,18 +81,13 @@ const uses = [
       </div>
 
       <div class="make" id="make">
-        <div class="try-head">
-          <h2>Make a film in this look</h2>
-          <span>Nothing to install</span>
-        </div>
-        <label for="topic" class="sr">Your topic</label>
-        <input id="topic" type="text" placeholder="Your topic" autocomplete="off">
-        <pre class="prompt" id="prompt" data-topic={TOPIC}>{prompt}</pre>
-        <button type="button" class="btn primary" id="copy-prompt">
+        <h2>Make a film in this look</h2>
+        <Prompt id="prompt" slug={id} />
+        <button type="button" class="btn accent" data-copy-prompt="prompt">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
           <span>Copy prompt</span>
         </button>
-        <p>Paste it into any agent that can open a URL. <a href="#use">Other ways to use it</a></p>
+        <p>Put in your topic and paste it into any agent that can open a URL. <a href="#use">Other ways</a></p>
       </div>
 
       <div class="do">
@@ -110,7 +106,7 @@ const uses = [
         <dt data-stat hidden>Downloads</dt><dd data-stat hidden id="downloads" data-id={id}></dd>
         {on.length > 0 && <><dt>Built on</dt><dd>{on.map((b, i) => <>{i > 0 && ', '}<a href={`/m/${b.id}/`}>{en(b.row.name)}</a>{b.version && <span class="mono"> {b.version}</span>}</>)}</dd></>}
         {by.length > 0 && <><dt>Built on by</dt><dd>{by.map((r, i) => <>{i > 0 && ', '}<a href={`/m/${r.slug}/`}>{en(r.name)}</a></>)}</dd></>}
-        <dt>Works in</dt><dd>{engines.map((e) => <span class="badge">{e}</span>)}<span>{engines.length ? 'with components; any other engine' : 'Any engine'}, from MOTION.md</span></dd>
+        <dt>Works in</dt><dd>{engines.map((e) => <Engine name={e} />)}<span class="muted">{engines.length ? 'and any engine' : 'Any engine'}, from MOTION.md</span></dd>
         <dt>Version</dt><dd class="mono">{row.version}</dd>
         <dt>Format</dt><dd><span class="mono">{row.spec}</span>{row.spec !== SPEC && <span class="muted" title={`The format version this motion is written to. Every later version of the spec reads it; the newest is ${SPEC}.`}>· read by {SPEC}</span>}</dd>
         <dt>Licence</dt><dd>{row.license.text} for the look{row.license.code && ` · ${row.license.code} for the code`}</dd>
@@ -121,9 +117,9 @@ const uses = [
   </section>
 
   <section class="section" id="use">
-    <h2 class="s">Use it your way <small>An open format: the same look in every engine</small></h2>
+    <h2 class="s">Use it</h2>
     <div class="tabs" role="tablist" aria-label="Use it with">
-      {uses.map((u, i) => <button type="button" role="tab" id={`tab-${u.id}`} aria-controls={`use-${u.id}`} aria-selected={String(i === 0)} tabindex={i === 0 ? 0 : -1}>{u.label}<span class="hint"> · {u.hint}</span></button>)}
+      {uses.map((u, i) => <button type="button" role="tab" id={`tab-${u.id}`} aria-controls={`use-${u.id}`} aria-selected={String(i === 0)} tabindex={i === 0 ? 0 : -1}>{u.engine ? <Engine name={u.label} /> : u.label}</button>)}
     </div>
     {uses.map((u, i) => (
       <div class="panel" role="tabpanel" id={`use-${u.id}`} aria-labelledby={`tab-${u.id}`} hidden={i !== 0}>
@@ -131,6 +127,7 @@ const uses = [
           {u.steps.map((st) => (
             <li>
               <span class="label">{st.label}</span>
+              {st.prompt && <div class="code"><Prompt id="prompt-agent" slug={id} class="prompt-plain" copy /></div>}
               {st.code && <div class="code"><pre data-copy tabindex="0"><code>{st.code}</code></pre></div>}
               {st.note && <p>{st.note}</p>}
             </li>
@@ -217,21 +214,6 @@ const uses = [
     // a count of none says nothing a visitor can use
     if (d.total > 0) for (const el of document.querySelectorAll<HTMLElement>('[data-stat]')) el.hidden = false;
   }).catch(() => {});
-
-  // the prompt to paste into an agent, with the visitor's topic in it; the agent tab's first step follows it
-  const topic = document.getElementById('topic') as HTMLInputElement;
-  const prompts = [document.getElementById('prompt')!, document.querySelector<HTMLElement>('#use-agent pre code')].filter(Boolean) as HTMLElement[];
-  const base = prompts[0].textContent!, placeholder = prompts[0].dataset.topic!;
-  const copyBtn = document.getElementById('copy-prompt')!, copyText = copyBtn.querySelector('span')!;
-  topic.addEventListener('input', () => {
-    const t = topic.value.trim().replace(/"/g, '\u201d') || placeholder;
-    for (const el of prompts) el.textContent = base.replace(`"${placeholder}"`, `"${t}"`);
-    copyText.textContent = 'Copy prompt';
-  });
-  copyBtn.addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(prompts[0].textContent!.trim()); copyText.textContent = 'Copied'; }
-    catch { copyText.textContent = 'Select and copy'; }
-  });
 
   // the Use it tabs, with arrow keys between them (WAI-ARIA tabs); without the script every panel shows
   for (const list of document.querySelectorAll<HTMLElement>('[role="tablist"]')) {

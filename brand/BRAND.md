@@ -1,7 +1,7 @@
 # The motionhub brand
 
 The site is quiet so the motions can be loud. motionhub's own look is paper and ink, one ordinary type family, and
-one vermilion that belongs to the logo. Everything here is the source the site and the logo files are made from.
+one vermilion that belongs to the logo and to the one action a page asks for. Everything here is the source the site and the logo files are made from.
 
 ## Files
 
@@ -31,14 +31,19 @@ one vermilion that belongs to the logo. Everything here is the source the site a
 | `muted` | `#6B645A` | `#A89E90` | labels, counts, captions |
 | `mark` | `#E2442B` | `#FF6A4D` | the logo, and nothing else |
 | `like` | `#C24A33` | `#FF7A5E` | a like that has been given, and nothing else |
+| `accent` | `#C4381F` | `#FF6A4D` | the one call to action a page has (Copy prompt), and nothing else |
+| `on-accent` | `#FBF8F2` | `#1A1714` | text on `accent` |
 
-- The interface is ink on paper. Buttons, links and focus are `text`, not a colour: colour on the page is the
+- The interface is ink on paper. Buttons, links and focus are `text`, not a colour (`accent` aside): colour on the page is the
   motions' posters and samples.
-- Vermilion is two tokens with two jobs. `mark` is the logo; `like` is a like the viewer has given. Neither is an
-  accent, a link colour or a warning.
-- Every text colour reads on every ground at WCAG AA (4.5:1), and `mark` and `like` at 3:1. `tests/brand.test.mjs`
-  holds the tokens to it, so a colour that fails does not merge.
-- Dark follows the system unless a page sets `data-theme="light"`; `data-theme="dark"` forces it.
+- Vermilion is three tokens with three jobs. `mark` is the logo; `like` is a like the viewer has given; `accent` is
+  the one thing a page most wants a visitor to do, at most once a page. None is a link colour or a warning.
+- Every text colour reads on every ground at WCAG AA (4.5:1), `mark`, `like` and `accent` at 3:1, and `on-accent`
+  on `accent` at 4.5:1. `tests/brand.test.mjs` holds the tokens to it, so a colour that fails does not merge.
+- Dark follows the system unless a page sets `data-theme="light"`; `data-theme="dark"` forces it. The footer's
+  theme switch sets it, and remembers the choice in the browser.
+- Remotion's and HyperFrames' logos appear beside their names where a motion works in them, as each project draws
+  them (`site/src/assets/engines/`). They are their owners' marks, never recoloured or used for anything else.
 
 ## Type
 

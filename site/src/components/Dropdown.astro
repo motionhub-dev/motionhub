@@ -1,0 +1,19 @@
+---
+// A labelled dropdown, the same on every page. It is a native <select> underneath, so a page's script reads and sets
+// `select.value` and listens for `change` as it would on any select; Base.astro's script draws the button and the
+// list over it (a WAI-ARIA listbox) and keeps the two in step. Without the script the native select shows.
+interface Option { value: string; text: string }
+interface Props { id: string; label: string; options: Option[]; value?: string; fieldId?: string; hidden?: boolean }
+const {id, label, options, value = options[0]?.value ?? '', fieldId, hidden = false} = Astro.props;
+---
+<div class="dd" id={fieldId} hidden={hidden} data-dd>
+  <label class="dd-label" for={id} id={`${id}-label`}>{label}</label>
+  <select id={id}>
+    {options.map((o) => <option value={o.value} selected={o.value === value}>{o.text}</option>)}
+  </select>
+  <button type="button" class="dd-btn" id={`${id}-btn`} aria-haspopup="listbox" aria-expanded="false" aria-labelledby={`${id}-label ${id}-btn`}>
+    <span class="dd-value">{(options.find((o) => o.value === value) ?? options[0])?.text}</span>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+  </button>
+  <ul class="dd-list" role="listbox" tabindex="-1" aria-labelledby={`${id}-label`} hidden></ul>
+</div>

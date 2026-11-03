@@ -1,0 +1,10 @@
+---
+// An engine's name, with its project's own logo where we have it (brand/BRAND.md: never recoloured).
+import remotion from '../assets/engines/remotion.svg?url';
+import hyperframes from '../assets/engines/hyperframes.svg?url';
+const LOGOS: Record<string, string> = {Remotion: remotion, HyperFrames: hyperframes};
+interface Props { name: string; class?: string }
+const {name, class: cls = 'engine'} = Astro.props;
+const logo = LOGOS[name];
+---
+<span class={cls}>{logo && <img src={logo} alt="" width="16" height="16" aria-hidden="true">}{name}</span>
