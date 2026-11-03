@@ -7,5 +7,6 @@ The open motion format and the public catalogue behind motionhub.dev. Read [READ
 - **English** for everything a developer reads: code, comments, documents, commit messages. A motion's own `MOTION.md`, translations and descriptions are in whatever language its author chooses (SPEC.md §8).
 - **Every commit is signed off** (`git commit -s`); the checks refuse a pull request without it.
 - **The brand lives in `brand/`** ([brand/BRAND.md](brand/BRAND.md)): a colour, size or font is decided in `brand/brand.tokens.json` and nowhere else, and the site is quiet so the motions can be loud.
-- Before pushing: `npm test`, `node tools/check.mjs` and `node tools/build.mjs`.
+- Before pushing: `npm test`, `node tools/check.mjs` and `node tools/build.mjs`; for a change to the site, `npm run build` in `site/` too.
+- **The site's dependencies stay in `site/`.** The repository's root is the zero-dependency `@motionhub/cli` package; the pages are an Astro project with its own `package.json` and lockfile.
 - Talk to the developer in Chinese.

@@ -30,7 +30,8 @@ jobs:
         with:
           node-version: 22
       - name: Build
-        run: node tools/build.mjs
+        working-directory: site
+        run: npm ci --no-audit --no-fund && npm run build
       - name: Publish new packages
         run: |
           for f in $(find dist/m -name "*.tgz" | sort); do

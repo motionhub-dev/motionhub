@@ -1,0 +1,150 @@
+---
+import Base from '../../layouts/Base.astro';
+import Card from '../../components/Card.astro';
+import {REPO, SITE, byAuthor, colours, en, faces, kb, markdown, other, read, rows, translations} from '../../lib/catalogue.mjs';
+
+export function getStaticPaths() {
+  return rows.map((row) => ({params: {id: row.slug}, props: {row}}));
+}
+
+const {row} = Astro.props;
+const id = row.slug, name = en(row.name), zh = other(row.name);
+const tokens = JSON.parse(read(id, 'tokens.json') || '{}');
+const doc = markdown(read(id, 'MOTION.md').replace(/^# .*\n+/, ''));
+const credits = markdown(read(id, 'CREDITS.md').replace(/^# .*\n+/, ''));
+const react = row.tools.includes('react');
+const more = [...new Map(row.authors.flatMap((a) => byAuthor.get(a.github) ?? []).filter((r) => r.slug !== id).map((r) => [r.slug, r])).values()].slice(0, 6);
+const source = `${REPO}/tree/main/motions/${id}`;
+
+const uses = [
+  {id: 'agent', label: 'Any agent', lead: 'Ask any agent that has the motionhub skill, or can read llms.txt. It fetches the motion, checks it and makes your film in its look.',
+   code: `Make a film about <your topic> in the motion ${SITE}/m/${id}/`},
+  {id: 'cli', label: 'Command line', lead: 'Fetch the motion into ./motion, checked against its SHA-256.',
+   code: `npx @motionhub/cli get ${id}`},
+  {id: 'remotion', label: 'Remotion', lead: react ? 'Its React components run in Remotion as they are, and its tokens become Remotion values for what you draw yourself.' : 'Its tokens become Remotion values; MOTION.md says how to draw in it.',
+   code: `npx @motionhub/cli get ${id}\nnpm i @motionhub/remotion`, more: `${REPO}/tree/main/packages/remotion#readme`},
+  {id: 'hyperframes', label: 'HyperFrames', lead: react ? 'Its React components are drawn at your GSAP timeline’s time; its tokens become CSS variables and eases, its faces local files.' : 'Its tokens become CSS variables and GSAP eases, its faces local files.',
+   code: `npx @motionhub/cli get ${id}\nnpm i @motionhub/hyperframes\nnpx motionhub-hyperframes motion --out assets/motion`, more: `${REPO}/tree/main/packages/hyperframes#readme`},
+];
+---
+<Base title={`${name}: a motion on motionhub`} description={en(row.line)} path={`/m/${id}/`} image={row.poster}>
+  <p class="crumb"><a href="/">Motions</a> / {id}</p>
+
+  <section class="head">
+    <div class="media">
+      <img class="poster" src={row.poster} alt={`A frame of a film in ${name}`} width="960" height="540" fetchpriority="high">
+    </div>
+    <aside>
+      <div>
+        <h1>{name}{zh && <small>{zh}</small>}</h1>
+        <p class="line">{en(row.line)}</p>
+      </div>
+
+      <div class="who">
+        {row.authors.map((a) => {
+          const n = byAuthor.get(a.github)?.length ?? 0;
+          return (
+            <a class="person" href={`https://github.com/${a.github}`}>
+              <img src={`https://github.com/${a.github}.png?size=64`} alt="" width="32" height="32" loading="lazy">
+              <span><b>{a.name}</b><small>@{a.github} · {n} {n === 1 ? 'motion' : 'motions'}</small></span>
+              {!row.scope && <span class="official" title="Published by motionhub's maintainers">OFFICIAL</span>}
+            </a>
+          );
+        })}
+      </div>
+
+      <div class="do">
+        <a class="btn primary" href={row.package.url} download>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 4v12M6 11l6 6 6-6M5 20h14"/></svg>
+          Download {row.version}
+        </a>
+        <a class="btn" href={source}>Source</a>
+      </div>
+
+      <dl class="facts">
+        <dt>Version</dt><dd class="mono">{row.version}</dd>
+        <dt>Format</dt><dd class="mono">{row.spec}</dd>
+        <dt>Licence</dt><dd>{row.license.text} for the look{row.license.code && ` · ${row.license.code} for the code`}</dd>
+        {row.tags.length > 0 && <><dt>Looks</dt><dd>{row.tags.map((t) => <a class="chip" href={`/?tag=${encodeURIComponent(t)}`}>{t}</a>)}</dd></>}
+        <dt>Ready for</dt><dd>{row.tools.map((t) => <span class="badge">{t}</span>)}<span>{row.tools.length ? '· ' : ''}any agent, from MOTION.md</span></dd>
+        <dt>Package</dt><dd>{kb(row.package.bytes)}, <code class="hash" title={`SHA-256 ${row.package.sha256}`}>sha256:{row.package.sha256.slice(0, 12)}</code></dd>
+      </dl>
+    </aside>
+  </section>
+
+  <section class="section" id="use">
+    <h2 class="s">Use it</h2>
+    <div class="tabs" role="tablist" aria-label="Use it with">
+      {uses.map((u, i) => <button type="button" role="tab" id={`tab-${u.id}`} aria-controls={`use-${u.id}`} aria-selected={String(i === 0)} tabindex={i === 0 ? 0 : -1}>{u.label}</button>)}
+    </div>
+    {uses.map((u, i) => (
+      <div class="panel" role="tabpanel" id={`use-${u.id}`} aria-labelledby={`tab-${u.id}`} hidden={i !== 0}>
+        <p>{u.lead}{u.more && <> <a href={u.more}>How to use it</a></>}</p>
+        <div class="code"><pre data-copy><code>{u.code}</code></pre></div>
+      </div>
+    ))}
+  </section>
+
+  <section class="section split">
+    <article>
+      <div class="doc-head">
+        <h2 class="s">MOTION.md</h2>
+        <span>
+          {translations(id).map((l) => <><a href={`/m/${id}/MOTION.${l}.md`}>{l}</a> · </>)}
+          <a href={`/m/${id}/MOTION.md`}>Raw</a> · <a href={`${REPO}/blob/main/motions/${id}/MOTION.md`}>GitHub</a>
+        </span>
+      </div>
+      <div class="doc" set:html={doc} />
+    </article>
+    <aside>
+      <div>
+        <h2 class="s">Colours <small><a href={`/m/${id}/tokens.json`}>tokens.json</a></small></h2>
+        <ul class="swatches">
+          {colours(tokens).map((c) => <li title={c.description}><i style={`background:${c.hex}`}></i><b>{c.name}</b><code>{c.hex}</code></li>)}
+        </ul>
+      </div>
+      <div>
+        <h2 class="s">Faces</h2>
+        <dl class="faces">
+          {faces(tokens).map((f) => <><dt>{f.name}</dt><dd>{f.faces.join(', ')}</dd></>)}
+        </dl>
+      </div>
+      {credits && (
+        <div>
+          <h2 class="s">Credits</h2>
+          <div class="doc small" set:html={credits} />
+        </div>
+      )}
+    </aside>
+  </section>
+
+  {more.length > 0 && (
+    <section class="more">
+      <h2 class="s">More by {row.authors.map((a) => a.name).join(', ')}</h2>
+      <div class="grid">{more.map((r) => <Card row={r} small />)}</div>
+    </section>
+  )}
+</Base>
+
+<script>
+  // the Use it tabs, with arrow keys between them (WAI-ARIA tabs); without the script every panel shows
+  for (const list of document.querySelectorAll<HTMLElement>('[role="tablist"]')) {
+    const tabs = [...list.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+    const pick = (tab: HTMLButtonElement, focus = false) => {
+      for (const t of tabs) {
+        const on = t === tab;
+        t.setAttribute('aria-selected', String(on));
+        t.tabIndex = on ? 0 : -1;
+        document.getElementById(t.getAttribute('aria-controls')!)!.hidden = !on;
+      }
+      if (focus) tab.focus();
+    };
+    tabs.forEach((t, i) => {
+      t.addEventListener('click', () => pick(t));
+      t.addEventListener('keydown', (e) => {
+        const j = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : -2;
+        if (j !== -2) { e.preventDefault(); pick(tabs[(j + tabs.length) % tabs.length], true); }
+      });
+    });
+  }
+</script>

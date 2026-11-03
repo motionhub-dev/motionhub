@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Builds the files motionhub.dev serves (HUB.md, "What motionhub.dev serves") from motions/ and skills/, with no
-// dependencies. The site's pages are built from the same output.
+// dependencies. The site's pages are built from this output by site/ (npm run build there).
 //
 //   node tools/build.mjs [out]      default out: dist/
 //
@@ -10,8 +10,8 @@
 //   m/<id>/<file>                    the newest version's motion.json, MOTION*.md, tokens.json, CREDITS.md, poster.jpg
 //   m/<id>/<version>.tgz             the whole motion, its paths under <id>/; the same files always give the same bytes
 //   llms.txt                         the generic skill, for agents (skills/motionhub/SKILL.md without its front matter)
-//   index.html, m/<slug>/index.html  the gallery and a page per motion, with 404.html, site.css, _headers,
-//                                    robots.txt and sitemap.xml (tools/site.mjs)
+//   _headers, robots.txt, sitemap.xml  beside the pages (tools/site.mjs); the pages themselves, index.html,
+//                                    m/<id>/index.html and 404.html, are site/'s Astro build over these files
 //   favicon.svg, favicon-32.png, apple-touch-icon.png, icon-192.png, icon-512.png, site.webmanifest, og-default.png
 //                                    the brand's icons and default share card, copied from brand/
 //   .assetsignore                    keeps the packages out of the deployed assets: the Worker serves them from R2
@@ -27,7 +27,7 @@ import {checkMotion, listMotions, motionId} from './check.mjs';
 
 /** The index's own format. A row adds members over time and says its motion's `spec`; readers of motion/0.1 still read it. */
 export const INDEX_SPEC = 'motion/0.1';
-import {writeSite} from './site.mjs';
+import {writeSiteFiles} from './site.mjs';
 
 const ROOT = resolve(fileURLToPath(import.meta.url), '../..');
 const SERVED = /^(motion\.json|MOTION(\.[A-Za-z0-9-]+)?\.md|tokens\.json|CREDITS\.md|poster\.jpg)$/;
@@ -111,7 +111,7 @@ export function build(out, root = ROOT) {
   writeFileSync(join(out, 'api/motions.json'), JSON.stringify({spec: INDEX_SPEC, motions: rows}, null, 2) + '\n');
   const skill = readFileSync(join(root, 'skills/motionhub/SKILL.md'), 'utf8');
   writeFileSync(join(out, 'llms.txt'), skill.replace(/^---\n[\s\S]*?\n---\n+/, ''));
-  writeSite(out, rows, motions, readFileSync(join(ROOT, 'tools/site.css'), 'utf8'));
+  writeSiteFiles(out, rows);
   // the brand's favicons, web manifest and default share card, from brand/ (BRAND.md)
   for (const [dir, names] of [['favicon', ['favicon.svg', 'favicon-32.png', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'site.webmanifest']], ['social', ['og-default.png']]]) {
     for (const name of names) copyFileSync(join(ROOT, 'brand', dir, name), join(out, name));
