@@ -213,3 +213,10 @@ test('the motionhub command checks the current motion, and says how it is used',
   assert.match(execFileSync(process.execPath, [bin, '--help'], {encoding: 'utf8'}), /usage: motionhub check/);
   assert.throws(() => execFileSync(process.execPath, [bin, 'check', '--author', 'someone-else'], {cwd: dir, stdio: 'pipe'}));
 });
+
+test('a reel has a default export and runs at most 30 seconds', () => {
+  const reel = (src) => codes(motion({extra: {'react/reel.tsx': src}, manifest: {...MANIFEST, license: {text: 'CC-BY-4.0', code: 'MIT'}}}));
+  assert.deepEqual(reel('export const reel = {seconds: 20};\nexport default function Reel() { return null; }\n').filter((c) => c === 'hub.reel'), []);
+  assert.ok(reel('export const reel = {seconds: 45};\nexport default function Reel() { return null; }\n').includes('hub.reel'));
+  assert.ok(reel('export function Reel() { return null; }\n').includes('hub.reel'));
+});

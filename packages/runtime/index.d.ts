@@ -37,3 +37,8 @@ export declare const useTokens: () => Tokens;
 export declare const Video: FC<VideoProps>;
 export declare const MotionRoot: FC<{tokens?: Tokens; style?: CSSProperties; children?: ReactNode}>;
 export declare const Caption: FC<{children?: ReactNode; opacity?: number; style?: CSSProperties}>;
+
+export type EasingFn = (x: number) => number;
+export declare const Easing: {linear: EasingFn; bezier(x1: number, y1: number, x2: number, y2: number): EasingFn; inOutSine: EasingFn; outCubic: EasingFn; outQuart: EasingFn; inOutCubic: EasingFn; outBack: EasingFn};
+export declare function interpolate(input: number, inputRange: number[], outputRange: number[], options?: {easing?: EasingFn; clamp?: boolean}): number;
+export declare const Sequence: FC<{from?: number; duration?: number; children?: ReactNode}>;

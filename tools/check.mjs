@@ -33,6 +33,7 @@ const DOC_BYTES = 16 * 1024;
 const POSTER_BYTES = 500 * 1024;
 
 // The hub's rules (CONTRIBUTING.md)
+const REEL_SECONDS = 30;
 const TEXT_LICENSES = new Set(['CC-BY-4.0', 'CC-BY-SA-4.0', 'CC0-1.0']);
 const CODE_LICENSES = new Set(['MIT', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'ISC', '0BSD']);
 const MOTION_BYTES = 1024 * 1024;
@@ -350,6 +351,13 @@ function checkHub(dir, manifest, {author, official, was}, add) {
     }
   }
   if (total > MOTION_BYTES) add('hub.size', '.', `${total} bytes: a motion is at most ${MOTION_BYTES}`);
+  // a reel is what the motion's page plays live: a default export and how long it runs
+  if (existsSync(join(dir, 'react/reel.tsx'))) {
+    const reel = readFileSync(join(dir, 'react/reel.tsx'), 'utf8');
+    const seconds = Number(/export\s+const\s+reel\s*=\s*\{[^}]*\bseconds\s*:\s*([\d.]+)/.exec(reel)?.[1]);
+    if (!/export\s+default\b/.test(reel)) add('hub.reel', 'react/reel.tsx', 'a reel has a default export: the component the player draws');
+    if (!(seconds > 0 && seconds <= REEL_SECONDS)) add('hub.reel', 'react/reel.tsx', `a reel exports \`const reel = {seconds}\`, at most ${REEL_SECONDS}`);
+  }
 }
 
 /** The command line: `args` as after `node tools/check.mjs`. Returns the exit status. */

@@ -16,6 +16,7 @@ You do not use this package on its own: an engine binding provides it.
 | `seededRandom(seed)` | A stream of numbers in [0, 1) for a string or number seed: the same seed draws the same picture in every engine |
 | `<Video src startAt trimBefore playbackRate objectFit>` | The engine's video: shown from `startAt` s of the sequence, its source from `trimBefore` s |
 | `<Caption opacity>` | One spoken line, drawn from the `caption` tokens (font, size, weight, color, background, radius, padding-y, padding-x, bottom, max-width, shadow, rule-left or rule-top) |
+| `<Sequence from duration>`, `interpolate(t, input, output, {easing})`, `Easing` | As Remotion's, in seconds: a span whose children count time from its start, a value mapped through a curve, and the curves (`Easing.bezier` takes a cubicBezier token). For composing components, as a reel does |
 | `<MotionRoot tokens>` | A full-frame box carrying the tokens as CSS custom properties |
 | `resolveTokens(dtcg)`, `tokenVariables(tokens)` | `tokens.json` (W3C design tokens) as values, and those values as custom properties: `--color-ink`, `--font-display`, `--duration-light`, `--easing-light`, `--caption-size` |
 

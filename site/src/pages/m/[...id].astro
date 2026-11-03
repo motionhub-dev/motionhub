@@ -1,7 +1,9 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Card from '../../components/Card.astro';
-import {REPO, SITE, posterSet, builtOn, builtOnBy, byAuthor, colours, creatorPath, en, faces, kb, markdown, other, read, rows, translations} from '../../lib/catalogue.mjs';
+import {existsSync} from 'node:fs';
+import {join} from 'node:path';
+import {REPO, ROOT, SITE, posterSet, builtOn, builtOnBy, byAuthor, colours, creatorPath, en, faces, kb, markdown, other, read, rows, translations} from '../../lib/catalogue.mjs';
 
 export function getStaticPaths() {
   return rows.map((row) => ({params: {id: row.slug}, props: {row}}));
@@ -13,6 +15,8 @@ const tokens = JSON.parse(read(id, 'tokens.json') || '{}');
 const doc = markdown(read(id, 'MOTION.md').replace(/^# .*\n+/, ''));
 const credits = markdown(read(id, 'CREDITS.md').replace(/^# .*\n+/, ''));
 const react = row.tools.includes('react');
+// a reel (react/reel.tsx) plays live in a sandboxed frame: its code is the contributor's, so it gets no origin of its own
+const reel = existsSync(join(ROOT, 'motions', id, 'react/reel.tsx'));
 const more = [...new Map(row.authors.flatMap((a) => byAuthor.get(a.github) ?? []).filter((r) => r.slug !== id).map((r) => [r.slug, r])).values()].slice(0, 6);
 const source = `${REPO}/tree/main/motions/${id}`;
 const on = builtOn(row), by = builtOnBy(id);
@@ -33,7 +37,9 @@ const uses = [
 
   <section class="head">
     <div class="media">
-      <img class="poster" src={row.poster} srcset={posterSet(row.poster)} sizes="(max-width: 1040px) calc(100vw - 32px), 900px" alt={`A frame of a film in ${name}`} width="960" height="540" fetchpriority="high">
+      {reel
+        ? <iframe class="poster reel" src={`/play/${id}/`} title={`${name}, playing`} sandbox="allow-scripts" loading="eager" allow="fullscreen"></iframe>
+        : <img class="poster" src={row.poster} srcset={posterSet(row.poster)} sizes="(max-width: 1040px) calc(100vw - 32px), 900px" alt={`A frame of a film in ${name}`} width="960" height="540" fetchpriority="high">}
     </div>
     <div class="side">
       <div>
