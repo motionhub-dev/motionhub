@@ -23,6 +23,9 @@ jobs:
           node-version: 22
       - name: The checker's tests
         run: npm test
+      - name: The runtime's tests
+        working-directory: packages/runtime
+        run: npm install --no-package-lock --no-save && npm test
       - name: Every motion
         run: node tools/check.mjs
       - name: The hub builds

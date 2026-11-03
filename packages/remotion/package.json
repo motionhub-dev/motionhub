@@ -1,0 +1,33 @@
+{
+  "name": "@motionhub/remotion",
+  "version": "0.1.0",
+  "description": "Use a motion from motionhub.dev in Remotion: its React components as they are, and its tokens as Remotion values.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/motionhub-dev/motions.git",
+    "directory": "packages/remotion"
+  },
+  "homepage": "https://motionhub.dev",
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "README.md"
+  ],
+  "dependencies": {
+    "@motionhub/runtime": "0.1.0"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "remotion": ">=4"
+  }
+}

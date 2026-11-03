@@ -12,7 +12,7 @@ A motion holds no film. It has no story, script, scene list, timings or end card
 
 ## 2. Files
 
-A motion is a directory named after its slug:
+A motion is a directory named after its slug. A copy taken into a project may sit in a directory of another name (`motion/`); its `slug` still names it:
 
 ```
 <slug>/
@@ -34,7 +34,7 @@ A JSON object with these members and no others, except extension members (§7).
 | Member | Required | Value |
 | --- | --- | --- |
 | `spec` | yes | `"motion/0.1"` |
-| `slug` | yes | 3 to 40 characters of `a-z`, `0-9` and single hyphens, starting and ending with a letter or digit; equal to the directory name |
+| `slug` | yes | 3 to 40 characters of `a-z`, `0-9` and single hyphens, starting and ending with a letter or digit; the name of the directory it is published in (§2) |
 | `version` | yes | A [Semantic Versioning 2.0](https://semver.org) version of this motion, for example `"1.0.0"` |
 | `name` | yes | A localized string (§8) of at most 60 characters per language |
 | `line` | yes | A localized string (§8) of at most 160 characters per language: one sentence saying what it looks like and what it is for |

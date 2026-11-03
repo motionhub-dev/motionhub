@@ -69,10 +69,16 @@ test('only the format\'s files, translations and tool directories sit at the top
   assert.ok(codes(motion({extra: {'Visotalk/a.txt': 'hi'}})).includes('format.extra'));
 });
 
+test('in the catalogue the directory is the slug; a project\'s copy may be named otherwise', () => {
+  assert.ok(codes(motion({dir: 'motions/other-name'})).includes('hub.slug'));
+  assert.deepEqual(codes(motion({dir: 'motions/test-motion'})).filter((c) => c.endsWith('slug')), []);
+  assert.deepEqual(codes(motion({dir: 'project/motion'})).filter((c) => c.endsWith('slug')), []);
+});
+
 test('the manifest\'s members, slug, version, localized strings and licence', () => {
   const bad = (manifest) => codes(motion({manifest: {...MANIFEST, ...manifest}}), {hub: false});
   assert.ok(bad({spec: 'motion/0.2'}).includes('manifest.spec'));
-  assert.ok(bad({slug: 'other-name'}).includes('manifest.slug'));
+  assert.ok(bad({slug: 'Other'}).includes('manifest.slug'));
   assert.ok(bad({version: '1.0'}).includes('manifest.version'));
   assert.ok(bad({name: {'zh-CN': '只有中文'}}).includes('manifest.name'));
   assert.ok(bad({line: {en: 'x'.repeat(161)}}).includes('manifest.line'));

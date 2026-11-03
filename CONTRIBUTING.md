@@ -26,6 +26,7 @@ Write `MOTION.md` in English if you can, or add an English translation next to i
 - **Fonts.** Open licences only (SIL Open Font License, Apache 2.0, Ubuntu Font Licence), each named in `CREDITS.md`.
 - **Assets.** Your own, or CC0, CC BY or OFL, each named in `CREDITS.md` with its source. Public-domain artworks are welcome when `CREDITS.md` says where they come from.
 - **Size.** At most 1 MB for the whole motion, the poster included. No video, audio over 500 KB, or build output in the repository.
+- **Directory.** A motion sits in `motions/<slug>/`, named by its `slug` (`hub.slug`).
 - **Signed commits.** Every commit carries a `Signed-off-by:` line (`git commit -s`), certifying the [Developer Certificate of Origin](https://developercertificate.org): you have the right to contribute what it contains under its licence.
 
 ## Original work
@@ -44,8 +45,8 @@ A pull request that breaks these is closed. If you hold rights in something here
 
 A tool keeps its own files in a directory named after it (SPEC.md §7). Where several people write for one tool, the directory follows that tool's convention here:
 
-- **`visotalk/`**: the whole VisoTalk pack, as `visotalk motion check` reads it: `motion.json` with the values written onto a document, `MOTION.md` in its numbered sections, `parts/`, and a `demo/` sample. `visotalk motion share` writes it.
-- **`remotion/`**: a module for Remotion, which a project copies in as `motion/` and imports from `../motion/remotion`. `remotion/index.ts` exports `theme` (the tokens as values: colours, font stacks, durations in seconds, easings as `[x1, y1, x2, y2]`) and the motion's reusable components; `remotion/README.md` says what each component is for, its props, and the canvas it is laid out for. Components import only `remotion`, `@remotion/*`, `react` and each other, take their words and data as props, read durations through the composition's frame rate, and hold no film's story. Faces it needs may be bundled under `remotion/fonts/` with their licence text, so a render fetches nothing.
+- **`visotalk/`**: the whole VisoTalk pack, as `visotalk motion check` reads it: `motion.json` with the values written onto a document, `MOTION.md` in its numbered sections, `parts/`, and a `demo/` sample. `visotalk motion share` writes it. Its `parts/*.tsx` are React components that import only `react`, `@motionhub/runtime` and each other, colour with `var(--color-<name>)`, set type with `var(--font-<name>)`, and take their words, data, progress and video `src` as props, so they run unchanged in Remotion through [`@motionhub/remotion`](packages/remotion/README.md) and in HyperFrames through [`@motionhub/hyperframes`](packages/hyperframes/README.md).
+- **`remotion/`**: only what `visotalk/parts/` and `@motionhub/remotion` do not already give a Remotion project (a component that needs `@remotion/*`, say), imported from `../motion/remotion`, with a `README.md` saying what each piece is for and its props. Components there follow the same rules, and faces may be bundled under `remotion/fonts/` with their licence text.
 
 A convention for another tool is added here when its first motion arrives.
 
