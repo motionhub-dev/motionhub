@@ -41,6 +41,7 @@ Write `MOTION.md` in English if you can, or add an English translation next to i
 - **Assets.** Your own, or CC0, CC BY or OFL, each named in `CREDITS.md` with its source. Public-domain artworks are welcome when `CREDITS.md` says where they come from.
 - **Size.** At most 1 MB for the whole motion, the poster included. No video, audio over 500 KB, or build output in the repository.
 - **Scope and directory.** A motion has a `scope` (`hub.scope`) and sits in `motions/@<scope>/<slug>/`, named by its id (`hub.slug`).
+- **Accounts.** Every login a motion names, its scope and each author's `github`, is recorded once in `accounts/<login>.json` as `{"login", "id"}`, with the numeric id GitHub gives that account (`hub.account`). `npx @motionhub/cli share --pr` adds the records; by hand, the checks say what to add. A record is only ever added, never changed or removed, and an added one must match what GitHub says (`hub.accounts`).
 - **Built on.** Every motion named in `basedOn` is one in this catalogue (`hub.basedOn`).
 - **Signed commits.** Every commit carries a `Signed-off-by:` line (`git commit -s`), certifying the [Developer Certificate of Origin](https://developercertificate.org): you have the right to contribute what it contains under its licence.
 
@@ -84,5 +85,7 @@ A tool may add rules of its own for its directory.
 ## Changing a published motion
 
 Only one of a motion's published authors may change it: the checks compare the pull request's author with the authors of the version on the main branch, so adding yourself to `authors` does not make a motion yours. To build on someone else's motion, publish your own under your scope and credit theirs, by its id, in `CREDITS.md`.
+
+The checks compare accounts, not logins: the account's numeric id, recorded in `accounts/`, which GitHub never changes. So if you rename your GitHub account, you keep your motions and your scope. Change them from the new login, and publish new motions under the old scope or the new one. Add `accounts/<new-login>.json` the first time you credit the new login, which `share --pr` does for you. Whoever later takes your old login gets neither. A motion's id never changes with a rename: `@<old-login>/<slug>` is where it stays, and your creator page shows your login now.
 
 A change carries a higher `version` than the published one, since a published version never changes ([SPEC.md](SPEC.md) §9). The newest version replaces the previous one in its directory; published packages of earlier versions stay where they are ([HUB.md](HUB.md)).

@@ -5,7 +5,7 @@ import Engine from '../../components/Engine.astro';
 import Prompt from '../../components/Prompt.astro';
 import {existsSync} from 'node:fs';
 import {join} from 'node:path';
-import {REPO, ROOT, SITE, SPEC, TOPIC, aka, posterSet, builtOn, builtOnBy, byAuthor, colours, creatorPath, en, faces, kb, markdown, read, rows, skillInstall, toolEngines, skillShare, translations} from '../../lib/catalogue.mjs';
+import {REPO, ROOT, SITE, SPEC, TOPIC, aka, avatar, posterSet, builtOn, builtOnBy, byAuthor, colours, creator, creatorPath, en, faces, kb, markdown, read, rows, skillInstall, toolEngines, skillShare, translations} from '../../lib/catalogue.mjs';
 
 export function getStaticPaths() {
   return rows.map((row) => ({params: {id: row.slug}, props: {row}}));
@@ -82,10 +82,11 @@ const uses = [
       <div class="who">
         {row.authors.map((a) => {
           const n = byAuthor.get(a.github)?.length ?? 0;
+          const c = creator(a.github);
           return (
             <a class="person" href={creatorPath(a.github)}>
-              <img src={`https://github.com/${a.github}.png?size=64`} alt="" width="32" height="32" loading="lazy">
-              <span><b>{a.name}</b><small>@{a.github} · {n} {n === 1 ? 'motion' : 'motions'}</small></span>
+              <img src={avatar(c, 64)} alt="" width="32" height="32" loading="lazy">
+              <span><b>{a.name}</b><small>@{c.login} · {n} {n === 1 ? 'motion' : 'motions'}</small></span>
             </a>
           );
         })}

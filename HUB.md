@@ -9,7 +9,8 @@ How this repository is published at [motionhub.dev](https://motionhub.dev): the 
 | Path | What it is |
 | --- | --- |
 | `motions/@<scope>/<slug>/` | One motion in the [format](SPEC.md), published by the GitHub account `<scope>`, id `@<scope>/<slug>`. Every motion on the hub has a scope; there are no unscoped, official ones. The newest version of each is the one in the main branch |
-| `tools/check.mjs` | The checker every pull request runs, with no dependencies: the one place the rules are written as code |
+| `accounts/<login>.json` | Each GitHub login a motion names, recorded once with its account's numeric id (`{"login", "id"}`). A login can change hands, and an id cannot, so who owns a scope or a motion is decided by the id ([CONTRIBUTING.md](CONTRIBUTING.md), "Accounts") |
+| `tools/check.mjs` | The checker every pull request runs, with no dependencies: the one place the rules are written as code. Who may publish or change a motion is judged by the copy on the main branch, not the pull request's |
 | `bin/motionhub.mjs`, `tools/hub.mjs`, `package.json` | The npm package `@motionhub/cli` (command `motionhub`): `check` (the checker, for tools and people outside this repository), `search` and `get` (the index, and a package checked against its SHA-256 and unpacked into `./motion`). A tag `v<version>` stages it on npm (`.github/workflows/publish.yaml`, trusted publishing, no token) and a maintainer approves it with `npm stage approve` |
 | `packages/runtime/`, `packages/remotion/`, `packages/hyperframes/` | The npm packages `@motionhub/runtime` (what a motion's components draw with, in any engine) and its bindings for Remotion and HyperFrames. A tag `<package>-v<version>` stages one the same way |
 | `tools/build.mjs` | Builds the files below into `dist/` from `motions/` and the skill, refusing while any motion has an issue |

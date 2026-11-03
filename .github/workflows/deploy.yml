@@ -31,6 +31,9 @@ jobs:
           node-version: 22
       - name: Build
         working-directory: site
+        env:
+          # creators are shown by their login now, looked up by account id (site/src/lib/catalogue.mjs)
+          GITHUB_TOKEN: ${{ github.token }}
         run: npm ci --no-audit --no-fund && npm run build
       - name: Publish new packages
         run: |

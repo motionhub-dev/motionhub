@@ -17,9 +17,9 @@ const n = creators.length;
 
   <div class="creators" id="creators">
     {creators.map((c, i) => (
-      <a class="creator" href={creatorPath(c.login)} data-key={c.key} data-ids={c.motions.map((r) => r.slug).join(' ')} data-n={c.motions.length} data-order={i}>
+      <a class="creator" href={creatorPath(c)} data-key={c.key} data-ids={c.motions.map((r) => r.slug).join(' ')} data-n={c.motions.length} data-order={i}>
         <span class="cwho">
-          <img src={avatar(c.login, 96)} alt="" width="48" height="48" loading="lazy">
+          <img src={avatar(c, 96)} alt="" width="48" height="48" loading="lazy">
           <span><b>{c.name}</b><small>@{c.login}</small></span>
         </span>
         <span class="strip">
