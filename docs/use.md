@@ -1,6 +1,6 @@
 # Use a motion
 
-Pick a motion on [motionhub.dev](https://motionhub.dev), then make your film in it whichever way you work. Every motion's page has these steps with its own id filled in.
+Pick a motion on [motionhub.dev](https://motionhub.dev), then make your film in it whichever way you work. The format is open, so the same motion gives the same look in every engine. Every motion's page has these steps with its own id filled in.
 
 ## With any agent
 

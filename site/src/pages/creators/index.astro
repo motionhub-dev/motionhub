@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import Dropdown from '../../components/Dropdown.astro';
 import {avatar, creatorPath, creators, en} from '../../lib/catalogue.mjs';
 const n = creators.length;
 ---
@@ -11,13 +12,7 @@ const n = creators.length;
 
   <div class="bar">
     <p class="count" id="ccount">{n} {n === 1 ? 'creator' : 'creators'}</p>
-    <label class="field" id="csortfield" hidden>Sort
-      <select id="csort">
-        <option value="motions">Most motions</option>
-        <option value="downloads">Most downloaded</option>
-        <option value="likes">Most liked</option>
-      </select>
-    </label>
+    <Dropdown id="csort" label="Sort" fieldId="csortfield" hidden options={[{value: 'motions', text: 'Most motions'}, {value: 'downloads', text: 'Most downloaded'}, {value: 'likes', text: 'Most liked'}]} />
   </div>
 
   <div class="creators" id="creators">

@@ -1,7 +1,10 @@
 ---
 import Base from '../layouts/Base.astro';
 import Card from '../components/Card.astro';
-import {REPO, SPEC, TOPIC, agentPrompt, chips, en, rows, toolEngines, toolLabel, tools} from '../lib/catalogue.mjs';
+import Dropdown from '../components/Dropdown.astro';
+import Engine from '../components/Engine.astro';
+import Prompt from '../components/Prompt.astro';
+import {chips, en, rows, toolEngines, toolLabel, tools} from '../lib/catalogue.mjs';
 
 // what a search matches: the id, every name and line in every language, the tags, the engines and the authors
 const text = (r) => [r.slug, ...Object.values(r.name), ...Object.values(r.line), ...r.tags, ...r.tools, ...r.tools.flatMap(toolEngines), ...r.authors.flatMap((a) => [a.name, a.github])].join(' ').toLowerCase();
@@ -15,32 +18,25 @@ if (tries.length === 0) tries.push(...rows.slice(0, 5));
 const first = tries[0];
 const engines = [...new Set(rows.flatMap((r) => r.tools.flatMap(toolEngines)))];
 ---
-<Base title="motionhub: open looks for AI-made video" description="Open looks for AI-made video: a visual style written down. Hand one to your agent, bring your story, and get a film in that look, in Remotion, HyperFrames or any code-video engine." path="/" current="motions">
+<Base title="motionhub: open looks for AI-made video" description="Open looks for AI-made video: a visual style written down. Hand one to your agent with your story and get a film in that look, in Remotion, HyperFrames or any code-video engine." path="/" current="motions">
   <section class="intro" aria-labelledby="intro-title">
     <div class="pitch">
-      <p class="eyebrow mono">Open format · {SPEC} · {n} {n === 1 ? 'motion' : 'motions'}</p>
       <h1 id="intro-title">Open looks for AI‑made video.</h1>
-      <p class="sub">A motion is a visual style, written down: its colours, its type, and how things move. Hand one to your agent, bring your story, and get a film in that look.</p>
+      <p class="sub">A visual style, written down. Hand it to your agent with your story, and get a film in that look.</p>
       <div class="engines">
         <span class="label">Works with</span>
-        {engines.map((e) => <span class="pill">{e}</span>)}
-        <span class="pill">HTML / CSS</span>
-        <span class="pill">GSAP</span>
-        <span class="pill any">any code‑video engine</span>
+        {engines.map((e) => <Engine name={e} class="pill" />)}
+        <a class="pill any" href="/docs/use/#in-anything-else">any code‑video engine</a>
       </div>
-      <p class="note">Ready‑made components for {engines.join(' and ')}. Every other engine follows <code>MOTION.md</code> and <code>tokens.json</code>. <a href="/docs/use/">How it works</a></p>
       <ul class="open">
-        <li><b>Open format</b><span>A <a href="/docs/spec/">public spec</a>. Looks are CC BY, code is MIT.</span></li>
-        <li><b>Any engine</b><span>Words and design tokens, not a renderer. No lock‑in.</span></li>
-        <li><b>Open to share</b><span><a href="/docs/contribute/">Publish your own look</a>, credited to your GitHub.</span></li>
+        <li><b>Open format</b><span>A <a href="/docs/spec/">public spec</a>. CC BY looks, MIT code.</span></li>
+        <li><b>Any engine</b><span>Words and design tokens, not a renderer.</span></li>
+        <li><b>Open to share</b><span><a href="/docs/contribute/">Publish your look</a>, credited to you.</span></li>
       </ul>
     </div>
 
     <div class="try" id="try">
-      <div class="try-head">
-        <h2>Make a film in three steps</h2>
-        <span>Nothing to install</span>
-      </div>
+      <h2>Make a film with your agent</h2>
       <div class="step">
         <div class="step-head"><span><i>1</i>Pick a look</span><span id="try-name">{en(first.name)}</span></div>
         <div class="thumbs" role="radiogroup" aria-label="A look">
@@ -52,18 +48,14 @@ const engines = [...new Set(rows.flatMap((r) => r.tools.flatMap(toolEngines)))];
         </div>
       </div>
       <div class="step">
-        <label class="step-head" for="topic"><span><i>2</i>Your topic</span></label>
-        <input id="topic" type="text" placeholder="Why does an apple have a star inside?" autocomplete="off">
-      </div>
-      <div class="step">
-        <div class="step-head"><span><i>3</i>Paste it into your agent</span></div>
-        <pre class="prompt" id="prompt" data-topic={TOPIC} data-base={agentPrompt('ID', 'TOPIC')}>{agentPrompt(first.slug)}</pre>
+        <div class="step-head"><span><i>2</i>Copy it, put in your topic, paste it into your agent</span></div>
+        <Prompt id="prompt" slug={first.slug} />
         <div class="try-foot">
-          <button type="button" class="btn primary" id="copy-prompt">
+          <button type="button" class="btn accent" data-copy-prompt="prompt">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
             <span>Copy prompt</span>
           </button>
-          <span>Any agent that can open a URL. With the <a href="/docs/use/#install-the-skill">motionhub skill</a> installed, it needs no first line.</span>
+          <span>Any agent that can open a URL. <a href="/docs/use/">Other ways</a></span>
         </div>
       </div>
     </div>
@@ -79,22 +71,8 @@ const engines = [...new Set(rows.flatMap((r) => r.tools.flatMap(toolEngines)))];
       <button type="button" class="chip" data-tag="" aria-pressed="true">All</button>
       {chips().map((t) => <button type="button" class="chip" data-tag={t} aria-pressed="false">{t}</button>)}
     </div>
-    {tools.length > 0 && (
-      <label class="field">Engine
-        <select id="tool">
-          <option value="">Any engine</option>
-          {tools.map((t) => <option value={t}>{toolLabel(t)}</option>)}
-        </select>
-      </label>
-    )}
-    <label class="field" id="sortfield" hidden>Sort
-      <select id="sort">
-        <option value="">A to Z</option>
-        <option value="last30">Most downloaded, 30 days</option>
-        <option value="total">Most downloaded, all time</option>
-        <option value="likes">Most liked</option>
-      </select>
-    </label>
+    {tools.length > 0 && <Dropdown id="tool" label="Engine" options={[{value: '', text: 'Any engine'}, ...tools.map((t) => ({value: t, text: toolLabel(t)}))]} />}
+    <Dropdown id="sort" label="Sort" fieldId="sortfield" hidden options={[{value: '', text: 'A to Z'}, {value: 'last30', text: 'Most downloaded, 30 days'}, {value: 'total', text: 'Most downloaded, all time'}, {value: 'likes', text: 'Most liked'}]} />
     <div class="seg" role="group" aria-label="View">
       <button type="button" data-view="grid" aria-pressed="true" aria-label="Grid"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
       <button type="button" data-view="list" aria-pressed="false" aria-label="List"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
@@ -224,23 +202,14 @@ const engines = [...new Set(rows.flatMap((r) => r.tools.flatMap(toolEngines)))];
     apply();
   }).catch(() => {});
 
-  // the try card: a look and a topic make the prompt to paste into an agent. Without the script it shows the
-  // prompt for the first look, which works as it is.
-  const prompt = $<HTMLElement>('#prompt')!, topic = $<HTMLInputElement>('#topic')!;
+  // the try card: picking a look puts it in the prompt. Without the script the prompt names the first look.
+  const target = document.querySelector<HTMLElement>('#prompt .target')!;
   const looks = [...document.querySelectorAll<HTMLButtonElement>('.thumbs [role="radio"]')];
-  const copyBtn = $<HTMLButtonElement>('#copy-prompt')!, copyText = copyBtn.querySelector('span')!;
-  let look = looks[0]?.dataset.id ?? '';
-  const write = () => {
-    const t = topic.value.trim().replace(/"/g, '”') || prompt.dataset.topic!;
-    prompt.textContent = prompt.dataset.base!.replace('/m/ID/', `/m/${look}/`).replace('"TOPIC"', `"${t}"`);
-    copyText.textContent = 'Copy prompt';
-  };
   const choose = (b: HTMLButtonElement, focus = false) => {
-    look = b.dataset.id!;
     for (const x of looks) { x.setAttribute('aria-checked', String(x === b)); x.tabIndex = x === b ? 0 : -1; }
     $('#try-name')!.textContent = b.dataset.name!;
+    target.textContent = target.textContent!.replace(/\/m\/[^/]+\/$/, `/m/${b.dataset.id}/`);
     if (focus) b.focus();
-    write();
   };
   looks.forEach((b, i) => {
     b.tabIndex = i === 0 ? 0 : -1;
@@ -249,10 +218,5 @@ const engines = [...new Set(rows.flatMap((r) => r.tools.flatMap(toolEngines)))];
       const j = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? i + 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? i - 1 : -2;
       if (j !== -2) { e.preventDefault(); choose(looks[(j + looks.length) % looks.length], true); }
     });
-  });
-  topic.addEventListener('input', write);
-  copyBtn.addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(prompt.textContent!.trim()); copyText.textContent = 'Copied'; }
-    catch { copyText.textContent = 'Select and copy'; }
   });
 </script>
