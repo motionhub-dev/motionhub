@@ -42,6 +42,23 @@ export const tools = [...new Set(rows.flatMap((r) => r.tools))].sort();
 
 export const kb = (bytes) => `${Math.ceil(bytes / 1024)} KB`;
 
+/**
+ * A motion's names in languages other than the one the page shows, with their language tags. The site is in
+ * English, so it shows the English name and keeps the others for the motion's own page and for search.
+ */
+export const aka = (localized) => Object.entries(localized ?? {}).filter(([k, v]) => k !== 'en' && v && v !== en(localized)).map(([lang, text]) => ({lang, text}));
+
+/** What a tool directory lets a person use, by engine. A tool not named here shows as its own name. */
+const TOOL_ENGINES = {react: ['Remotion', 'HyperFrames']};
+export const toolEngines = (tool) => TOOL_ENGINES[tool] ?? [tool];
+export const toolLabel = (tool) => (TOOL_ENGINES[tool] ? `Components for ${toolEngines(tool).join(' and ')}` : `Pieces for ${tool}`);
+
+/** The skill, as a file an agent can install, and the prompt that works without it. */
+export const SKILL_RAW = 'https://raw.githubusercontent.com/motionhub-dev/motions/main/skills/motionhub/SKILL.md';
+export const TOPIC = '<your topic>';
+export const agentPrompt = (id, topic = TOPIC) => `Read ${SITE}/llms.txt, then make a film about "${topic}" in the motion ${SITE}/m/${id}/`;
+export const skillInstall = `mkdir -p .claude/skills/motionhub\ncurl -fsSL ${SKILL_RAW} -o .claude/skills/motionhub/SKILL.md`;
+
 /** The motions a motion builds on that are in the catalogue, and the ones that build on it. */
 const byId = new Map(rows.map((r) => [r.slug, r]));
 export const builtOn = (row) => (row.basedOn ?? []).map((b) => ({...b, row: byId.get(b.id)})).filter((b) => b.row);
