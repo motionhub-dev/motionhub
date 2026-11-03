@@ -44,18 +44,18 @@ const {title, description, path, image = '/og-default.png', current, q = ''} = A
 <header class="top">
   <div class="wrap">
     <Logo />
-    <nav class="nav" aria-label="Site">
-      <a href="/" aria-current={current === 'motions' ? 'page' : undefined}>Motions</a>
-      <a href="/creators/" aria-current={current === 'creators' ? 'page' : undefined}>Creators</a>
-      <a href="/docs/" aria-current={current === 'docs' ? 'page' : undefined}>Docs</a>
-      <a class="wide" href={REPO}>GitHub</a>
-    </nav>
     <form class="search" role="search" action="/" method="get">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
       <label for="q" class="sr">Search motions</label>
       <input id="q" name="q" type="search" value={q} placeholder="Search motions, looks, creators" autocomplete="off" spellcheck="false">
       <kbd aria-hidden="true">/</kbd>
     </form>
+    <nav class="nav" aria-label="Site">
+      <a href="/" aria-current={current === 'motions' ? 'page' : undefined}>Motions</a>
+      <a href="/creators/" aria-current={current === 'creators' ? 'page' : undefined}>Creators</a>
+      <a href="/docs/" aria-current={current === 'docs' ? 'page' : undefined}>Docs</a>
+      <a class="wide" href={REPO}>GitHub</a>
+    </nav>
     <div class="actions">
       <a class="btn share" href="/docs/contribute/"><span>Share<span class="long"> a motion</span></span></a>
       <a class="btn primary" id="signin" href="/auth/login" rel="nofollow" aria-label="Sign in with GitHub">
@@ -78,10 +78,11 @@ const {title, description, path, image = '/og-default.png', current, q = ''} = A
 </main>
 <footer class="foot">
   <div class="wrap">
-    <span>motionhub · open format {SPEC}</span>
+    <Logo />
+    <a href={`${REPO}/blob/main/LICENSE`}>MIT License</a>
+    <a href="/docs/spec/" class="mono">Spec {SPEC}</a>
     <span class="gap"></span>
     <a href="/docs/">Docs</a>
-    <a href="/docs/spec/">Spec</a>
     <a href="/docs/brand/">Brand</a>
     <a href="/llms.txt">llms.txt</a>
     <a href="/api/motions.json">api/motions.json</a>
@@ -227,13 +228,18 @@ const {title, description, path, image = '/og-default.png', current, q = ''} = A
     });
   }
 
-  // a copy button on every block marked data-copy
+  // a copy button on every block marked data-copy; data-copy="icon" draws it as an icon, for a narrow block
+  const COPY = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+  const DONE = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>';
   for (const pre of document.querySelectorAll<HTMLElement>('[data-copy]')) {
+    const icon = pre.dataset.copy === 'icon';
     const b = document.createElement('button');
-    b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+    b.type = 'button'; b.className = icon ? 'copy icon' : 'copy';
+    const show = (text: string, svg: string) => { if (icon) { b.innerHTML = svg; b.setAttribute('aria-label', text); b.title = text; } else b.textContent = text; };
+    show('Copy', COPY);
     b.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(pre.innerText.trim()); b.textContent = 'Copied'; } catch { b.textContent = 'Select and copy'; }
-      setTimeout(() => (b.textContent = 'Copy'), 1600);
+      try { await navigator.clipboard.writeText(pre.innerText.trim()); show('Copied', DONE); } catch { show('Select and copy', COPY); }
+      setTimeout(() => show('Copy', COPY), 1600);
     });
     pre.parentElement?.append(b);
   }

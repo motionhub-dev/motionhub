@@ -1,6 +1,6 @@
 ---
 name: motionhub
-description: Find a motion (a reusable look for narrated and explanatory video) on motionhub.dev and make a film in it with any engine. Use when asked to make a video, animation or explainer "in the style of" a named motion or a motionhub link, to pick a look for one, or to read a motion directory (motion.json, MOTION.md, tokens.json).
+description: Find a motion (a reusable look for narrated and explanatory video) on motionhub.dev and make a film in it with any engine. Use when asked to make a video, animation or explainer "in the style of" a named motion or a motionhub link, to pick a look for one, to read a motion directory (motion.json, MOTION.md, tokens.json), or to share a look of their own as a motion on motionhub.
 ---
 
 # Making a film in a motion

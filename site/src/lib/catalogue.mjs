@@ -53,11 +53,11 @@ const TOOL_ENGINES = {react: ['Remotion', 'HyperFrames']};
 export const toolEngines = (tool) => TOOL_ENGINES[tool] ?? [tool];
 export const toolLabel = (tool) => (TOOL_ENGINES[tool] ? `Components for ${toolEngines(tool).join(' and ')}` : `Pieces for ${tool}`);
 
-/** The skill, as a file an agent can install, and the prompt that works without it. */
-export const SKILL_RAW = 'https://raw.githubusercontent.com/motionhub-dev/motions/main/skills/motionhub/SKILL.md';
+/** The prompt that works in any agent, and the skill that makes it shorter: installed for every agent by skills. */
 export const TOPIC = '<your topic>';
 export const agentPrompt = (id, topic = TOPIC) => `Read ${SITE}/llms.txt, then make a film about "${topic}" in the motion ${SITE}/m/${id}/`;
-export const skillInstall = `mkdir -p .claude/skills/motionhub\ncurl -fsSL ${SKILL_RAW} -o .claude/skills/motionhub/SKILL.md`;
+export const skillInstall = 'npx skills add motionhub-dev/motions -g';
+export const skillShare = "/motionhub share this project's look as a motion";
 
 /** The motions a motion builds on that are in the catalogue, and the ones that build on it. */
 const byId = new Map(rows.map((r) => [r.slug, r]));

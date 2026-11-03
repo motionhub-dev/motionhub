@@ -5,7 +5,7 @@ import Engine from '../../components/Engine.astro';
 import Prompt from '../../components/Prompt.astro';
 import {existsSync} from 'node:fs';
 import {join} from 'node:path';
-import {REPO, ROOT, SITE, SPEC, TOPIC, aka, posterSet, builtOn, builtOnBy, byAuthor, colours, creatorPath, en, faces, kb, markdown, read, rows, skillInstall, toolEngines, translations} from '../../lib/catalogue.mjs';
+import {REPO, ROOT, SITE, SPEC, TOPIC, aka, posterSet, builtOn, builtOnBy, byAuthor, colours, creatorPath, en, faces, kb, markdown, read, rows, skillInstall, toolEngines, skillShare, translations} from '../../lib/catalogue.mjs';
 
 export function getStaticPaths() {
   return rows.map((row) => ({params: {id: row.slug}, props: {row}}));
@@ -29,9 +29,12 @@ const get = `npx @motionhub/cli get ${id}`;
 const uses = [
   {id: 'agent', label: 'Agent', steps: [
     {label: 'Copy the prompt, put in your topic and paste it into your agent', prompt: true, note: 'Any agent that can open a URL: it reads llms.txt, fetches the motion, checks it against its SHA-256 and makes your film in whatever engine it uses.'},
-    {label: 'Optional: install the motionhub skill, so your agent knows the steps without llms.txt', code: skillInstall,
-     note: `That puts it where Claude Code finds skills for this project (~/.claude/skills/ for all of them); another agent takes the same SKILL.md wherever it keeps skills. Then the prompt can be: Make a film about ${TOPIC} in the motion ${id}`},
-  ], more: {href: '/docs/skill/', text: 'What the agent does'}},
+    {label: 'Or install the motionhub skill once, for every agent on your computer', code: skillInstall,
+     note: 'Claude Code, Codex and the other agents skills knows; without -g, for this project only.'},
+    {label: 'Then call it by name', code: `/motionhub make a film about ${TOPIC} in ${id}`},
+    {label: 'Made a look of your own? Share it the same way', code: skillShare,
+     note: 'Your agent writes the motion under your GitHub name, runs the checks and opens the pull request when you say yes.'},
+  ], more: {href: '/docs/use/#install-the-skill', text: 'Using the skill'}},
   ...(react ? [
     {id: 'remotion', label: 'Remotion', engine: true, steps: [
       {label: 'Fetch the motion into ./motion', code: get},
@@ -87,7 +90,11 @@ const uses = [
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
           <span>Copy prompt</span>
         </button>
-        <p>Put in your topic and paste it into any agent that can open a URL. <a href="#use">Other ways</a></p>
+        <p>Put in your topic and paste it into any agent that can open a URL.</p>
+        <div class="skill">
+          <span>Or install the skill for every agent, then use <code>/motionhub</code></span>
+          <div class="code"><pre data-copy="icon" tabindex="0"><code>{skillInstall}</code></pre></div>
+        </div>
       </div>
 
       <div class="do">

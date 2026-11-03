@@ -12,7 +12,13 @@ Pick a motion, then paste this into any agent that can open a URL, with your top
 Read https://motionhub.dev/llms.txt, then make a film about "<your topic>" in the motion https://motionhub.dev/m/clay-world/
 ```
 
-That is all. [Use a motion](use.md) has the other ways: the skill, the command line, Remotion, HyperFrames and any other engine.
+That is all. To make it shorter, install the skill once, for every agent on your computer:
+
+```sh
+npx skills add motionhub-dev/motions -g
+```
+
+and ask `/motionhub make a film about <your topic> in clay-world`; `/motionhub share this project's look as a motion` publishes a look of your own. [Use a motion](use.md) has every way: the skill, the command line, Remotion, HyperFrames and any other engine.
 
 ## What a motion is made of
 
