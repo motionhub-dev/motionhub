@@ -8,7 +8,8 @@
 //                mount() to draw them from a GSAP timeline, Caption, and the tokens with GSAP-ready eases
 //   motion.css   the tokens as custom properties (--color-*, --font-*, --duration-*, --easing-*, --caption-*), and
 //                @font-face for every face the motion names, from fonts/
-//   fonts/       those faces' latin files from Google Fonts (--han also Chinese, Japanese and Korean ones)
+//   fonts/       the faces the motion carries (react/fonts/), and the latin files of the rest from Google Fonts (--han also
+//                Chinese, Japanese and Korean ones)
 import {createRequire} from 'node:module';
 import {existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync} from 'node:fs';
 import {dirname, join, relative, resolve} from 'node:path';
@@ -43,7 +44,14 @@ async function face(family) {
 }
 mkdirSync(join(out, 'fonts'), {recursive: true});
 const faceCss = [], missing = [];
-for (const family of families) {
+// the faces the motion carries itself (react/fonts/fonts.json) come first; Google Fonts serves the rest
+const ownDir = join(dir, 'react', 'fonts');
+const own = existsSync(join(ownDir, 'fonts.json')) ? JSON.parse(readFileSync(join(ownDir, 'fonts.json'), 'utf8')) : [];
+for (const f of own) {
+  writeFileSync(join(out, 'fonts', f.file), readFileSync(join(ownDir, f.file)));
+  faceCss.push(`@font-face { font-family: ${JSON.stringify(f.family)}; font-style: ${f.style ?? 'normal'}; font-weight: ${f.weight ?? '400'}; font-display: block; src: url('fonts/${f.file}') format('woff2'); }`);
+}
+for (const family of families.filter((name) => !own.some((f) => f.family === name))) {
   const text = await face(family);
   if (!text) { missing.push(family); continue; }
   // only the blocks for latin text: the comment before each block names its subset

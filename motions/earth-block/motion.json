@@ -1,0 +1,28 @@
+{
+  "spec": "motion/0.1",
+  "slug": "earth-block",
+  "version": "1.0.0",
+  "name": {
+    "en": "Earth Block",
+    "zh-CN": "大地块"
+  },
+  "line": {
+    "en": "One isometric block of the world on a pale textbook plate, cut open as it is explained."
+  },
+  "authors": [
+    {
+      "name": "SuoSi",
+      "github": "iamsuosi"
+    }
+  ],
+  "license": {
+    "text": "CC-BY-4.0",
+    "code": "MIT"
+  },
+  "lang": "en",
+  "tags": [
+    "isometric",
+    "flat-vector",
+    "light"
+  ]
+}
