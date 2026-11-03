@@ -17,6 +17,13 @@ import {Versus} from './parts/versus.tsx';
 import {Verdict} from './parts/verdict.tsx';
 
 export const reel = {seconds: 20, width: 1920, height: 1080};
+/** What happens when, for the motion's sound (sound.json): a tag lands, a ring is drawn, a figure counts, the shot cuts, the recording steps aside, a verdict settles */
+export const cues = [
+  {at: 0.3, role: 'land'}, {at: 2.8, role: 'cut'}, {at: 2.9, role: 'draw', dur: 1.0}, {at: 4.3, role: 'count'}, {at: 5.0, role: 'cut'},
+  {at: 5.2, role: 'draw', dur: 0.5}, {at: 6.2, role: 'land'}, {at: 6.6, role: 'count'}, {at: 7.4, role: 'cut'}, {at: 7.9, role: 'draw', dur: 0.6},
+  {at: 8.2, role: 'land'}, {at: 8.4, role: 'draw', dur: 1.3}, {at: 10.2, role: 'move', dur: 0.9}, {at: 11.0, role: 'land'}, {at: 13.4, role: 'land'},
+  {at: 15.0, role: 'count'}, {at: 15.9, role: 'land'}, {at: 18.7, role: 'count'},
+];
 
 const out = Easing.outCubic, lin = Easing.linear;
 const at = (t: number, from: number, to: number, a: number, b: number, easing = out) => interpolate(t, [from, to], [a, b], {easing});

@@ -1,0 +1,46 @@
+{
+ "bpm": 104,
+ "root": 123,
+ "kit": [
+  "kick",
+  "hat",
+  "bass"
+ ],
+ "roles": {
+  "land": {
+   "voice": "swish",
+   "lo": 1000,
+   "hi": 8000,
+   "rise": 0.8,
+   "gain": 1
+  },
+  "move": {
+   "voice": "swish",
+   "lo": 400,
+   "hi": 5000,
+   "rise": 0.5,
+   "gain": 1
+  },
+  "draw": {
+   "voice": "swish",
+   "lo": 1500,
+   "hi": 7000,
+   "rise": 0.5,
+   "gain": 1
+  },
+  "count": {
+   "voice": "tone",
+   "freq": 988,
+   "len": 0.2,
+   "decay": 0.08,
+   "gain": 1
+  },
+  "cut": {
+   "voice": "click",
+   "lo": 1000,
+   "hi": 6000,
+   "len": 0.04,
+   "gain": 1
+  }
+ }
+}

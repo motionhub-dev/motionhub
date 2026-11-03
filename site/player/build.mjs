@@ -109,7 +109,12 @@ async function player(id) {
     plugins: [{name: 'motionhub', setup(b) {
       b.onResolve({filter: /^motionhub:reel$/}, () => ({path: join(dir, 'react/reel.tsx')}));
       b.onResolve({filter: /^motionhub:tokens$/}, () => ({path: 'tokens', namespace: 'motionhub'}));
-      b.onLoad({filter: /.*/, namespace: 'motionhub'}, () => ({contents: `export default ${JSON.stringify(tokens)};`, loader: 'js'}));
+      // the motion's sound (react/sound.json), or none
+      b.onResolve({filter: /^motionhub:sound$/}, () => ({path: 'sound', namespace: 'motionhub'}));
+      b.onResolve({filter: /^motionhub:sound-lib$/}, () => ({path: join(ROOT, 'packages/runtime/sound.js')}));
+      b.onLoad({filter: /.*/, namespace: 'motionhub'}, ({path}) => ({contents: `export default ${path === 'sound'
+        ? (existsSync(join(dir, 'react/sound.json')) ? readFileSync(join(dir, 'react/sound.json'), 'utf8') : 'null')
+        : JSON.stringify(tokens)};`, loader: 'js'}));
     }}],
   });
   // a reel that bundles three.js draws in 3D: the player holds it on a weak device until it is tapped

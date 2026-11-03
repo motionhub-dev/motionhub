@@ -12,6 +12,15 @@ import {DateRail} from './parts/timeline.tsx';
 import {Claim} from './parts/claim.tsx';
 
 export const reel = {seconds: 22, width: 1920, height: 1080};
+/** What happens when, for the motion's sound (sound.json): a pin is pressed in, a card is set down, a thread runs between cards, a highlight lands, a bar is drawn */
+export const cues = [
+  {at: 0, role: 'move', dur: 2.4}, {at: 2.2, role: 'land'}, {at: 2.5, role: 'move', dur: 1.3}, {at: 3.6, role: 'draw', dur: 1},
+  {at: 3.8, role: 'land'}, {at: 4.1, role: 'move', dur: 1.2}, {at: 6, role: 'count'}, {at: 7.6, role: 'move', dur: 1.4},
+  {at: 8.8, role: 'draw', dur: 1.2}, {at: 9.1, role: 'land'}, {at: 12.3, role: 'count'}, {at: 13.4, role: 'draw', dur: 0.9}, {at: 13.8, role: 'land'},
+  {at: 15.5, role: 'count'}, {at: 16.1, role: 'count'}, {at: 16.7, role: 'count'}, {at: 16.8, role: 'move', dur: 1.2},
+  {at: 17.6, role: 'draw', dur: 0.9}, {at: 17.9, role: 'land'}, {at: 18.4, role: 'draw', dur: 0.5}, {at: 19, role: 'count'},
+  {at: 19.1, role: 'move', dur: 1.5}, {at: 19.3, role: 'draw', dur: 1.1}, {at: 20, role: 'draw', dur: 1.2},
+];
 
 const glide = Easing.bezier(0.45, 0, 0.15, 1), lin = Easing.linear;
 const at = (t: number, from: number, to: number, a = 0, b = 1, easing = lin) => interpolate(t, [from, to], [a, b], {easing});

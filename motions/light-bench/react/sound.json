@@ -1,0 +1,46 @@
+{
+ "bpm": 70,
+ "root": 98,
+ "kit": [
+  "room",
+  "pad"
+ ],
+ "roles": {
+  "land": [
+   {
+    "voice": "click",
+    "lo": 1500,
+    "hi": 6000,
+    "len": 0.025
+   },
+   {
+    "voice": "thump",
+    "freq": 160,
+    "len": 0.1,
+    "drop": 0.3,
+    "gain": 0.4
+   }
+  ],
+  "move": {
+   "voice": "swell",
+   "freq": 98
+  },
+  "draw": {
+   "voice": "swish",
+   "lo": 2000,
+   "hi": 9000,
+   "rise": 0.4
+  },
+  "count": {
+   "voice": "chime",
+   "freq": 1318,
+   "len": 0.9
+  },
+  "cut": {
+   "voice": "click",
+   "lo": 1200,
+   "hi": 5000,
+   "len": 0.03
+  }
+ }
+}

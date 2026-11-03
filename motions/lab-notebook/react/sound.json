@@ -1,0 +1,43 @@
+{
+ "bpm": 88,
+ "root": 165,
+ "kit": [
+  "hat",
+  "pluck"
+ ],
+ "roles": {
+  "land": {
+   "voice": "click",
+   "lo": 2000,
+   "hi": 7000,
+   "len": 0.02,
+   "gain": 1
+  },
+  "move": {
+   "voice": "swish",
+   "lo": 400,
+   "hi": 2500,
+   "rise": 0.5,
+   "gain": 1
+  },
+  "draw": {
+   "voice": "scratch",
+   "lo": 3000,
+   "hi": 8000,
+   "gain": 1
+  },
+  "count": {
+   "voice": "pluck",
+   "freq": 659,
+   "len": 0.5,
+   "gain": 1
+  },
+  "cut": {
+   "voice": "click",
+   "lo": 2000,
+   "hi": 8000,
+   "len": 0.025,
+   "gain": 1
+  }
+ }
+}

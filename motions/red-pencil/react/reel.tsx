@@ -11,6 +11,14 @@ import {MarginNote} from './parts/note.tsx';
 import {Excerpt} from './parts/excerpt.tsx';
 
 export const reel = {seconds: 20, width: 1920, height: 1080};
+/** What happens when, for the motion's sound (sound.json): the page is printed, the pencil circles, strikes, writes and ticks, the total counts, the page turns */
+export const cues = [
+  {at: 0.1, role: 'land'}, {at: 0.6, role: 'land'}, {at: 1.3, role: 'draw', dur: 0.9}, {at: 4.0, role: 'cut'}, {at: 4.7, role: 'draw', dur: 1.2},
+  {at: 7.2, role: 'cut'}, {at: 7.9, role: 'land'}, {at: 8.6, role: 'land'}, {at: 9.3, role: 'count'}, {at: 9.5, role: 'draw', dur: 0.7},
+  {at: 10.4, role: 'draw', dur: 0.7}, {at: 11.6, role: 'cut'}, {at: 11.9, role: 'draw', dur: 0.4}, {at: 12.5, role: 'draw', dur: 1.1},
+  {at: 13.7, role: 'draw', dur: 0.7}, {at: 14.5, role: 'draw', dur: 0.6}, {at: 15.8, role: 'cut'}, {at: 16.7, role: 'land'},
+  {at: 17.2, role: 'draw', dur: 0.4}, {at: 17.9, role: 'draw', dur: 0.4},
+];
 
 // The pencil eases in and out; writing is linear (MOTION.md §5).
 const stroke = (t: number, from: number, to: number) => interpolate(t, [from, to], [0, 1], {easing: Easing.inOutSine});

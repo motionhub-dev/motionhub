@@ -34,6 +34,10 @@ const POSTER_BYTES = 500 * 1024;
 
 // The hub's rules (CONTRIBUTING.md)
 const REEL_SECONDS = 30;
+// a motion's sound (react/sound.json): the names @motionhub/runtime/sound draws (tests/sound.test.mjs holds the two together)
+export const SOUND_ROLES = ['land', 'move', 'draw', 'count', 'cut', 'out'];
+export const SOUND_VOICES = ['click', 'thump', 'tone', 'pluck', 'swish', 'scratch', 'chime', 'marimba', 'square', 'squares', 'swell', 'keys', 'noise'];
+export const SOUND_KIT = ['kick', 'hat', 'rim', 'bass', 'arp', 'pluck', 'chip', 'pad', 'room'];
 const FONT_BYTES = 300 * 1024;
 const TEXT_LICENSES = new Set(['CC-BY-4.0', 'CC-BY-SA-4.0', 'CC0-1.0']);
 const CODE_LICENSES = new Set(['MIT', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'ISC', '0BSD']);
@@ -368,6 +372,20 @@ function checkHub(dir, manifest, {author, official, was}, add) {
     for (const f of Array.isArray(list) ? list : []) {
       if (typeof f?.family !== 'string' || typeof f?.file !== 'string' || !files.includes(f.file)) add('hub.font', 'react/fonts/fonts.json', `an entry needs a family and a file that is here (${f?.file})`);
       else if (!credits.includes(f.family)) add('hub.font', 'CREDITS.md', `CREDITS.md must name the face ${f.family} and its licence`);
+    }
+  }
+  // a motion's sound: the bed and a voice for each role its reel's cues name
+  if (existsSync(join(dir, 'react/sound.json'))) {
+    let sound;
+    try { sound = JSON.parse(readFileSync(join(dir, 'react/sound.json'), 'utf8')); } catch { add('hub.sound', 'react/sound.json', 'not valid JSON'); }
+    if (sound && typeof sound === 'object') {
+      if (sound.bpm !== undefined && !(sound.bpm >= 40 && sound.bpm <= 200)) add('hub.sound', 'react/sound.json', 'bpm is 40 to 200');
+      if (sound.root !== undefined && !(sound.root >= 40 && sound.root <= 2000)) add('hub.sound', 'react/sound.json', 'root is a note in Hz, 40 to 2000');
+      for (const k of [].concat(sound.kit ?? [])) if (!SOUND_KIT.includes(k)) add('hub.sound', 'react/sound.json', `kit has no "${k}": ${SOUND_KIT.join(', ')}`);
+      for (const [role, spec] of Object.entries(sound.roles ?? {})) {
+        if (!SOUND_ROLES.includes(role)) add('hub.sound', 'react/sound.json', `roles has no "${role}": ${SOUND_ROLES.join(', ')}`);
+        for (const l of [].concat(spec)) if (!SOUND_VOICES.includes(l?.voice)) add('hub.sound', 'react/sound.json', `${role} has no voice "${l?.voice}": ${SOUND_VOICES.join(', ')}`);
+      }
     }
   }
   // a reel is what the motion's page plays live: a default export and how long it runs

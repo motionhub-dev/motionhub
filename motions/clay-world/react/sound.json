@@ -1,0 +1,61 @@
+{
+ "bpm": 96,
+ "root": 196,
+ "kit": [
+  "arp",
+  "kick",
+  "room"
+ ],
+ "roles": {
+  "land": [
+   {
+    "voice": "thump",
+    "freq": 110,
+    "len": 0.18,
+    "drop": 0.4,
+    "gain": 1
+   },
+   {
+    "voice": "noise",
+    "lo": 200,
+    "hi": 1200,
+    "len": 0.06,
+    "fade": "hit",
+    "gain": 0.5
+   }
+  ],
+  "move": {
+   "voice": "swish",
+   "lo": 200,
+   "hi": 1500,
+   "rise": 0.5,
+   "gain": 1
+  },
+  "draw": {
+   "voice": "noise",
+   "lo": 300,
+   "hi": 2000,
+   "fade": "swell",
+   "gain": 1
+  },
+  "count": {
+   "voice": "marimba",
+   "freq": 392,
+   "len": 0.6,
+   "gain": 1
+  },
+  "cut": {
+   "voice": "marimba",
+   "freq": 523,
+   "len": 0.3,
+   "gain": 1
+  },
+  "out": {
+   "voice": "thump",
+   "freq": 90,
+   "len": 0.15,
+   "drop": 0.5,
+   "gain": 0.5
+  }
+ }
+}

@@ -13,6 +13,14 @@ import {Mileposts} from './parts/mileposts.tsx';
 import {Section} from './parts/section.tsx';
 
 export const reel = {seconds: 20, width: 1920, height: 1080};
+/** What happens when, for the motion's sound (sound.json): the camera dollies, focus racks, a light kindles, a figure lands, a section builds, the posts pass by */
+export const cues = [
+  {at: 0, role: 'move', dur: 3.6}, {at: 1.2, role: 'land'}, {at: 3, role: 'count'}, {at: 3.6, role: 'move', dur: 1}, {at: 5.4, role: 'cut'},
+  {at: 5.8, role: 'draw', dur: 0.8}, {at: 6, role: 'move', dur: 2.2}, {at: 6, role: 'land'}, {at: 7.8, role: 'count'},
+  {at: 9.8, role: 'draw', dur: 1.5}, {at: 11.4, role: 'draw', dur: 0.8}, {at: 13, role: 'land'}, {at: 13.5, role: 'land'},
+  {at: 13.7, role: 'move', dur: 2.7}, {at: 14, role: 'land'}, {at: 15.6, role: 'cut'}, {at: 16.4, role: 'move', dur: 1.7}, {at: 17.4, role: 'land'},
+  {at: 17.9, role: 'count'}, {at: 18.2, role: 'land'},
+];
 
 type Ease = (v: number) => number;
 const sine = Easing.inOutSine, linear = Easing.linear, outQuart = Easing.outQuart;

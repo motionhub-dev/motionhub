@@ -10,6 +10,15 @@ import {Sign} from './parts/sign.tsx';
 
 export const reel = {seconds: 20, width: 1920, height: 1080};
 
+/** What happens when, for the motion's sound (sound.json): the floor is laid, buildings and signs land, belts run, the roof lifts, stacks fill and count, scenes cut */
+export const cues = [
+  {at: 0.0, role: 'draw', dur: 1.2}, {at: 1.15, role: 'land'}, {at: 4.1, role: 'draw', dur: 0.7}, {at: 4.4, role: 'land'},
+  {at: 5.7, role: 'land'}, {at: 6.2, role: 'move', dur: 1.2}, {at: 8.4, role: 'move', dur: 1.1}, {at: 8.4, role: 'draw', dur: 0.8},
+  {at: 9.6, role: 'land'}, {at: 10.5, role: 'cut'}, {at: 10.8, role: 'draw', dur: 2.0}, {at: 11.1, role: 'land'},
+  {at: 12.8, role: 'count'}, {at: 13.5, role: 'land'}, {at: 14.1, role: 'cut'}, {at: 14.2, role: 'draw', dur: 1.1},
+  {at: 15.3, role: 'count'}, {at: 15.6, role: 'draw', dur: 1.2}, {at: 16.8, role: 'count'}, {at: 17.7, role: 'cut'}, {at: 18.2, role: 'land'},
+];
+
 const ease = Easing.inOutSine, out = Easing.outQuart, inQuad = (x: number) => x * x;
 /** `a` to `b` between seconds `from` and `to` */
 const at = (t: number, from: number, to: number, a: number, b: number, easing = ease) => interpolate(t, [from, to], [a, b], {easing});

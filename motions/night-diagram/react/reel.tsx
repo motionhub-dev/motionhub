@@ -14,6 +14,13 @@ import {Pulse} from './parts/pulse.tsx';
 import {Dive} from './parts/dive.tsx';
 
 export const reel = {seconds: 20, width: 1920, height: 1080};
+/** What happens when, for the motion's sound (sound.json): the cloud grows, a collision happens, the stroke strikes, the air rolls out, the planet comes up, a reading settles */
+export const cues = [
+  {at: 0.0, role: 'move', dur: 1.5}, {at: 0.3, role: 'draw', dur: 0.9}, {at: 1.7, role: 'land'}, {at: 3.0, role: 'count'}, {at: 4.8, role: 'land'},
+  {at: 5.6, role: 'land'}, {at: 7.0, role: 'cut'}, {at: 7.4, role: 'land'}, {at: 8.4, role: 'count'}, {at: 9.6, role: 'move', dur: 2.2},
+  {at: 10.0, role: 'draw', dur: 3.0}, {at: 11.2, role: 'land'}, {at: 11.8, role: 'count'}, {at: 14.6, role: 'move', dur: 3.2},
+  {at: 17.2, role: 'land'}, {at: 18.5, role: 'count'},
+];
 
 const ease = Easing.inOutSine, out = Easing.outQuart, lin = Easing.linear;
 const at = (t: number, from: number, to: number, a = 0, b = 1, easing = lin) => interpolate(t, [from, to], [a, b], {easing});

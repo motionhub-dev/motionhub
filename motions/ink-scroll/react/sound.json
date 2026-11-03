@@ -1,0 +1,42 @@
+{
+ "bpm": 66,
+ "root": 147,
+ "kit": [
+  "pluck",
+  "room"
+ ],
+ "roles": {
+  "land": {
+   "voice": "pluck",
+   "freq": 294,
+   "len": 1.2,
+   "gain": 1
+  },
+  "move": {
+   "voice": "noise",
+   "lo": 1500,
+   "hi": 6000,
+   "fade": "out",
+   "gain": 1
+  },
+  "draw": {
+   "voice": "scratch",
+   "lo": 800,
+   "hi": 3500,
+   "gain": 1
+  },
+  "count": {
+   "voice": "thump",
+   "freq": 200,
+   "len": 0.2,
+   "drop": 0.2,
+   "gain": 1
+  },
+  "cut": {
+   "voice": "pluck",
+   "freq": 440,
+   "len": 0.8,
+   "gain": 1
+  }
+ }
+}

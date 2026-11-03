@@ -1,0 +1,37 @@
+{
+ "bpm": 60,
+ "root": 82,
+ "kit": [
+  "pad"
+ ],
+ "bed": 0.35,
+ "roles": {
+  "land": {
+   "voice": "pluck",
+   "freq": 220,
+   "len": 0.8
+  },
+  "move": {
+   "voice": "swell",
+   "freq": 55
+  },
+  "draw": {
+   "voice": "swish",
+   "lo": 200,
+   "hi": 2000,
+   "rise": 0.5
+  },
+  "count": {
+   "voice": "tone",
+   "freq": 392,
+   "len": 0.3,
+   "decay": 0.12
+  },
+  "cut": {
+   "voice": "click",
+   "lo": 1500,
+   "hi": 5000,
+   "len": 0.03
+  }
+ }
+}

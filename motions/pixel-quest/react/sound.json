@@ -1,0 +1,56 @@
+{
+ "bpm": 120,
+ "root": 220,
+ "kit": [
+  "chip",
+  "kick"
+ ],
+ "roles": {
+  "land": {
+   "voice": "square",
+   "freq": 880,
+   "len": 0.06,
+   "gain": 1
+  },
+  "move": {
+   "voice": "squares",
+   "freqs": [
+    440,
+    523,
+    622,
+    740
+   ],
+   "len": 0.05,
+   "gain": 1
+  },
+  "draw": {
+   "voice": "square",
+   "freq": 660,
+   "len": 0.04,
+   "gain": 1
+  },
+  "count": {
+   "voice": "squares",
+   "freqs": [
+    659,
+    784,
+    1046
+   ],
+   "len": 0.07,
+   "gain": 1
+  },
+  "cut": {
+   "voice": "square",
+   "freq": 330,
+   "len": 0.08,
+   "gain": 1
+  },
+  "out": {
+   "voice": "thump",
+   "freq": 60,
+   "len": 0.3,
+   "drop": 0.5,
+   "gain": 1
+  }
+ }
+}

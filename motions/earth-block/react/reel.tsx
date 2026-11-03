@@ -13,6 +13,14 @@ import {Slabs} from './parts/slabs.tsx';
 import {Heading} from './parts/heading.tsx';
 
 export const reel = {seconds: 21, width: 1920, height: 1080};
+/** What happens when, for the motion's sound (sound.json): the block lands, water draws down through the layers, the face is cut, the core is pulled, the shaft is sunk, the slabs are weighed */
+export const cues = [
+  {at: 0, role: 'move', dur: 1.4}, {at: 1.4, role: 'land'}, {at: 2, role: 'draw', dur: 1.2}, {at: 2.4, role: 'land'}, {at: 4.3, role: 'land'},
+  {at: 6, role: 'move', dur: 1.2}, {at: 6, role: 'cut'}, {at: 7.6, role: 'draw', dur: 2.6}, {at: 7.7, role: 'land'}, {at: 9.5, role: 'land'},
+  {at: 10.8, role: 'land'}, {at: 12, role: 'move', dur: 1.8}, {at: 13.9, role: 'draw', dur: 1}, {at: 14.9, role: 'count'},
+  {at: 15.2, role: 'draw', dur: 0.8}, {at: 15.8, role: 'move', dur: 1.6}, {at: 16.6, role: 'land'}, {at: 18.8, role: 'draw', dur: 1},
+  {at: 19.8, role: 'count'},
+];
 
 const ease = Easing.inOutSine, out = Easing.outQuart;
 /** A value through keyframes [time, value], eased between each pair */

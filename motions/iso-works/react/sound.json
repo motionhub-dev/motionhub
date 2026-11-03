@@ -1,0 +1,47 @@
+{
+ "bpm": 100,
+ "root": 110,
+ "kit": [
+  "kick",
+  "hat",
+  "bass",
+  "rim"
+ ],
+ "roles": {
+  "land": {
+   "voice": "tone",
+   "freq": 320,
+   "len": 0.15,
+   "decay": 0.05,
+   "gain": 1
+  },
+  "move": {
+   "voice": "noise",
+   "lo": 60,
+   "hi": 400,
+   "fade": "swell",
+   "gain": 1
+  },
+  "draw": {
+   "voice": "swish",
+   "lo": 200,
+   "hi": 2000,
+   "rise": 0.5,
+   "gain": 1
+  },
+  "count": {
+   "voice": "tone",
+   "freq": 440,
+   "len": 0.12,
+   "decay": 0.04,
+   "gain": 1
+  },
+  "cut": {
+   "voice": "click",
+   "lo": 2000,
+   "hi": 8000,
+   "len": 0.025,
+   "gain": 1
+  }
+ }
+}

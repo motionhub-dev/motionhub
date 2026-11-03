@@ -17,6 +17,14 @@ import {Wipe} from './parts/wipe.tsx';
 import {Figure} from './parts/figure.tsx';
 
 export const reel = {seconds: 22, width: 1920, height: 1080};
+/** What happens when, for the motion's sound (sound.json): the window lands, keys press, the camera flies control to control, rings draw, toggles click, the phone lands, the change wipes */
+export const cues = [
+  {at: 0.0, role: 'move', dur: 2.4}, {at: 0.8, role: 'land'}, {at: 1.2, role: 'land'}, {at: 2.8, role: 'draw', dur: 0.8}, {at: 3.6, role: 'cut'},
+  {at: 3.7, role: 'move', dur: 1.2}, {at: 5.15, role: 'cut'}, {at: 5.2, role: 'draw', dur: 1.1}, {at: 6.3, role: 'move', dur: 1.2}, {at: 7.3, role: 'draw', dur: 1.1},
+  {at: 8.6, role: 'count'}, {at: 9.0, role: 'move', dur: 1.0}, {at: 9.9, role: 'land'}, {at: 10.95, role: 'count'}, {at: 12.3, role: 'move', dur: 1.3},
+  {at: 13.4, role: 'land'}, {at: 13.5, role: 'draw', dur: 0.9}, {at: 15.3, role: 'draw', dur: 0.9}, {at: 15.8, role: 'count'}, {at: 16.2, role: 'move', dur: 1.4},
+  {at: 17.0, role: 'land'}, {at: 17.4, role: 'count'}, {at: 18.3, role: 'move', dur: 1.3}, {at: 20.0, role: 'count'}, {at: 20.9, role: 'count'},
+];
 
 type Ease = (x: number) => number;
 const unit = (v: number) => Math.max(0, Math.min(1, v));

@@ -10,6 +10,13 @@ import {Tag} from './parts/tag.tsx';
 import {Flood} from './parts/flood.tsx';
 
 export const reel = {seconds: 20, width: 1920, height: 1080};
+/** What happens when, for the motion's sound (sound.json): a plate rolls on, a tag stamps, the sheet knocks, pink floods, the camera pushes to a cut */
+export const cues = [
+  {at: 0.1, role: 'land'}, {at: 1.2, role: 'move', dur: 0.8}, {at: 1.5, role: 'draw', dur: 0.7}, {at: 2.6, role: 'land'}, {at: 4.4, role: 'land'},
+  {at: 5.3, role: 'land'}, {at: 5.9, role: 'move', dur: 0.4}, {at: 8.0, role: 'land'}, {at: 8.6, role: 'move', dur: 0.8}, {at: 9.4, role: 'move', dur: 1.1},
+  {at: 10.4, role: 'draw', dur: 2.0}, {at: 11.1, role: 'land'}, {at: 11.9, role: 'land'}, {at: 12.6, role: 'move', dur: 1.4}, {at: 14.0, role: 'cut'},
+  {at: 14.0, role: 'land'}, {at: 14.5, role: 'land'}, {at: 14.9, role: 'land'}, {at: 15.8, role: 'land'}, {at: 17.0, role: 'land'}, {at: 17.6, role: 'land'},
+];
 
 const inQuad = (x: number) => x * x, outSine = (x: number) => Math.sin((x * Math.PI) / 2);
 /** 0 to 1 between seconds `from` and `to`: plates roll, tags stamp and knocks run linearly (MOTION.md §5) */
