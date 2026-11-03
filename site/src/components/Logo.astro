@@ -1,0 +1,16 @@
+---
+// The lockup from brand/: the mark in the brand's vermilion and the wordmark's outlines in the text colour, inline so
+// it follows the theme. The mark's geometry is brand/logo/mark.svg's.
+import {readFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {ROOT} from '../lib/catalogue.mjs';
+
+const word = readFileSync(join(ROOT, 'brand/logo/wordmark.svg'), 'utf8');
+const viewBox = /viewBox="([^"]+)"/.exec(word)[1];
+const path = /<path[^>]*\/>/.exec(word)[0];
+const balls = [...readFileSync(join(ROOT, 'brand/logo/mark.svg'), 'utf8').matchAll(/<circle [^>]*\/>/g)].map((m) => m[0].replace(/fill="#[0-9A-Fa-f]{6}"/, 'fill="var(--color-mark)"'));
+---
+<a class="brand" href="/" aria-label="motionhub, all motions">
+  <svg class="mark" viewBox="0 0 96 56" aria-hidden="true" set:html={balls.join('')} />
+  <svg class="word" viewBox={viewBox} aria-hidden="true" set:html={path} />
+</a>

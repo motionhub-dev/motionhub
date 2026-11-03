@@ -1,0 +1,94 @@
+---
+import '../../../brand/tokens.css';
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/noto-sans-sc/400.css';
+import '@fontsource/noto-sans-sc/600.css';
+import '@fontsource/jetbrains-mono/400.css';
+import '../styles/site.css';
+import Logo from '../components/Logo.astro';
+import {REPO, SITE, SPEC} from '../lib/catalogue.mjs';
+
+interface Props { title: string; description: string; path: string; image?: string; current?: 'motions'; q?: string }
+const {title, description, path, image = '/og-default.png', current, q = ''} = Astro.props;
+---
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script is:inline>document.documentElement.classList.remove('no-js')</script>
+<title>{title}</title>
+<meta name="description" content={description}>
+<link rel="canonical" href={`${SITE}${path}`}>
+<meta property="og:site_name" content="motionhub">
+<meta property="og:title" content={title}>
+<meta property="og:description" content={description}>
+<meta property="og:url" content={`${SITE}${path}`}>
+<meta property="og:image" content={`${SITE}${image}`}>
+<meta name="twitter:card" content="summary_large_image">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#F3EEE4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1A1714" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="alternate" type="application/json" href="/api/motions.json" title="The motionhub index">
+<slot name="head" />
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <Logo />
+    <nav class="nav" aria-label="Site">
+      <a href="/" aria-current={current === 'motions' ? 'page' : undefined}>Motions</a>
+      <a href={`${REPO}/blob/main/SPEC.md`}>Spec</a>
+      <a class="wide" href={REPO}>GitHub</a>
+    </nav>
+    <form class="search" role="search" action="/" method="get">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <label for="q" class="sr">Search motions</label>
+      <input id="q" name="q" type="search" value={q} placeholder="Search motions, looks, creators" autocomplete="off" spellcheck="false">
+      <kbd aria-hidden="true">/</kbd>
+    </form>
+    <div class="actions">
+      <a class="btn" href={`${REPO}/blob/main/CONTRIBUTING.md`}><span>Share<span class="long"> a motion</span></span></a>
+    </div>
+  </div>
+</header>
+<main class="wrap">
+<slot />
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <span>motionhub · open format {SPEC} · maintained by <a href="https://github.com/iamsuosi">SuoSi</a></span>
+    <span class="gap"></span>
+    <a href={`${REPO}/blob/main/SPEC.md`}>Spec</a>
+    <a href={`${REPO}/blob/main/brand/BRAND.md`}>Brand</a>
+    <a href="/llms.txt">llms.txt</a>
+    <a href="/api/motions.json">api/motions.json</a>
+    <a href={REPO}>GitHub</a>
+  </div>
+</footer>
+<script>
+  // "/" focuses the search, from anywhere but a field
+  const q = document.getElementById('q') as HTMLInputElement | null;
+  document.addEventListener('keydown', (e) => {
+    const t = e.target as HTMLElement;
+    if (e.key === '/' && q && !/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) && !t.isContentEditable) { e.preventDefault(); q.focus(); }
+  });
+  // a copy button on every block marked data-copy
+  for (const pre of document.querySelectorAll<HTMLElement>('[data-copy]')) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+    b.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(pre.innerText.trim()); b.textContent = 'Copied'; } catch { b.textContent = 'Select and copy'; }
+      setTimeout(() => (b.textContent = 'Copy'), 1600);
+    });
+    pre.parentElement?.append(b);
+  }
+</script>
+</body>
+</html>

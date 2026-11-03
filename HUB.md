@@ -15,7 +15,8 @@ How this repository is published at [motionhub.dev](https://motionhub.dev): the 
 | `packages/runtime/`, `packages/remotion/`, `packages/hyperframes/` | The npm packages `@motionhub/runtime` (what a motion's components draw with, in any engine) and its bindings for Remotion and HyperFrames. A tag `<package>-v<version>` stages one the same way |
 | `tools/build.mjs` | Builds the files below into `dist/` from `motions/` and the skill, refusing while any motion has an issue |
 | `brand/`, `tools/brand.mjs` | The brand: tokens (colours for both themes, type, sizes), the logo, icons, favicons and default share card, and the rules for using them ([brand/BRAND.md](brand/BRAND.md)). `node tools/brand.mjs` writes `brand/tokens.css` from the tokens |
-| `tools/site.mjs`, `tools/site.css` | The site's pages: the gallery, a page per motion, the 404 page, `_headers`, `robots.txt` and `sitemap.xml` |
+| `site/` | The site's pages, an [Astro](https://astro.build) project with its own `package.json`: the gallery, a page per motion and the 404 page, in the brand's tokens and self-hosted fonts. `npm run build` there runs `tools/build.mjs` into `dist/`, builds the pages over it and adds them, never replacing a served file |
+| `tools/site.mjs` | What the pages share with the build, with no dependencies: the Markdown a motion's documents use, its colours and faces, and `_headers`, `robots.txt` and `sitemap.xml` |
 | `site/worker.mjs`, `wrangler.jsonc` | The Cloudflare Worker: it serves the build as static assets and the packages from the R2 bucket `motionhub` |
 | `.github/workflows/deploy.yml` | Builds, publishes each new package to R2 and deploys, on every push to the main branch and every six hours. It refuses to replace a published package |
 | `skills/motionhub/SKILL.md` | The generic skill: how any agent chooses a motion, fetches it and makes a film in it. `/llms.txt` is the same text |

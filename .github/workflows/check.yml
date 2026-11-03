@@ -1,4 +1,4 @@
-# Every pull request and every push to main: the tools' own tests, every motion against SPEC.md and CONTRIBUTING.md, the hub's build,
+# Every pull request and every push to main: the tools' own tests, every motion against SPEC.md and CONTRIBUTING.md, the hub's and the site's builds,
 # the motions a pull request adds or changes against its author (and a change against the version on main), and a
 # sign-off on each of its commits. It runs the pull request's own code, so it has no secrets and can only read.
 name: check
@@ -30,6 +30,9 @@ jobs:
         run: node tools/check.mjs
       - name: The hub builds
         run: node tools/build.mjs
+      - name: The site builds
+        working-directory: site
+        run: npm ci --no-audit --no-fund && npm run build
       - name: The motions this pull request adds or changes, against its author and what is published
         if: github.event_name == 'pull_request'
         env:

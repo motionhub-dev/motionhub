@@ -1,0 +1,113 @@
+---
+import Base from '../layouts/Base.astro';
+import Card from '../components/Card.astro';
+import {REPO, chips, en, other, rows, tools} from '../lib/catalogue.mjs';
+
+// what a search matches: the id, every name and line, the tags, the tools and the authors
+const text = (r) => [r.slug, ...Object.values(r.name), ...Object.values(r.line), ...r.tags, ...r.tools, ...r.authors.flatMap((a) => [a.name, a.github])].join(' ').toLowerCase();
+const filter = (r) => ({'data-text': text(r), 'data-tags': r.tags.join(' '), 'data-tools': r.tools.join(' ')});
+const n = rows.length;
+---
+<Base title="motionhub: open looks for explainer videos" description="Open motions for narrated and explanatory video: pick a look, and any agent can make your film in it." path="/" current="motions">
+  <div class="lead">
+    <h1>Motions</h1>
+    <p>Reusable looks for narrated and explainer video. Pick one, and any agent makes your film in it.</p>
+  </div>
+
+  <div class="bar">
+    <div class="chips" role="group" aria-label="Looks">
+      <button type="button" class="chip" data-tag="" aria-pressed="true">All</button>
+      {chips().map((t) => <button type="button" class="chip" data-tag={t} aria-pressed="false">{t}</button>)}
+    </div>
+    {tools.length > 0 && (
+      <label class="field">Ready for
+        <select id="tool">
+          <option value="">Any agent</option>
+          {tools.map((t) => <option value={t}>{t}</option>)}
+        </select>
+      </label>
+    )}
+    <div class="seg" role="group" aria-label="View">
+      <button type="button" data-view="grid" aria-pressed="true" aria-label="Grid"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
+      <button type="button" data-view="list" aria-pressed="false" aria-label="List"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
+    </div>
+  </div>
+
+  <p class="count" id="count" aria-live="polite">{n} {n === 1 ? 'motion' : 'motions'}, A to Z</p>
+
+  <div class="grid" id="grid">
+    {rows.map((r) => <Card row={r} {...filter(r)} />)}
+  </div>
+
+  <div class="table" id="list" hidden>
+    <table>
+      <thead><tr><th colspan="2">Motion</th><th>Looks</th><th>Ready for</th><th>By</th><th class="r">Version</th></tr></thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr {...filter(r)}>
+            <td class="p"><a href={`/m/${r.slug}/`} tabindex="-1" aria-hidden="true"><img src={r.poster} alt="" loading="lazy" decoding="async" width="96" height="54"></a></td>
+            <td class="n"><a href={`/m/${r.slug}/`}>{en(r.name)}</a>{other(r.name) && <small>{other(r.name)}</small>}<div>{en(r.line)}</div></td>
+            <td>{r.tags.join(', ')}</td>
+            <td>{r.tools.map((t) => <span class="badge">{t}</span>)}</td>
+            <td>{r.authors.map((a) => a.name).join(', ')}</td>
+            <td class="r mono">{r.version}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <p class="empty" id="empty" hidden>No motion matches. <a href={`${REPO}/blob/main/CONTRIBUTING.md`}>Make the first one.</a></p>
+</Base>
+
+<script>
+  // Filters the gallery by the search, a look and a tool, and switches between the grid and the list. The page is
+  // complete without it. The state is kept in the address (?q=&tag=&tool=&view=) so a filtered gallery can be shared.
+  const $ = <T extends Element>(s: string) => document.querySelector<T>(s);
+  const q = $<HTMLInputElement>('#q')!, tool = $<HTMLSelectElement>('#tool');
+  const chips = [...document.querySelectorAll<HTMLButtonElement>('.chip[data-tag]')];
+  const views = [...document.querySelectorAll<HTMLButtonElement>('[data-view]')];
+  const items = [...document.querySelectorAll<HTMLElement>('[data-text]')];
+  const grid = $<HTMLElement>('#grid')!, list = $<HTMLElement>('#list')!;
+  const params = new URLSearchParams(location.search);
+  let tag = params.get('tag') ?? '';
+  let view = params.get('view') ?? (() => { try { return localStorage.getItem('motionhub.view'); } catch { return null; } })() ?? 'grid';
+  q.value = params.get('q') ?? q.value;
+  if (tool) tool.value = params.get('tool') ?? '';
+  if (!chips.some((c) => c.dataset.tag === tag)) tag = '';
+
+  function apply() {
+    const words = q.value.toLowerCase().split(/\s+/).filter(Boolean);
+    const t = tool?.value ?? '';
+    let n = 0;
+    for (const el of items) {
+      const show = (!tag || el.dataset.tags!.split(' ').includes(tag)) && (!t || el.dataset.tools!.split(' ').includes(t)) && words.every((w) => el.dataset.text!.includes(w));
+      el.hidden = !show;
+      if (show && el.tagName === 'A') n++;
+    }
+    for (const c of chips) c.setAttribute('aria-pressed', String(c.dataset.tag === tag));
+    for (const v of views) v.setAttribute('aria-pressed', String(v.dataset.view === view));
+    grid.hidden = view !== 'grid';
+    list.hidden = view !== 'list';
+    const parts = [`${n} ${n === 1 ? 'motion' : 'motions'}`];
+    if (tag) parts.push(`tagged ${tag}`);
+    if (t) parts.push(`ready for ${t}`);
+    if (words.length) parts.push(`matching “${q.value.trim()}”`);
+    $('#count')!.textContent = parts.join(' ') + ', A to Z';
+    $<HTMLElement>('#empty')!.hidden = n > 0;
+    const next = new URLSearchParams();
+    if (q.value.trim()) next.set('q', q.value.trim());
+    if (tag) next.set('tag', tag);
+    if (t) next.set('tool', t);
+    if (view !== 'grid') next.set('view', view);
+    const s = next.toString();
+    history.replaceState(null, '', s ? `?${s}` : location.pathname);
+  }
+
+  q.form!.addEventListener('submit', (e) => e.preventDefault());
+  q.addEventListener('input', apply);
+  tool?.addEventListener('change', apply);
+  for (const c of chips) c.addEventListener('click', () => { tag = c.dataset.tag!; apply(); });
+  for (const v of views) v.addEventListener('click', () => { view = v.dataset.view!; try { localStorage.setItem('motionhub.view', view); } catch {} apply(); });
+  apply();
+</script>
