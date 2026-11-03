@@ -10,4 +10,5 @@ The open motion format and the public catalogue behind motionhub.dev. Read [READ
 - Before pushing: `npm test`, `node tools/check.mjs` and `node tools/build.mjs`; for a change to the site, `npm run build` in `site/` too.
 - **The docs at motionhub.dev/docs are the repository's own documents** (`tools/docs.mjs` lists them): change a document where it lives, and write a guide that has no home yet in `docs/`. A link between documents is a relative path to the file, which the docs turn into a page or its Markdown twin.
 - **The site's dependencies stay in `site/`.** The repository's root is the zero-dependency `@motionhub/cli` package; the pages are an Astro project with its own `package.json` and lockfile.
+- **Claude on GitHub.** `@claude` in an issue or pull request (`.github/workflows/claude.yml`) and the reviewer agent (`claude-review.yml`, following [REVIEW.md](REVIEW.md)) run as the Claude GitHub App with the `CLAUDE_CODE_OAUTH_TOKEN` secret. Only people with write access call either; a fork's pull request is reviewed when one of them comments `/review`.
 - Talk to the developer in Chinese.
