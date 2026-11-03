@@ -19,7 +19,7 @@ export const DOCS = [
   {group: 'Reference', pages: [
     {slug: 'spec', file: 'SPEC.md', label: 'Specification'},
     {slug: 'hub', file: 'HUB.md', label: 'The hub and its files'},
-    {slug: 'skill', file: 'skills/motionhub/SKILL.md', label: 'Agent skill'},
+    {slug: 'skill', file: 'skills/motionhub/SKILL.md', label: 'Agent skill', title: 'Agent skill'},
   ]},
   {group: 'Engines', pages: [
     {slug: 'remotion', file: 'packages/remotion/README.md', label: 'Remotion'},
@@ -42,7 +42,8 @@ export const twinPath = (p) => `/docs/${p.slug}.md`;
 export function readDoc(root, p) {
   const text = readFileSync(join(root, p.file), 'utf8').replace(/\r\n/g, '\n').replace(/^---\n[\s\S]*?\n---\n+/, '');
   const m = /^# (.+)\n+/.exec(text);
-  return {title: m ? m[1].replace(/`/g, '') : p.label, body: m ? text.slice(m[0].length) : text};
+  // a page may name itself (title) where its document's own heading speaks to another reader, as the skill's does
+  return {title: p.title ?? (m ? m[1].replace(/`/g, '') : p.label), body: m ? text.slice(m[0].length) : text};
 }
 
 const BLOB = `${REPO}/blob/main/`;

@@ -4,13 +4,28 @@ Pick a motion on [motionhub.dev](https://motionhub.dev), then make your film in 
 
 ## With any agent
 
-Ask an agent that has the motionhub skill, or that can read `llms.txt`:
+Nothing to install. Paste this into any agent that can open a URL, with your topic and the motion you picked:
 
 ```text
-Make a film about <your topic> in the motion https://motionhub.dev/m/red-pencil/
+Read https://motionhub.dev/llms.txt, then make a film about "<your topic>" in the motion https://motionhub.dev/m/red-pencil/
 ```
 
-The agent fetches the motion, checks it against its SHA-256, reads `MOTION.md` and `tokens.json` whole, and makes your film in its look with whatever engine it uses. The [agent skill](../skills/motionhub/SKILL.md) is the same instructions as a skill: install it the way your agent installs skills. An agent that cannot install skills can read [/llms.txt](https://motionhub.dev/llms.txt) instead.
+[/llms.txt](https://motionhub.dev/llms.txt) tells the agent how: it fetches the motion, checks it against its SHA-256, reads `MOTION.md` and `tokens.json` whole, and makes your film in its look with whatever engine it uses.
+
+### Install the skill
+
+The [agent skill](../skills/motionhub/SKILL.md) is the same instructions, kept by your agent so it needs no first line. In Claude Code, put it in the project's skills:
+
+```sh
+mkdir -p .claude/skills/motionhub
+curl -fsSL https://raw.githubusercontent.com/motionhub-dev/motions/main/skills/motionhub/SKILL.md -o .claude/skills/motionhub/SKILL.md
+```
+
+or in `~/.claude/skills/motionhub/` for every project. Another agent takes the same `SKILL.md` wherever it keeps skills. Then ask:
+
+```text
+Make a film about <your topic> in the motion red-pencil
+```
 
 ## From the command line
 
@@ -32,4 +47,4 @@ Both provide [`@motionhub/runtime`](../packages/runtime/README.md), which is all
 
 ## In anything else
 
-A motion needs no tool. `MOTION.md` says in words how it looks and moves, and `tokens.json` gives the exact colours, faces and timings, the way a design system would. Follow them in your own engine, and credit the motion and its fonts as its `CREDITS.md` asks.
+A motion needs no tool, and no particular engine: HTML and CSS, GSAP, Motion Canvas or a renderer of your own. `MOTION.md` says in words how it looks and moves, and `tokens.json` gives the exact colours, faces and timings, the way a design system would. Follow them in your own engine, and credit the motion and its fonts as its `CREDITS.md` asks.
