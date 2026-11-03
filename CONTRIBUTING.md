@@ -2,6 +2,14 @@
 
 A motion arrives as a pull request that adds `motions/<slug>/` in the [format](SPEC.md). Your GitHub account is your identity here: the `github` of at least one author in `motion.json` must be the account that opens the pull request.
 
+## The quick way
+
+```sh
+npx @motionhub/cli init <slug>          # ./<slug>/ with every required file to fill in
+npx @motionhub/cli share <slug>         # the checks below, as your GitHub account (gh)
+npx @motionhub/cli share <slug> --pr    # the pull request, from your fork, signed off
+```
+
 ## Before you open it
 
 ```sh
@@ -28,7 +36,18 @@ A motion is a look of your own. You may learn from any film or project, and say 
 - No copy of another project's code, artwork, fonts or text, whatever its licence, unless that licence allows it and `CREDITS.md` names it.
 - An art movement or a painter's manner is fine. A copy of a particular protected artwork is not.
 
+Building on another motion is welcome when its licence allows it (every licence accepted here does): publish yours under a new slug, say in `CREDITS.md` what you took and what you changed, and keep its notices for any code you copied.
+
 A pull request that breaks these is closed. If you hold rights in something here, open an issue and it will be looked at quickly.
+
+## Tool directories
+
+A tool keeps its own files in a directory named after it (SPEC.md §7). Where several people write for one tool, the directory follows that tool's convention here:
+
+- **`visotalk/`**: the whole VisoTalk pack, as `visotalk motion check` reads it: `motion.json` with the values written onto a document, `MOTION.md` in its numbered sections, `parts/`, and a `demo/` sample. `visotalk motion share` writes it.
+- **`remotion/`**: a module for Remotion, which a project copies in as `motion/` and imports from `../motion/remotion`. `remotion/index.ts` exports `theme` (the tokens as values: colours, font stacks, durations in seconds, easings as `[x1, y1, x2, y2]`) and the motion's reusable components; `remotion/README.md` says what each component is for, its props, and the canvas it is laid out for. Components import only `remotion`, `@remotion/*`, `react` and each other, take their words and data as props, read durations through the composition's frame rate, and hold no film's story. Faces it needs may be bundled under `remotion/fonts/` with their licence text, so a render fetches nothing.
+
+A convention for another tool is added here when its first motion arrives.
 
 ## Code in a tool directory
 

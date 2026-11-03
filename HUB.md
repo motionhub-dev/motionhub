@@ -10,7 +10,7 @@ How this repository is published at [motionhub.dev](https://motionhub.dev): the 
 | --- | --- |
 | `motions/<slug>/` | One motion, in the [format](SPEC.md). The newest version is the one in the main branch |
 | `tools/check.mjs` | The checker every pull request runs, with no dependencies: the one place the rules are written as code |
-| `bin/motionhub.mjs`, `package.json` | The npm package `@motionhub/cli` (command `motionhub`): the checker for tools and people outside this repository. A tag `v<version>` stages it on npm (`.github/workflows/publish.yaml`, trusted publishing, no token) and a maintainer approves it with `npm stage approve` |
+| `bin/motionhub.mjs`, `tools/hub.mjs`, `package.json` | The npm package `@motionhub/cli` (command `motionhub`): `check` (the checker, for tools and people outside this repository), `search` and `get` (the index, and a package checked against its SHA-256 and unpacked into `./motion`). A tag `v<version>` stages it on npm (`.github/workflows/publish.yaml`, trusted publishing, no token) and a maintainer approves it with `npm stage approve` |
 | `tools/build.mjs` | Builds the files below into `dist/` from `motions/` and the skill, refusing while any motion has an issue |
 | `tools/site.mjs`, `tools/site.css` | The site's pages: the gallery, a page per motion, the 404 page, `_headers`, `robots.txt` and `sitemap.xml` |
 | `site/worker.mjs`, `wrangler.jsonc` | The Cloudflare Worker: it serves the build as static assets and the packages from the R2 bucket `motionhub` |
