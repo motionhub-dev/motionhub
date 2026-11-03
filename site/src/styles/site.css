@@ -13,7 +13,7 @@ a { color: inherit; text-underline-offset: 2px; text-decoration-thickness: 1px; 
 a:hover { color: var(--color-muted); }
 img { max-width: 100%; }
 code, kbd, pre, .mono { font-family: var(--font-mono); }
-code { font-size: 0.92em; }
+code { font-size: max(12px, 0.92em); }
 button, input, select { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
 [hidden] { display: none !important; }
@@ -183,7 +183,7 @@ pre { margin: 0; padding: 12px 14px; background: var(--color-surface); border: 1
 .btn.sm.mono { font-size: var(--size-xs); }
 .docs { display: grid; grid-template-columns: 220px minmax(0, 1fr) 220px; gap: 40px; align-items: start; padding-top: 4px; }
 .docnav, .docside { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; font-size: var(--size-sm); }
-.docnav summary { display: none; }
+.docnav-toggle { display: none; }
 .docnav .group, .docside .group { margin: 16px 0 4px; font-size: var(--size-xs); font-weight: var(--weight-semibold); letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted); }
 .docnav nav > .group:first-child { margin-top: 12px; }
 .docnav nav a { display: block; padding: 4px 8px; border-radius: var(--radius-md); text-decoration: none; color: var(--color-text-2); }
@@ -231,8 +231,9 @@ pre { margin: 0; padding: 12px 14px; background: var(--color-surface); border: 1
 @media (max-width: 900px) {
   .docs { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .docnav { position: static; max-height: none; border: 1px solid var(--color-line); border-radius: var(--radius-lg); padding: 0 12px; }
-  .docnav summary { display: block; padding: 10px 0; cursor: pointer; font-weight: var(--weight-medium); }
-  .docnav[open] { padding-bottom: 12px; }
+  .docnav-toggle { display: block; width: 100%; text-align: left; padding: 10px 0; border: 0; background: none; cursor: pointer; font-weight: var(--weight-medium); }
+  .docnav-body { display: none; padding-bottom: 12px; }
+  .docnav.open .docnav-body, .no-js .docnav-body { display: block; }
   .docbody .anchor { display: none; }
 }
 .docbody h2 code, .docbody h3 code, .docbody h4 code { background: none; border: 0; padding: 0; font-size: 0.9em; }
