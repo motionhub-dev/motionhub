@@ -72,9 +72,9 @@ test('stats: the totals plus what came since, and the last 30 days', async () =>
   const e = env({totals: {through: '2026-11-01', downloads: {'red-pencil': 10, 'ink-scroll': 2}}, rows: (q) => (q.params.from.startsWith('2026-11-02') ? [{id: 'red-pencil', n: 4}] : [{id: 'red-pencil', n: 9}, {id: '@ana/ledger', n: 1}])});
   const s = await stats(e, NOW);
   assert.deepEqual(s.motions, {
-    '@ana/ledger': {downloads: {total: 0, last30: 1}},
-    'ink-scroll': {downloads: {total: 2, last30: 0}},
-    'red-pencil': {downloads: {total: 14, last30: 9}},
+    '@ana/ledger': {downloads: {total: 0, last30: 1}, likes: 0},
+    'ink-scroll': {downloads: {total: 2, last30: 0}, likes: 0},
+    'red-pencil': {downloads: {total: 14, last30: 9}, likes: 0},
   });
   for (const q of e.queries) assert.match(q.query, /FROM events\.analyticsEngine\.motionhub_events WHERE timestamp >= \$from/);
 });

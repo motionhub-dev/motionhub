@@ -1,5 +1,6 @@
 // motionhub.dev: the static build in dist/ (npm run build in site/) and a Worker that serves packages from R2 and
-// counts downloads and views in Analytics Engine, read back through the Analytics SQL binding (no API token).
+// counts downloads and views in Analytics Engine, read back through the Analytics SQL binding (no API token), and
+// signs people in with GitHub to like motions (D1).
 // Deployed by .github/workflows/deploy.yml on every push to main.
 {
   "name": "motionhub",
@@ -9,11 +10,14 @@
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "404-page",
-    "run_worker_first": ["/m/*", "/api/stats.json"]
+    "run_worker_first": ["/m/*", "/api/stats.json", "/api/me", "/api/likes/*", "/auth/*"]
   },
   "r2_buckets": [{"binding": "PACKAGES", "bucket_name": "motionhub"}],
   "analytics_engine_datasets": [{"binding": "EVENTS", "dataset": "motionhub_events"}],
   "analytics": {"binding": "ANALYTICS_SQL"},
+  // signing in with GitHub and likes (site/people.mjs); GITHUB_CLIENT_SECRET is a secret set on the Worker
+  "d1_databases": [{"binding": "DB", "database_name": "motionhub", "database_id": "b3cb4780-83d2-4424-9b6a-66edeec440c7", "migrations_dir": "site/migrations"}],
+  "vars": {"GITHUB_CLIENT_ID": "Ov23liASjeKx0TOW1gNl"},
   "triggers": {"crons": ["7 0 * * *"]},
   "routes": [{"pattern": "motionhub.dev", "custom_domain": true}],
   "observability": {"enabled": true}

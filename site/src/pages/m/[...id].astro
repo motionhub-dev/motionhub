@@ -54,6 +54,10 @@ const uses = [
       </div>
 
       <div class="do">
+        <button type="button" class="btn like" id="like" data-id={id} aria-pressed="false" title="Like this motion">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-7-4.4-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6C19 16.6 12 21 12 21z"/></svg>
+          <span class="label">Like</span><span class="n"></span>
+        </button>
         <a class="btn primary" href={row.package.url} download>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 4v12M6 11l6 6 6-6M5 20h14"/></svg>
           Download {row.version}
@@ -130,7 +134,32 @@ const uses = [
 <script>
   // this motion's public counts, when they load
   const dd = document.getElementById('downloads')!;
+  const like = document.getElementById('like') as HTMLButtonElement;
+  const likeN = like.querySelector('.n')!, likeLabel = like.querySelector('.label')!;
+  const showLike = (liked: boolean, n: number | null) => {
+    like.setAttribute('aria-pressed', String(liked));
+    likeLabel.textContent = liked ? 'Liked' : 'Like';
+    if (n !== null) likeN.textContent = n ? String(n) : '';
+  };
+  (window as any).motionhubMe.then((me: {person: unknown; likes?: string[]}) => {
+    if (me.person) showLike(Boolean(me.likes?.includes(like.dataset.id!)), null);
+    like.addEventListener('click', async () => {
+      if (!me.person) { location.href = `/auth/login?next=${encodeURIComponent(location.pathname)}`; return; }
+      const on = like.getAttribute('aria-pressed') !== 'true';
+      showLike(on, null);
+      like.disabled = true;
+      try {
+        const r = await fetch(`/api/likes/${encodeURIComponent(like.dataset.id!)}`, {method: on ? 'POST' : 'DELETE', credentials: 'same-origin'});
+        if (r.status === 401) { location.href = `/auth/login?next=${encodeURIComponent(location.pathname)}`; return; }
+        const body = await r.json();
+        showLike(body.liked, body.likes);
+      } catch { showLike(!on, null); }
+      like.disabled = false;
+    });
+  });
+
   fetch('/api/stats.json').then((r) => (r.ok ? r.json() : Promise.reject())).then((s) => {
+    if (likeN.textContent === '') showLike(like.getAttribute('aria-pressed') === 'true', s.motions?.[like.dataset.id!]?.likes ?? 0);
     const d = s.motions?.[dd.dataset.id!]?.downloads ?? {total: 0, last30: 0};
     const f = new Intl.NumberFormat('en');
     dd.textContent = `${f.format(d.last30)} in the last 30 days · ${f.format(d.total)} in all`;
