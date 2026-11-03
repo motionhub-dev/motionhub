@@ -148,7 +148,7 @@ function shapePoint(shape: Shape, p: THREE.Vector3): THREE.Vector3 {
     case 'fruit': { const dimple = 0.2 * Math.exp(-(r * r) / 0.05); return new THREE.Vector3(x * 1.02, y * 0.9 - Math.sign(y) * dimple, z * 1.02); }
     case 'disc': { const e = 0.22; const s = Math.sign(y) * Math.pow(Math.abs(y), e); const rr = Math.pow(r, 0.3); return new THREE.Vector3(x / Math.max(1e-6, r) * rr, s * 0.3, z / Math.max(1e-6, r) * rr); }
     case 'bean': { const a = x * 0.9; const bend = 0.35 * a * a; return new THREE.Vector3(x * 1.5, y * 0.62 + bend - 0.15, z * 0.68 - (1 - x * x) * 0.0); }
-    case 'leaf': { const along = (z + 1) / 2, w = Math.sin(Math.PI * Math.pow(along, 0.8)) * 0.42; return new THREE.Vector3(x * w, y * 0.1 + 0.18 * (along - 0.5) ** 2 * 2 - 0.1 * x * x, z * 1.1); }
+    case 'leaf': { const along = Math.min(1, Math.max(0, (z + 1) / 2)), w = Math.sin(Math.PI * Math.pow(along, 0.8)) * 0.42; return new THREE.Vector3(x * w, y * 0.1 + 0.18 * (along - 0.5) ** 2 * 2 - 0.1 * x * x, z * 1.1); }
     case 'petal': { const along = (z + 1) / 2, w = 0.72 * (0.22 + 0.78 * Math.sin(Math.PI / 2 * Math.min(1, along * 1.25))); return new THREE.Vector3(x * w, y * 0.13 + 0.3 * along * along - 0.22 * x * x, z * 0.9); }
     case 'cone': { const h = (y + 1) / 2, k = Math.pow(1 - h, 0.9) * 1.05 + 0.04; return new THREE.Vector3(x * k, y * 1.1, z * k); }
     default: return p.clone();
