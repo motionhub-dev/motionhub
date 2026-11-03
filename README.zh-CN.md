@@ -13,7 +13,7 @@ Motion（风格）是讲解类、叙事类视频可以反复使用的一套外�
 ```
 motions/<slug>/
   motion.json   MOTION.md   tokens.json   poster.jpg   CREDITS.md
-  visotalk/     只有 VisoTalk 读取的文件
+  react/        任何 React 引擎都能绘制的组件（@motionhub/runtime）
 ```
 
 ## 使用 motion
@@ -23,7 +23,7 @@ npx @motionhub/cli search hand-drawn    # 搜索含有所有关键词的 motion
 npx @motionhub/cli get red-pencil       # 下载到 ./motion，并核对 SHA-256
 ```
 
-任何 agent 都可以读一个 motion 的 `MOTION.md` 和 `tokens.json`，在自己的引擎里照着做，就像照着一套设计规范做界面一样。如果某个工具在 motion 里有自己的目录，它还能直接拿到现成的组件。
+任何 agent 都可以读一个 motion 的 `MOTION.md` 和 `tokens.json`，在自己的引擎里照着做，就像照着一套设计规范做界面一样。带 `react/` 的 motion 还附带组件，通过 [`@motionhub/runtime`](packages/runtime/README.md) 可以原样用在 Remotion（[`@motionhub/remotion`](packages/remotion/README.md)）和 HyperFrames（[`@motionhub/hyperframes`](packages/hyperframes/README.md)）里。
 
 [`skills/motionhub/SKILL.md`](skills/motionhub/SKILL.md) 是给任何 agent 用的 skill：怎么挑一个 motion、怎么取到它、怎么照着它做片。按你的 agent 安装 skill 的方式装上即可。
 
@@ -40,6 +40,6 @@ node tools/build.mjs                   # 生成 motionhub.dev 要发布的文件
 
 ## 维护
 
-由 [VisoTalk](https://visotalk.dev) 维护，它是第一个使用这个格式的工具，也是参考实现。格式属于每一个使用它的人；想修改格式，请在本仓库提 issue。
+由 [SuoSi](https://github.com/iamsuosi) 维护。格式属于每一个使用它的人；想修改格式，请在本仓库提 issue。
 
 本仓库里的工具采用 MIT 许可（[LICENSE](LICENSE)）。每个 motion 在自己的 `motion.json` 里声明各自的许可证。

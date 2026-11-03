@@ -12,7 +12,7 @@ A motion holds no film. It has no story, script, scene list, timings or end card
 
 ## 2. Files
 
-A motion is a directory named after its slug:
+A motion is a directory named after its slug. A copy taken into a project may sit in a directory of another name (`motion/`); its `slug` still names it:
 
 ```
 <slug>/
@@ -34,7 +34,7 @@ A JSON object with these members and no others, except extension members (§7).
 | Member | Required | Value |
 | --- | --- | --- |
 | `spec` | yes | `"motion/0.1"` |
-| `slug` | yes | 3 to 40 characters of `a-z`, `0-9` and single hyphens, starting and ending with a letter or digit; equal to the directory name |
+| `slug` | yes | 3 to 40 characters of `a-z`, `0-9` and single hyphens, starting and ending with a letter or digit; the name of the directory it is published in (§2) |
 | `version` | yes | A [Semantic Versioning 2.0](https://semver.org) version of this motion, for example `"1.0.0"` |
 | `name` | yes | A localized string (§8) of at most 60 characters per language |
 | `line` | yes | A localized string (§8) of at most 160 characters per language: one sentence saying what it looks like and what it is for |
@@ -52,7 +52,7 @@ An SPDX value is an [SPDX license expression](https://spdx.github.io/spdx-spec/v
   "version": "1.0.0",
   "name": { "en": "Lab Notebook", "zh-CN": "实验手记" },
   "line": { "en": "A squared notebook page where the diagram is drawn stroke by stroke as it is explained." },
-  "authors": [{ "name": "VisoTalk", "github": "motionhub-dev" }],
+  "authors": [{ "name": "SuoSi", "github": "iamsuosi" }],
   "license": { "text": "CC-BY-4.0", "code": "MIT" },
   "tags": ["hand-drawn", "line-art", "light"]
 }
@@ -114,8 +114,8 @@ Any other sections may follow, in any order. A number in the text says where it 
 
 Everything that belongs to one tool lives in that tool's space, and every other tool ignores it.
 
-- **Directories.** A tool keeps its files in a directory named after it (`visotalk/`, `remotion/`): 2 to 40 characters of `a-z`, `0-9` and single hyphens.
-- **Members.** A tool keeps its own `motion.json` members under one member named `x-<tool>`, for example `"x-visotalk": { "caption": {}, "pacing": {} }`.
+- **Directories.** A tool keeps its files in a directory named after it (`react/`, `remotion/`): 2 to 40 characters of `a-z`, `0-9` and single hyphens.
+- **Members.** A tool keeps its own `motion.json` members under one member named `x-<tool>`, for example `"x-remotion": { "fps": 30 }`.
 - **Rule.** A tool reading a motion ignores directories and `x-` members it does not know, and does not report them. It never writes into another tool's space.
 
 What several tools come to share moves into a later version of this format.

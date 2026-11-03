@@ -116,7 +116,7 @@ ${image ? `<meta property="og:image" content="${SITE}${image}">\n<meta name="twi
 </header>
 ${body}
 <footer class="foot">
-  <span>motionhub · open format motion/0.1 · maintained by VisoTalk</span>
+  <span>motionhub · open format motion/0.1 · maintained by <a href="https://github.com/iamsuosi">SuoSi</a></span>
   <span><a href="/llms.txt">llms.txt</a> · <a href="/api/motions.json">api/motions.json</a> · <a href="${REPO}">GitHub</a></span>
 </footer>
 </div>

@@ -64,7 +64,7 @@ export function checkMotion(dir, {hub = true, author, was} = {}) {
   }
 
   const manifest = readJson(join(dir, 'motion.json'), 'motion.json', add);
-  if (manifest) checkManifest(manifest, basename(resolve(dir)), add);
+  if (manifest) checkManifest(manifest, add);
   const tokens = readJson(join(dir, 'tokens.json'), 'tokens.json', add);
   if (tokens) checkTokens(tokens, add);
   for (const e of entries) if (e.isFile() && /^MOTION(\.[A-Za-z0-9-]+)?\.md$/.test(e.name)) checkDoc(join(dir, e.name), e.name, add);
@@ -92,7 +92,7 @@ function readJson(path, at, add) {
   return null;
 }
 
-function checkManifest(m, dirName, add) {
+function checkManifest(m, add) {
   const at = 'motion.json';
   for (const key of Object.keys(m)) {
     if (MEMBERS.has(key)) continue;
@@ -101,7 +101,6 @@ function checkManifest(m, dirName, add) {
   }
   if (m.spec !== SPEC) add('manifest.spec', at, `spec must be "${SPEC}"`);
   if (typeof m.slug !== 'string' || !NAME.test(m.slug) || m.slug.length < 3 || m.slug.length > 40) add('manifest.slug', at, 'slug is 3 to 40 characters of a-z, 0-9 and single hyphens');
-  else if (m.slug !== dirName) add('manifest.slug', at, `slug "${m.slug}" must equal the directory name "${dirName}"`);
   if (typeof m.version !== 'string' || !SEMVER.test(m.version)) add('manifest.version', at, 'version is a Semantic Versioning 2.0 version such as "1.0.0"');
   localized(m.name, 'name', 60, at, add);
   localized(m.line, 'line', 160, at, add);
@@ -269,6 +268,9 @@ function checkUpdate(manifest, was, author, add) {
 }
 
 function checkHub(dir, manifest, {author}, add) {
+  // in the catalogue a motion is motions/<slug>/ (HUB.md); a copy in a project (./motion/) may be named otherwise
+  const path = resolve(dir), name = basename(path);
+  if (basename(resolve(path, '..')) === 'motions' && typeof manifest?.slug === 'string' && manifest.slug !== name) add('hub.slug', 'motion.json', `slug "${manifest.slug}" must equal the directory name "${name}" in motions/`);
   if (manifest?.license && typeof manifest.license === 'object') {
     if (spdx(manifest.license.text) && !spdxIds(manifest.license.text).every((id) => TEXT_LICENSES.has(id))) add('hub.license', 'motion.json', `license.text must be one of ${[...TEXT_LICENSES].join(', ')}`);
     if (spdx(manifest.license.code) && !spdxIds(manifest.license.code).every((id) => CODE_LICENSES.has(id))) add('hub.license', 'motion.json', `license.code must be one of ${[...CODE_LICENSES].join(', ')}`);

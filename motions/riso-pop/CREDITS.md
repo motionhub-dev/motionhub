@@ -1,6 +1,6 @@
 # Credits
 
-Riso Pop is an original motion made by VisoTalk, exported from its built-in library.
+Riso Pop is an original motion by SuoSi.
 
 ## Fonts
 
@@ -8,7 +8,3 @@ Riso Pop is an original motion made by VisoTalk, exported from its built-in libr
 - Noto Sans SC: SIL Open Font License 1.1
 - JetBrains Mono: SIL Open Font License 1.1
 - Fraunces: SIL Open Font License 1.1
-
-## Sample assets
-
-- None.
