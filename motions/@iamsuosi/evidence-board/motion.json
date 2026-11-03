@@ -1,8 +1,8 @@
 {
-  "spec": "motion/0.3",
+  "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "evidence-board",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "name": {
     "en": "Evidence Board",
     "zh-CN": "证据墙"
@@ -25,5 +25,16 @@
     "collage",
     "print",
     "dark"
-  ]
+  ],
+  "fit": {
+    "kind": "topic",
+    "for": {
+      "en": "Investigations and fact-checks: tracing a claim to its source, the timeline of an event, working back from what happened to why.",
+      "zh-CN": "调查与事实核查：溯源报道、事件时间线、从结果倒查原因。"
+    },
+    "not": {
+      "en": "Light or celebratory subjects.",
+      "zh-CN": "轻松或喜庆的题材。"
+    }
+  }
 }

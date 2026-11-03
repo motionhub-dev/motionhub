@@ -16,7 +16,7 @@
 
 [![npm](https://img.shields.io/npm/v/@motionhub/cli?color=2A2622&label=npm)](https://www.npmjs.com/package/@motionhub/cli)
 [![check](https://github.com/motionhub-dev/motions/actions/workflows/check.yml/badge.svg)](https://github.com/motionhub-dev/motions/actions/workflows/check.yml)
-[![spec](https://img.shields.io/badge/spec-motion%2F0.3-2A2622)](SPEC.md)
+[![spec](https://img.shields.io/badge/spec-motion%2F0.4-2A2622)](SPEC.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2A2622)](LICENSE)
 
 <table>
@@ -91,16 +91,17 @@ motions/@<scope>/<slug>/   一个 motion，id 为 @<scope>/<slug>：创作者的
 
 ```json
 {
-  "spec": "motion/0.3",
+  "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "red-pencil",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "name": {"en": "Red Pencil", "zh-CN": "红笔批注"},
   "line": {"en": "A printed page marked up in red as it is read: figures circled, wrong sums struck and corrected, verdicts written in the margin."},
   "authors": [{"name": "SuoSi", "github": "iamsuosi"}],
   "license": {"text": "CC-BY-4.0", "code": "MIT"},
   "lang": "en",
-  "tags": ["hand-drawn", "light"]
+  "tags": ["hand-drawn", "light"],
+  "fit": {"kind": "general", "for": {"en": "Checking a document line by line: what a price is made of, contract terms, claims in an ad, numbers corrected."}}
 }
 ```
 

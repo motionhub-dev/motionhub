@@ -1,6 +1,6 @@
-# Motion format 0.3
+# Motion format 0.4
 
-> **Status:** Draft · **Version:** `motion/0.3` · what each version added: §10
+> **Status:** Draft · **Version:** `motion/0.4` · what each version added: §10
 
 What a motion is on disk: the files, their fields and the rules any tool can rely on. This document only grows: a later version adds to it and never changes the meaning of what is here.
 
@@ -35,7 +35,7 @@ A JSON object with these members and no others, except extension members (§7).
 
 | Member | Required | Value |
 | --- | --- | --- |
-| `spec` | yes | `"motion/0.3"`; or `"motion/0.2"` for a motion without `basedOn`, or `"motion/0.1"` for one without `scope` and `basedOn` |
+| `spec` | yes | `"motion/0.4"`; or `"motion/0.3"` for a motion without `fit`, `"motion/0.2"` for one without `fit` and `basedOn`, or `"motion/0.1"` for one without `fit`, `scope` and `basedOn` |
 | `scope` | no | The GitHub username, in lowercase, of the person or organization that publishes the motion (since 0.2) |
 | `slug` | yes | 3 to 40 characters of `a-z`, `0-9` and single hyphens, starting and ending with a letter or digit; the name of the directory it is published in (§2) |
 | `version` | yes | A [Semantic Versioning 2.0](https://semver.org) version of this motion, for example `"1.0.0"` |
@@ -46,6 +46,7 @@ A JSON object with these members and no others, except extension members (§7).
 | `lang` | no | The [BCP 47](https://www.rfc-editor.org/info/bcp47) tag of the language `MOTION.md` is written in; `"en"` when absent |
 | `tags` | no | Up to 10 keywords, each of `a-z`, `0-9` and single hyphens, in English |
 | `basedOn` | no | The motions this one builds on: an array of 1 to 10 `{ "id": string, "version": string }`, each a motion's id (Identity) and, optionally, the version built on; no id twice, and never the motion's own (since 0.3) |
+| `fit` | no | What the motion is for: `{ "kind": "general" \| "topic" \| "overlay", "for": localized string, "not": localized string }`, each string at most 200 characters per language; `kind` and `for` are required, `not` is optional (since 0.4; What it is for) |
 
 ### Identity
 
@@ -55,11 +56,21 @@ A motion's **id** is `@<scope>/<slug>` when it has a scope, and `<slug>` when it
 
 A motion made from another names it in `basedOn`, by its id and the version it started from: `"basedOn": [{ "id": "red-pencil", "version": "1.0.2" }]`. This is the credit tools show and follow; `CREDITS.md` still says what was taken and what changed, as its licence asks. A tool does not require a motion named in `basedOn` to be at hand.
 
+### What it is for
+
+`fit` tells a person or an agent choosing a look for a film whether this one will carry it:
+
+- `kind` is what sort of motion it is. A `general` motion carries many subjects: it is chosen for the way it explains, not for what it explains. A `topic` motion is made for one subject or one structure and goes deep in it (a cut-away earth, a map, software on a screen). An `overlay` motion is drawn over footage the maker brings (a person speaking, a screen recording) and makes nothing without it.
+- `for` says, in a sentence, the subjects and kinds of film it is for: the range of a `general` motion, the subject of a `topic` one, the footage an `overlay` needs and what it is used for.
+- `not` says what it handles badly, where that is not obvious from `for`.
+
+A tool choosing a motion matches the film's subject against `for` and leaves out a motion whose `not` covers it.
+
 An SPDX value is an [SPDX license expression](https://spdx.github.io/spdx-spec/v2.3/SPDX-license-expressions/), for example `"CC-BY-4.0"` or `"MIT"`.
 
 ```json
 {
-  "spec": "motion/0.3",
+  "spec": "motion/0.4",
   "scope": "ana",
   "slug": "lab-notebook",
   "version": "1.0.0",
@@ -67,7 +78,12 @@ An SPDX value is an [SPDX license expression](https://spdx.github.io/spdx-spec/v
   "line": { "en": "A squared notebook page where the diagram is drawn stroke by stroke as it is explained." },
   "authors": [{ "name": "Ana", "github": "ana" }],
   "license": { "text": "CC-BY-4.0", "code": "MIT" },
-  "tags": ["hand-drawn", "line-art", "light"]
+  "tags": ["hand-drawn", "line-art", "light"],
+  "fit": {
+    "kind": "general",
+    "for": { "en": "How things work, worked out by hand: physics, chemistry, maths and engineering, drawn as they are explained." },
+    "not": { "en": "Brand films and stories with no mechanism to draw." }
+  }
 }
 ```
 
@@ -137,15 +153,15 @@ What several tools come to share moves into a later version of this format.
 
 | Part | Language |
 | --- | --- |
-| File and directory names, member names, `scope`, `slug`, `spec`, `version`, `license`, `tags`, token names, the start of the five `MOTION.md` headings | English (identifiers) |
-| `name`, `line` | A localized string: an object whose keys are BCP 47 tags and whose values are text in that language. `en` is required; other languages are optional |
+| File and directory names, member names, `scope`, `slug`, `spec`, `version`, `license`, `tags`, `fit.kind`, token names, the start of the five `MOTION.md` headings | English (identifiers) |
+| `name`, `line`, `fit.for`, `fit.not` | A localized string: an object whose keys are BCP 47 tags and whose values are text in that language. `en` is required; other languages are optional |
 | The body of `MOTION.md`, translations, `$description`, `authors[].name`, `CREDITS.md`, words drawn in a film | Any language |
 
 ## 9. Versions
 
 A motion's `version` changes whenever any of its files change. A published version is never changed: a fix is a new version. A film that uses a motion keeps the copy it took.
 
-`spec` names the version of this format. A tool that meets a `spec` it does not know does not guess its meaning. A tool that reads a version reads every version before it: a `motion/0.1` motion is a `motion/0.2` motion without a scope, and a `motion/0.2` motion is a `motion/0.3` motion without `basedOn`.
+`spec` names the version of this format. A tool that meets a `spec` it does not know does not guess its meaning. A tool that reads a version reads every version before it: a `motion/0.1` motion is a `motion/0.2` motion without a scope, a `motion/0.2` motion is a `motion/0.3` motion without `basedOn`, and a `motion/0.3` motion is a `motion/0.4` motion without `fit`.
 
 ## 10. Versions of this format
 
@@ -154,3 +170,4 @@ A motion's `version` changes whenever any of its files change. A published versi
 | `motion/0.1` | The format: five files, `motion.json`, `tokens.json`, `MOTION.md`, extensions, languages |
 | `motion/0.2` | `scope`, and a motion's id `@<scope>/<slug>` (§3, Identity) |
 | `motion/0.3` | `basedOn`: the motions a motion builds on (§3, Building on another motion) |
+| `motion/0.4` | `fit`: what a motion is for, its kind, and what it handles badly (§3, What it is for) |

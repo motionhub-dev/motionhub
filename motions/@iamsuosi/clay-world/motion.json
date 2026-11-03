@@ -1,8 +1,8 @@
 {
-  "spec": "motion/0.3",
+  "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "clay-world",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "name": {
     "en": "Clay World",
     "zh-CN": "黏土小世界"
@@ -26,5 +26,16 @@
     "3d",
     "playful",
     "light"
-  ]
+  ],
+  "fit": {
+    "kind": "general",
+    "for": {
+      "en": "Nature and life science, children's science, growth and cycles, in a small real-3D clay world.",
+      "zh-CN": "自然与生命科学、儿童科普、生长与循环过程，在一个真 3D 的黏土小世界里。"
+    },
+    "not": {
+      "en": "Abstract data, finance and software; weak devices, since it renders in real 3D.",
+      "zh-CN": "抽象数据、金融和软件；它是真 3D 渲染，弱设备吃力。"
+    }
+  }
 }
