@@ -17,6 +17,18 @@ code { font-size: max(12px, 0.92em); }
 button, input, select { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
 [hidden] { display: none !important; }
+/* every scrollbar: a thin pill on no track, no arrows. Firefox has only the standard properties, and in Chrome and
+   Safari those would turn the pseudo-elements off, so each gets its own. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: var(--radius-pill); background: var(--color-line) padding-box; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--color-muted); }
+pre::-webkit-scrollbar-thumb { background-color: color-mix(in srgb, var(--color-on-code) 45%, transparent); }
+pre::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--color-on-code) 70%, transparent); }
+@supports not selector(::-webkit-scrollbar) {
+  * { scrollbar-width: thin; scrollbar-color: var(--color-line) transparent; }
+  pre { scrollbar-color: color-mix(in srgb, var(--color-on-code) 45%, transparent) transparent; }
+}
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .wrap { max-width: 1360px; margin: 0 auto; padding: 0 24px; }
 @media (max-width: 640px) { .wrap { padding: 0 16px; } }
