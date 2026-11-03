@@ -104,6 +104,7 @@ main.wrap { padding-top: 20px; padding-bottom: 56px; }
 .head { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
 .head .media { flex: 999 1 640px; min-width: 0; }
 .head .media .poster { border-radius: var(--radius-lg); }
+.reel { border: 0; }
 .head aside { flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 .head h1 { margin: 0; font-size: var(--size-xl); font-weight: var(--weight-semibold); letter-spacing: -0.015em; line-height: 1.25; }
 .head h1 small { font-size: var(--size-md); font-weight: var(--weight-regular); color: var(--color-muted); margin-left: 4px; }

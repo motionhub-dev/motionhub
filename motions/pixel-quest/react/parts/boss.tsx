@@ -98,7 +98,7 @@ export function Boss({x = 340, name = 'BOSS', enter = 0, hp = 1, hit = 0, defeat
     let tt = sprayT, y0 = FLOOR - 24, vyy = vy, sx = X + vx * tt;
     let y = y0 - (vyy * tt - 260 * tt * tt);
     if (y > FLOOR - 3) {   // it bounces once on the floor, at a third of its speed, then lies there
-      const t1 = (vyy + Math.sqrt(vyy * vyy + 4 * 260 * (y0 - FLOOR + 3))) / (2 * 260);
+      const t1 = (vyy + Math.sqrt(vyy * vyy + 4 * 260 * (FLOOR - 3 - y0))) / (2 * 260);
       tt = sprayT - t1; vyy = vy / 3; sx = X + vx * t1 + vx * 0.4 * tt;
       y = FLOOR - 3 - Math.max(0, vyy * tt - 260 * tt * tt);
     }
