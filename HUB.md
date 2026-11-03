@@ -32,6 +32,7 @@ A static site, rebuilt from the main branch whenever it changes and every six ho
 | --- | --- |
 | `/` and `/m/<id>` | The gallery and a page per motion: poster, sample, colours, faces, `MOTION.md` |
 | `/api/motions.json` | The index: `spec`, and `motions`, one row per motion ordered by id, with `slug` (the motion's id, `<slug>` or `@<scope>/<slug>`, so a client that only knows `motion/0.1` never takes one motion for another), `scope` (when it has one), `spec` (its motion's), `version`, `name`, `line`, `lang`, `tags`, `authors`, `license`, `poster`, `tools` (the directories it has for tools) and `package` (`url`, `sha256`, `bytes`). Paths are relative to the site |
+| `/api/stats.json` | Each motion's downloads: `motions`, by id, with `downloads.total` and `downloads.last30`, and `generated`. Kept for ten minutes; see Counts below |
 | `/m/<id>/MOTION.md`, `/m/<id>/tokens.json`, `/m/<id>/motion.json` | The newest version's files, to read directly |
 | `/m/<id>/<version>.tgz` | The whole motion at that version, its paths under `<id>/`, with its SHA-256 in the index. The same files always give the same bytes |
 | `/llms.txt` | For agents: what a motion is, how to choose one from the index and how to use it, then every docs page's Markdown twin |
@@ -54,6 +55,12 @@ A motion with a sample has a short video of it (at most 20 seconds, H.264, at mo
 | `verified` | Films on clearly different subjects have been made in it, and someone who did not make them has reviewed them |
 
 The hub records the level, not the motion: it can change without a new version. A motion listed as **official** is maintained by the hub's maintainers.
+
+## Counts
+
+motionhub counts two things, to show which motions people use: a download of a package, and a person opening a motion's page. Each is one event of what happened (`download` or `view`), the motion's id, the version (for a download) and the country Cloudflare saw the request from. Nothing else is kept: no cookie, no address, no browser, nothing that names a person, and nothing is counted on any other page. Crawlers and link previews are not counted; a command line or an agent fetching a package is.
+
+Downloads are public at `/api/stats.json` and on the site. Views are not published: they are for the maintainers, to see what people look at. The events are kept by Cloudflare Workers Analytics Engine for three months; what lasts longer is each motion's number of downloads, added up once a day.
 
 ## Votes
 

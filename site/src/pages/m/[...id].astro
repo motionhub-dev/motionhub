@@ -62,6 +62,7 @@ const uses = [
       </div>
 
       <dl class="facts">
+        <dt data-stat hidden>Downloads</dt><dd data-stat hidden id="downloads" data-id={id}></dd>
         <dt>Version</dt><dd class="mono">{row.version}</dd>
         <dt>Format</dt><dd class="mono">{row.spec}</dd>
         <dt>Licence</dt><dd>{row.license.text} for the look{row.license.code && ` · ${row.license.code} for the code`}</dd>
@@ -127,6 +128,15 @@ const uses = [
 </Base>
 
 <script>
+  // this motion's public counts, when they load
+  const dd = document.getElementById('downloads')!;
+  fetch('/api/stats.json').then((r) => (r.ok ? r.json() : Promise.reject())).then((s) => {
+    const d = s.motions?.[dd.dataset.id!]?.downloads ?? {total: 0, last30: 0};
+    const f = new Intl.NumberFormat('en');
+    dd.textContent = `${f.format(d.last30)} in the last 30 days · ${f.format(d.total)} in all`;
+    for (const el of document.querySelectorAll<HTMLElement>('[data-stat]')) el.hidden = false;
+  }).catch(() => {});
+
   // the Use it tabs, with arrow keys between them (WAI-ARIA tabs); without the script every panel shows
   for (const list of document.querySelectorAll<HTMLElement>('[role="tablist"]')) {
     const tabs = [...list.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
