@@ -23,8 +23,9 @@ const description = plain(html.match(/<p>([\s\S]*?)<\/p>/)?.[1] ?? title).replac
 <Base title={`${p.slug === 'index' ? 'Docs' : title}: motionhub`} description={description} path={pagePath(p)} current="docs">
   <link slot="head" rel="alternate" type="text/markdown" href={twinPath(p)} title="This page as Markdown">
   <div class="docs">
-    <details class="docnav" open>
-      <summary>Docs: {p.label}</summary>
+    <div class="docnav">
+      <button type="button" class="docnav-toggle" aria-expanded="false" aria-controls="docnav-body">Docs: {p.label}</button>
+      <div class="docnav-body" id="docnav-body">
       <label class="docsearch">
         <span class="sr">Search the docs</span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
@@ -39,7 +40,8 @@ const description = plain(html.match(/<p>([\s\S]*?)<\/p>/)?.[1] ?? title).replac
         ))}
       </nav>
       <ul class="results" id="results" hidden></ul>
-    </details>
+      </div>
+    </div>
 
     <article class="docmain">
       <p class="kicker">{p.group}</p>
@@ -81,9 +83,9 @@ const description = plain(html.match(/<p>([\s\S]*?)<\/p>/)?.[1] ?? title).replac
 </Base>
 
 <script>
-  // the sidebar folds away on a narrow screen
-  const nav = document.querySelector<HTMLDetailsElement>('.docnav')!;
-  if (matchMedia('(max-width: 900px)').matches) nav.open = false;
+  // on a narrow screen the sidebar is folded (by CSS, so nothing moves as the page loads) until its button opens it
+  const nav = document.querySelector<HTMLElement>('.docnav')!, toggle = nav.querySelector<HTMLButtonElement>('.docnav-toggle')!;
+  toggle.addEventListener('click', () => toggle.setAttribute('aria-expanded', String(nav.classList.toggle('open'))));
 
   // Copy page: the page's Markdown twin, for pasting into an agent
   const copy = document.getElementById('copypage') as HTMLButtonElement;
