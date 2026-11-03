@@ -9,9 +9,11 @@ import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {build, pack, tgz} from '../tools/build.mjs';
+import {listMotions} from '../tools/check.mjs';
 
 const ROOT = resolve(fileURLToPath(import.meta.url), '../..');
-const SLUGS = readdirSync(join(ROOT, 'motions'), {withFileTypes: true}).filter((e) => e.isDirectory()).map((e) => e.name).sort();
+// every motion's id, as its directory under motions/ names it: @<scope>/<slug>
+const SLUGS = listMotions(join(ROOT, 'motions'));
 const out = mkdtempSync(join(tmpdir(), 'hub-'));
 const rows = build(out);
 
@@ -63,21 +65,21 @@ test('the served files and llms.txt are written', () => {
   assert.ok(!llms.includes('description:'));
 });
 
-test('a scoped motion is built at m/@<scope>/<slug>/, its package rooted there, after the unscoped ones', () => {
+test('a motion is built at m/@<scope>/<slug>/, its package rooted there, in the order of its id', () => {
   const root = mkdtempSync(join(tmpdir(), 'scoped-'));
   mkdirSync(join(root, 'skills/motionhub'), {recursive: true});
   writeFileSync(join(root, 'skills/motionhub/SKILL.md'), '---\nname: motionhub\n---\n# Skill\n');
-  cpSync(join(ROOT, 'motions', SLUGS[0]), join(root, 'motions', SLUGS[0]), {recursive: true});
-  const dir = join(root, 'motions/@ana/plain-paper');
-  cpSync(join(ROOT, 'motions', SLUGS[0]), dir, {recursive: true});
-  const manifest = JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8'));
-  writeFileSync(join(dir, 'motion.json'), JSON.stringify({...manifest, spec: 'motion/0.2', scope: 'ana', slug: 'plain-paper'}));
+  const manifest = JSON.parse(readFileSync(join(ROOT, 'motions', SLUGS[0], 'motion.json'), 'utf8'));
+  for (const [scope, slug] of [['bo', 'ink-line'], ['ana', 'plain-paper']]) {
+    const dir = join(root, 'motions', `@${scope}`, slug);
+    cpSync(join(ROOT, 'motions', SLUGS[0]), dir, {recursive: true});
+    writeFileSync(join(dir, 'motion.json'), JSON.stringify({...manifest, scope, slug, authors: [{name: scope, github: scope}]}));
+  }
   const out = join(root, 'dist'), built = build(out, root);
-  assert.deepEqual(built.map((r) => r.slug), ['@ana/plain-paper', SLUGS[0]]);
+  assert.deepEqual(built.map((r) => r.slug), ['@ana/plain-paper', '@bo/ink-line']);
   const row = built[0];
   assert.equal(row.scope, 'ana');
-  assert.equal(row.spec, 'motion/0.2');
-  assert.equal(row.package.url, '/m/@ana/plain-paper/1.0.1.tgz'.replace('1.0.1', manifest.version));
+  assert.equal(row.package.url, `/m/@ana/plain-paper/${manifest.version}.tgz`);
   assert.ok(existsSync(join(out, 'm/@ana/plain-paper/MOTION.md')));
   const into = mkdtempSync(join(tmpdir(), 'unpack-'));
   execFileSync('tar', ['-xzf', join(out, row.package.url), '-C', into]);
@@ -87,8 +89,8 @@ test('a scoped motion is built at m/@<scope>/<slug>/, its package rooted there, 
 
 test('nothing is built while a motion has an issue', () => {
   const root = mkdtempSync(join(tmpdir(), 'broken-'));
-  mkdirSync(join(root, 'motions/broken-motion'), {recursive: true});
-  writeFileSync(join(root, 'motions/broken-motion/motion.json'), '{}');
+  mkdirSync(join(root, 'motions/@ana/broken-motion'), {recursive: true});
+  writeFileSync(join(root, 'motions/@ana/broken-motion/motion.json'), '{}');
   assert.throws(() => build(join(root, 'dist'), root), /not built/);
   assert.ok(!existsSync(join(root, 'dist')));
 });

@@ -2,14 +2,14 @@
 // The motion checker: the rules of SPEC.md (code `format.*` and the rest without a `hub.` prefix) and the hub's
 // acceptance rules of CONTRIBUTING.md (`hub.*`), with no dependencies.
 //
-//   node tools/check.mjs [dir ...] [--format-only] [--author <github-login>] [--official] [--was <motion.json>]
+//   node tools/check.mjs [dir ...] [--format-only] [--author <github-login>] [--was <motion.json>]
 //   npx @motionhub/cli check ...                  the same, from the published package (bin/motionhub.mjs)
 //
 // With no directory it checks the current directory when it is a motion, else every motion under ./motions/ (a scoped
 // motion sits in ./motions/@<scope>/<slug>/).
 // `--format-only` skips the hub's rules (a tool checking a motion it did not get from this repository wants only the
 // format). `--author` also requires that login among the motion's authors (the pull request's checks pass the opener's
-// login); `--official` says that login is one of the hub's maintainers, who alone publish unscoped motions. `--was` names the motion.json already published for this slug: a change must then come from one of its
+// login). `--was` names the motion.json already published for this slug: a change must then come from one of its
 // authors and carry a higher version (SPEC.md §9). Exit status 1 when any issue is found.
 
 import {readFileSync, readdirSync, statSync, existsSync} from 'node:fs';
@@ -62,7 +62,7 @@ const UNSAFE = [
 ];
 
 /** Check one motion directory; returns its issues, each `{code, at, message}` with `at` relative to the directory. */
-export function checkMotion(dir, {hub = true, author, official = false, was} = {}) {
+export function checkMotion(dir, {hub = true, author, was} = {}) {
   const issues = [];
   const add = (code, at, message) => issues.push({code, at, message});
   if (!existsSync(dir) || !statSync(dir).isDirectory()) return add('format.dir', '.', 'not a directory'), issues;
@@ -87,7 +87,7 @@ export function checkMotion(dir, {hub = true, author, official = false, was} = {
     if (code.length) add('format.license.code', 'motion.json', `license.code is required: the motion has code (${code[0]})`);
   }
 
-  if (hub) checkHub(dir, manifest, {author, official, was}, add);
+  if (hub) checkHub(dir, manifest, {author, was}, add);
   if (hub && was) checkUpdate(manifest, was, author, add);
   return issues;
 }
@@ -141,7 +141,7 @@ function checkManifest(m, add) {
       m.basedOn.forEach((b, i) => {
         if (!b || typeof b !== 'object' || Array.isArray(b)) return add('manifest.basedOn', at, `basedOn[${i}] is {id, version}`);
         for (const key of Object.keys(b)) if (key !== 'id' && key !== 'version') add('manifest.basedOn', at, `basedOn[${i}] has only "id" and "version", not "${key}"`);
-        if (typeof b.id !== 'string' || !ID.test(b.id)) add('manifest.basedOn', at, `basedOn[${i}].id is a motion's id, such as "red-pencil" or "@ana/ledger-pencil"`);
+        if (typeof b.id !== 'string' || !ID.test(b.id)) add('manifest.basedOn', at, `basedOn[${i}].id is a motion's id, such as "@iamsuosi/red-pencil"`);
         else if (seen.has(b.id)) add('manifest.basedOn', at, `basedOn names ${b.id} twice`);
         else if (typeof m.slug === 'string' && b.id === motionId(m)) add('manifest.basedOn', at, 'a motion is not based on itself');
         seen.add(b.id);
@@ -310,7 +310,7 @@ export function listMotions(root) {
   return dirs(root).flatMap((d) => (d.startsWith('@') ? dirs(join(root, d)).map((s) => `${d}/${s}`) : [d])).sort();
 }
 
-function checkHub(dir, manifest, {author, official, was}, add) {
+function checkHub(dir, manifest, {author, was}, add) {
   // in the catalogue a motion is motions/<id>/: motions/<slug>/ or motions/@<scope>/<slug>/ (HUB.md); a copy in a
   // project (./motion/) may be named otherwise
   const path = resolve(dir), name = basename(path), parent = basename(dirname(path));
@@ -329,10 +329,12 @@ function checkHub(dir, manifest, {author, official, was}, add) {
   if (author && Array.isArray(manifest?.authors) && !manifest.authors.some((a) => typeof a?.github === 'string' && a.github.toLowerCase() === author.toLowerCase())) {
     add('hub.author', 'motion.json', `the pull request's author "${author}" must be among the authors`);
   }
-  // who may publish under an id: unscoped ids are the hub's own, a scope is its owner's; a change is checkUpdate's
-  if (author && !was && manifest && typeof manifest === 'object') {
-    if (manifest.scope === undefined && !official) add('hub.scope', 'motion.json', `an unscoped id is published by the hub's maintainers only: publish yours as @${author.toLowerCase()}/${manifest.slug ?? '<slug>'} ("scope": "${author.toLowerCase()}")`);
-    else if (typeof manifest.scope === 'string' && manifest.scope !== author.toLowerCase()) add('hub.scope', 'motion.json', `the scope "${manifest.scope}" belongs to that GitHub account; publish yours as @${author.toLowerCase()}/${manifest.slug ?? '<slug>'}`);
+  // every motion on motionhub is published under its author's GitHub name: an id is @<scope>/<slug>, and a new one
+  // only by the scope's owner; a change is checkUpdate's
+  if (manifest && typeof manifest === 'object') {
+    const login = author ? author.toLowerCase() : '<your GitHub login>';
+    if (manifest.scope === undefined) add('hub.scope', 'motion.json', `a motion on motionhub is published under its author's GitHub name: give it "scope": "${login}", for the id @${login}/${manifest.slug ?? '<slug>'}`);
+    else if (author && !was && typeof manifest.scope === 'string' && manifest.scope !== login) add('hub.scope', 'motion.json', `the scope "${manifest.scope}" belongs to that GitHub account; publish yours as @${login}/${manifest.slug ?? '<slug>'}`);
   }
   let total = 0;
   for (const rel of walk(dir)) {
@@ -401,7 +403,7 @@ function checkHub(dir, manifest, {author, official, was}, add) {
 export function main(args) {
   const hub = !args.includes('--format-only');
   const value = (flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : undefined; };
-  const author = value('--author'), wasPath = value('--was'), official = args.includes('--official');
+  const author = value('--author'), wasPath = value('--was');
   const was = wasPath ? JSON.parse(readFileSync(wasPath, 'utf8')) : undefined;
   let dirs = args.filter((a, i) => !a.startsWith('--') && !['--author', '--was'].includes(args[i - 1]));
   if (!dirs.length) {
@@ -410,7 +412,7 @@ export function main(args) {
   }
   let count = 0;
   for (const dir of dirs) {
-    const issues = checkMotion(dir, {hub, author, official, was});
+    const issues = checkMotion(dir, {hub, author, was});
     const name = relative(process.cwd(), resolve(dir)) || '.';
     for (const i of issues) console.log(`${name}/${i.at}  ${i.code}  ${i.message}`);
     if (!issues.length) console.log(`${name}  ok`);

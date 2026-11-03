@@ -1,6 +1,6 @@
 # Contributing a motion
 
-A motion arrives as a pull request that adds `motions/@<you>/<slug>/` in the [format](SPEC.md). Your GitHub account is your identity here: the motion's `scope` is your GitHub username in lowercase, its id is `@<you>/<slug>`, and the `github` of at least one author in `motion.json` must be the account that opens the pull request. Unscoped ids (`motions/<slug>/`) are the hub's official motions, published by its maintainers only.
+A motion arrives as a pull request that adds `motions/@<you>/<slug>/` in the [format](SPEC.md). Your GitHub account is your identity here: the motion's `scope` is your GitHub username in lowercase, its id is `@<you>/<slug>`, and the `github` of at least one author in `motion.json` must be the account that opens the pull request. Every motion here has a scope, the maintainers' own included: there are no unscoped, official ids.
 
 ## The quick way
 
@@ -34,7 +34,7 @@ Write `MOTION.md` in English if you can, or add an English translation next to i
 - **Fonts.** Open licences only (SIL Open Font License, Apache 2.0, Ubuntu Font Licence), each named in `CREDITS.md`.
 - **Assets.** Your own, or CC0, CC BY or OFL, each named in `CREDITS.md` with its source. Public-domain artworks are welcome when `CREDITS.md` says where they come from.
 - **Size.** At most 1 MB for the whole motion, the poster included. No video, audio over 500 KB, or build output in the repository.
-- **Directory.** A motion sits in `motions/<slug>/`, named by its `slug` (`hub.slug`).
+- **Scope and directory.** A motion has a `scope` (`hub.scope`) and sits in `motions/@<scope>/<slug>/`, named by its id (`hub.slug`).
 - **Built on.** Every motion named in `basedOn` is one in this catalogue (`hub.basedOn`).
 - **Signed commits.** Every commit carries a `Signed-off-by:` line (`git commit -s`), certifying the [Developer Certificate of Origin](https://developercertificate.org): you have the right to contribute what it contains under its licence.
 

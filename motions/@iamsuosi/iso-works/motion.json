@@ -1,0 +1,29 @@
+{
+  "spec": "motion/0.3",
+  "scope": "iamsuosi",
+  "slug": "iso-works",
+  "version": "1.0.4",
+  "name": {
+    "en": "Iso Works",
+    "zh-CN": "等距工坊"
+  },
+  "line": {
+    "en": "A system as small isometric buildings on a pale floor grid."
+  },
+  "authors": [
+    {
+      "name": "SuoSi",
+      "github": "iamsuosi"
+    }
+  ],
+  "license": {
+    "text": "CC-BY-4.0",
+    "code": "MIT"
+  },
+  "lang": "en",
+  "tags": [
+    "isometric",
+    "flat-vector",
+    "light"
+  ]
+}

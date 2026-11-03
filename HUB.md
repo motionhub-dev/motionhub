@@ -8,8 +8,7 @@ How this repository is published at [motionhub.dev](https://motionhub.dev): the 
 
 | Path | What it is |
 | --- | --- |
-| `motions/<slug>/` | One official motion, in the [format](SPEC.md). Unscoped ids are the hub's own: only its maintainers, listed in `.github/maintainers`, publish them |
-| `motions/@<scope>/<slug>/` | One motion published by the GitHub account `<scope>`, id `@<scope>/<slug>`. The newest version of each is the one in the main branch |
+| `motions/@<scope>/<slug>/` | One motion in the [format](SPEC.md), published by the GitHub account `<scope>`, id `@<scope>/<slug>`. Every motion on the hub has a scope; there are no unscoped, official ones. The newest version of each is the one in the main branch |
 | `tools/check.mjs` | The checker every pull request runs, with no dependencies: the one place the rules are written as code |
 | `bin/motionhub.mjs`, `tools/hub.mjs`, `package.json` | The npm package `@motionhub/cli` (command `motionhub`): `check` (the checker, for tools and people outside this repository), `search` and `get` (the index, and a package checked against its SHA-256 and unpacked into `./motion`). A tag `v<version>` stages it on npm (`.github/workflows/publish.yaml`, trusted publishing, no token) and a maintainer approves it with `npm stage approve` |
 | `packages/runtime/`, `packages/remotion/`, `packages/hyperframes/` | The npm packages `@motionhub/runtime` (what a motion's components draw with, in any engine) and its bindings for Remotion and HyperFrames. A tag `<package>-v<version>` stages one the same way |
@@ -56,7 +55,7 @@ A motion's page plays the motion live, from its reel: `react/reel.tsx`, a React 
 | `sample` | One film has been made in it, by a tool whose directory it has, and its sample is published |
 | `verified` | Films on clearly different subjects have been made in it, and someone who did not make them has reviewed them |
 
-The hub records the level, not the motion: it can change without a new version. A motion listed as **official** is maintained by the hub's maintainers.
+The hub records the level, not the motion: it can change without a new version.
 
 ## Counts
 

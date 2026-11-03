@@ -9,8 +9,7 @@ Motions are reusable looks for narrated and explanatory video: how a film looks 
 - **[HUB.md](HUB.md)**: how the catalogue is published and fetched (planned).
 
 ```
-motions/<slug>/            an official motion, id <slug>
-motions/@<scope>/<slug>/   a creator's motion, id @<scope>/<slug>
+motions/@<scope>/<slug>/   a motion, id @<scope>/<slug>: its creator's GitHub name and its slug
   motion.json   MOTION.md   tokens.json   poster.jpg   CREDITS.md
   react/        components any React engine draws (@motionhub/runtime)
 ```
@@ -19,12 +18,12 @@ motions/@<scope>/<slug>/   a creator's motion, id @<scope>/<slug>
 
 ```sh
 npx @motionhub/cli search hand-drawn    # motions with every word
-npx @motionhub/cli get red-pencil       # into ./motion, checked against its SHA-256
+npx @motionhub/cli get @iamsuosi/red-pencil   # into ./motion, checked against its SHA-256
 ```
 
 Any agent can read a motion's `MOTION.md` and `tokens.json` and follow them in its own engine, the way it would follow a design system. A motion with `react/` also brings its components, which run unchanged in Remotion ([`@motionhub/remotion`](packages/remotion/README.md)) and HyperFrames ([`@motionhub/hyperframes`](packages/hyperframes/README.md)) through [`@motionhub/runtime`](packages/runtime/README.md).
 
-[`skills/motionhub/SKILL.md`](skills/motionhub/SKILL.md) is a skill for any agent: how to choose a motion, fetch it and make a film in it. Install it for every agent on your computer with `npx skills add motionhub-dev/motions -g`, then ask `/motionhub make a film about <your topic> in red-pencil`, or `/motionhub share this project's look as a motion` to publish your own. An agent without it can read [motionhub.dev/llms.txt](https://motionhub.dev/llms.txt), the same text; [Use a motion](docs/use.md) shows both.
+[`skills/motionhub/SKILL.md`](skills/motionhub/SKILL.md) is a skill for any agent: how to choose a motion, fetch it and make a film in it. Install it for every agent on your computer with `npx skills add motionhub-dev/motions -g`, then ask `/motionhub make a film about <your topic> in @iamsuosi/red-pencil`, or `/motionhub share this project's look as a motion` to publish your own. An agent without it can read [motionhub.dev/llms.txt](https://motionhub.dev/llms.txt), the same text; [Use a motion](docs/use.md) shows both.
 
 ## Checking a motion
 

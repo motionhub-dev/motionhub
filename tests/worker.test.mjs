@@ -9,7 +9,7 @@ const NOW = Date.parse('2026-11-03T12:00:00Z');
 
 function env({rows = [], totals = null} = {}) {
   const points = [], queries = [], store = new Map(totals ? [['stats/totals.json', JSON.stringify(totals)]] : []);
-  store.set('m/red-pencil/1.0.2.tgz', 'tgz');
+  store.set('m/@ana/red-pencil/1.0.2.tgz', 'tgz');
   return {
     points, queries, store,
     EVENTS: {writeDataPoint: (p) => points.push(p)},
@@ -26,15 +26,17 @@ const req = (path, headers = {}, method = 'GET') => new Request(`https://motionh
 
 test('a package is served from R2 and its download counted, a HEAD and a robot are not', async () => {
   const e = env();
-  const r = await worker.fetch(req('/m/red-pencil/1.0.2.tgz', {'user-agent': 'node'}), e, ctx);
+  const r = await worker.fetch(req('/m/@ana/red-pencil/1.0.2.tgz', {'user-agent': 'node'}), e, ctx);
   assert.equal(r.status, 200);
   assert.equal(r.headers.get('content-type'), 'application/gzip');
-  assert.deepEqual(e.points, [{indexes: ['red-pencil'], blobs: ['download', 'red-pencil', '1.0.2', '']}]);
-  await worker.fetch(req('/m/red-pencil/1.0.2.tgz', {}, 'HEAD'), e, ctx);
-  await worker.fetch(req('/m/red-pencil/1.0.2.tgz', {'user-agent': 'Googlebot/2.1'}), e, ctx);
+  assert.deepEqual(e.points, [{indexes: ['@ana/red-pencil'], blobs: ['download', '@ana/red-pencil', '1.0.2', '']}]);
+  await worker.fetch(req('/m/@ana/red-pencil/1.0.2.tgz', {}, 'HEAD'), e, ctx);
+  await worker.fetch(req('/m/@ana/red-pencil/1.0.2.tgz', {'user-agent': 'Googlebot/2.1'}), e, ctx);
   assert.equal(e.points.length, 1);
-  assert.equal((await worker.fetch(req('/m/red-pencil/9.9.9.tgz'), e, ctx)).status, 404);
+  assert.equal((await worker.fetch(req('/m/@ana/red-pencil/9.9.9.tgz'), e, ctx)).status, 404);
   assert.equal(e.points.length, 1);
+  e.store.set('m/red-pencil/1.0.2.tgz', 'tgz');
+  assert.equal((await worker.fetch(req('/m/red-pencil/1.0.2.tgz'), e, ctx)).status, 404, 'an unscoped id is no longer served');
 });
 
 test('a view is a document navigation to a motion page that exists', async () => {

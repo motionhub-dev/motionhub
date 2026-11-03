@@ -3,7 +3,7 @@
 Use a motion from [motionhub.dev](https://motionhub.dev) in HyperFrames. Its React components (`motion/react/parts/`) are drawn at the time your GSAP timeline is at; its tokens become CSS variables and GSAP eases; its faces become local files. Nothing is fetched at render.
 
 ```sh
-npx @motionhub/cli get stage-light        # into ./motion
+npx @motionhub/cli get @iamsuosi/stage-light   # into ./motion
 npm i @motionhub/hyperframes
 npx motionhub-hyperframes motion --out assets/motion
 ```

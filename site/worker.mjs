@@ -94,7 +94,8 @@ async function statsResponse(request, env, ctx) {
 
 async function packageResponse(request, env, ctx, [, id, version], pathname) {
   if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method not allowed', {status: 405, headers: {allow: 'GET, HEAD'}});
-  const object = await env.PACKAGES.get(pathname.slice(1));
+  // every motion on the hub has a scope (HUB.md): the packages of the unscoped ids it once had are no longer served
+  const object = id.startsWith('@') ? await env.PACKAGES.get(pathname.slice(1)) : null;
   if (!object) {
     const page = await env.ASSETS.fetch(new Request(new URL('/404.html', request.url)));
     return new Response(page.body, {status: 404, headers: page.headers});

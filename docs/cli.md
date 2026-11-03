@@ -20,7 +20,7 @@ The motions on motionhub.dev that have every word, in their id, names, line or t
 npx @motionhub/cli get <id> [--out <dir>]
 ```
 
-The newest version of a motion, `red-pencil` or `@ana/ledger-pencil`, into `./motion` (or `--out`), checked against the SHA-256 in the index.
+The newest version of a motion, by its id (`@iamsuosi/red-pencil`), into `./motion` (or `--out`), checked against the SHA-256 in the index.
 
 ## init
 
