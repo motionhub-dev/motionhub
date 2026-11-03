@@ -8,7 +8,7 @@ npm i @motionhub/hyperframes
 npx motionhub-hyperframes motion --out assets/motion
 ```
 
-That writes `assets/motion/motion.js` (the components, React and `@motionhub/runtime` in one file), `motion.css` and `fonts/`. In `index.html`, before the compositions' scripts:
+That writes `assets/motion/motion.js` (the components, React and `@motionhub/runtime` in one file), `motion.css` and `fonts/`. Add `--han` for a film with Chinese, Japanese or Korean text: it adds those faces, every part of them (several MB each). In `index.html`, before the compositions' scripts:
 
 ```html
 <link rel="stylesheet" href="assets/motion/motion.css">
