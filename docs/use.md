@@ -14,18 +14,29 @@ Read https://motionhub.dev/llms.txt, then make a film about "<your topic>" in th
 
 ### Install the skill
 
-The [agent skill](../skills/motionhub/SKILL.md) is the same instructions, kept by your agent so it needs no first line. In Claude Code, put it in the project's skills:
+The [agent skill](../skills/motionhub/SKILL.md) is the same instructions, kept by your agent so it needs no first line. Install it once, for every project and every agent on your computer (Claude Code, Codex and the others [skills](https://github.com/vercel-labs/skills) knows):
 
 ```sh
-mkdir -p .claude/skills/motionhub
-curl -fsSL https://raw.githubusercontent.com/motionhub-dev/motions/main/skills/motionhub/SKILL.md -o .claude/skills/motionhub/SKILL.md
+npx skills add motionhub-dev/motions -g
 ```
 
-or in `~/.claude/skills/motionhub/` for every project. Another agent takes the same `SKILL.md` wherever it keeps skills. Then ask:
+Leave out `-g` to install it in the current project only. Then call it by name:
 
 ```text
-Make a film about <your topic> in the motion red-pencil
+/motionhub make a film about <your topic> in red-pencil
 ```
+
+An agent without slash commands takes the same request in words: "Make a film about … in the motion red-pencil".
+
+## Share a look of your own
+
+Made a film whose look others should have? With the skill installed, ask your agent from that project:
+
+```text
+/motionhub share this project's look as a motion
+```
+
+It writes the motion as `@<your GitHub login>/<slug>`, takes the look from the project and never the film's story, runs the checks the pull request will run, shows you the result and opens the pull request only when you say yes. [Share a motion](../CONTRIBUTING.md) has the rules it follows and the commands it runs.
 
 ## From the command line
 
