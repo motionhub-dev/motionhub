@@ -1,4 +1,4 @@
-import {PEN, drawn, unit, type Pen} from './pens.ts';
+import {PEN, unit, type Pen} from './pens.ts';
 
 export const meta = {
   name: {en: 'Hand label', 'zh-CN': '手写标注'},
@@ -24,8 +24,10 @@ export function HandLabel({text, write = 1, size = 52, pen = 'ink', underline = 
       <div style={{fontFamily: 'var(--font-display)', fontSize: size, lineHeight: 1.25, fontWeight: 500, color: PEN[pen], whiteSpace: 'nowrap',
         clipPath: `inset(-25% ${((1 - shown) * 100).toFixed(1)}% -25% -4%)`}}>{text}</div>
       {underline && line > 0 && (
-        <svg width="100%" height={16} style={{position: 'absolute', left: 0, bottom: -6, overflow: 'visible'}} viewBox="0 0 100 16" preserveAspectRatio="none">
-          <path d="M1 9 C 30 5, 60 13, 99 6" fill="none" stroke={PEN[pen]} strokeWidth={4} strokeLinecap="round" vectorEffect="non-scaling-stroke" {...drawn(line)} />
+        // Drawn by a clip, left to right, not by a dash: with a non-scaling stroke (which keeps it 4 px at any width) a dash is measured
+        // in screen pixels, not against pathLength, and a wide label's line would break into dashes.
+        <svg width="100%" height={16} style={{position: 'absolute', left: 0, bottom: -6, overflow: 'visible', clipPath: `inset(-50% ${((1 - line) * 100).toFixed(1)}% -50% 0)`}} viewBox="0 0 100 16" preserveAspectRatio="none">
+          <path d="M1 9 C 30 5, 60 13, 99 6" fill="none" stroke={PEN[pen]} strokeWidth={4} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
         </svg>
       )}
     </div>

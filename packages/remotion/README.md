@@ -4,7 +4,7 @@ Use a motion from [motionhub.dev](https://motionhub.dev) in Remotion. Its React 
 
 ```sh
 npx @motionhub/cli get @iamsuosi/stage-light   # into ./motion
-npm i @motionhub/remotion
+npm i @motionhub/remotion @motionhub/runtime
 ```
 
 Wrap the composition once, outside every `<Sequence>`, with the motion's tokens, and use the components with props. Inside a `<Sequence>`, a component's `useTime()` starts with it.
