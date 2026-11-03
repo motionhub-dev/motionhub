@@ -32,7 +32,8 @@ A static site, rebuilt from the main branch whenever it changes and every six ho
 | --- | --- |
 | `/` and `/m/<id>` | The gallery and a page per motion: poster, sample, colours, faces, `MOTION.md` |
 | `/api/motions.json` | The index: `spec`, and `motions`, one row per motion ordered by id, with `slug` (the motion's id, `<slug>` or `@<scope>/<slug>`, so a client that only knows `motion/0.1` never takes one motion for another), `scope` (when it has one), `spec` (its motion's), `version`, `name`, `line`, `lang`, `tags`, `authors`, `license`, `poster`, `tools` (the directories it has for tools) and `package` (`url`, `sha256`, `bytes`). Paths are relative to the site |
-| `/api/stats.json` | Each motion's downloads: `motions`, by id, with `downloads.total` and `downloads.last30`, and `generated`. Kept for ten minutes; see Counts below |
+| `/api/stats.json` | Each motion's downloads and likes: `motions`, by id, with `downloads.total`, `downloads.last30` and `likes`, and `generated`. Kept for five minutes; see Counts below |
+| `/auth/login`, `/auth/callback`, `/auth/logout`, `/api/me`, `/api/likes/<id>` | Signing in with GitHub, who is signed in and what they like, and giving (`POST`) or taking back (`DELETE`) a like. `DELETE /api/me` forgets the person. See Likes below |
 | `/m/<id>/MOTION.md`, `/m/<id>/tokens.json`, `/m/<id>/motion.json` | The newest version's files, to read directly |
 | `/m/<id>/<version>.tgz` | The whole motion at that version, its paths under `<id>/`, with its SHA-256 in the index. The same files always give the same bytes |
 | `/llms.txt` | For agents: what a motion is, how to choose one from the index and how to use it, then every docs page's Markdown twin |
@@ -61,6 +62,10 @@ The hub records the level, not the motion: it can change without a new version. 
 motionhub counts two things, to show which motions people use: a download of a package, and a person opening a motion's page. Each is one event of what happened (`download` or `view`), the motion's id, the version (for a download) and the country Cloudflare saw the request from. Nothing else is kept: no cookie, no address, no browser, nothing that names a person, and nothing is counted on any other page. Crawlers and link previews are not counted; a command line or an agent fetching a package is.
 
 Downloads are public at `/api/stats.json` and on the site. Views are not published: they are for the maintainers, to see what people look at. The events are kept by Cloudflare Workers Analytics Engine for three months; what lasts longer is each motion's number of downloads, added up once a day.
+
+## Likes
+
+Anyone with a GitHub account can sign in and like a motion, once. Signing in asks GitHub for no permission: motionhub learns the account's public id, login, name and avatar, and does not keep GitHub's token. A session lasts 30 days in an HttpOnly cookie, and the database keeps only a hash of it. A like is public as a count; who liked what is not published. Taking a like back removes it; *Forget me*, in the account menu, removes the person's likes, sessions and record. Likes are kept in Cloudflare D1; the schema is `site/migrations/`.
 
 ## Votes
 

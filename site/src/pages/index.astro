@@ -32,6 +32,7 @@ const n = rows.length;
         <option value="">A to Z</option>
         <option value="last30">Most downloaded, 30 days</option>
         <option value="total">Most downloaded, all time</option>
+        <option value="likes">Most liked</option>
       </select>
     </label>
     <div class="seg" role="group" aria-label="View">
@@ -48,7 +49,7 @@ const n = rows.length;
 
   <div class="table" id="list" hidden>
     <table>
-      <thead><tr><th colspan="2">Motion</th><th>Looks</th><th>Ready for</th><th>By</th><th class="r" id="dlhead">Downloads</th><th class="r">Version</th></tr></thead>
+      <thead><tr><th colspan="2">Motion</th><th>Looks</th><th>Ready for</th><th>By</th><th class="r">Likes</th><th class="r" id="dlhead">Downloads</th><th class="r">Version</th></tr></thead>
       <tbody>
         {rows.map((r) => (
           <tr {...filter(r)}>
@@ -57,6 +58,7 @@ const n = rows.length;
             <td>{r.tags.join(', ')}</td>
             <td>{r.tools.map((t) => <span class="badge">{t}</span>)}</td>
             <td>{r.authors.map((a) => a.name).join(', ')}</td>
+            <td class="r" data-lk={r.slug}>–</td>
             <td class="r" data-dl={r.slug}>–</td>
             <td class="r mono">{r.version}</td>
           </tr>
@@ -79,7 +81,7 @@ const n = rows.length;
   const grid = $<HTMLElement>('#grid')!, list = $<HTMLElement>('#list')!;
   const params = new URLSearchParams(location.search);
   const sort = $<HTMLSelectElement>('#sort')!;
-  let counts: Record<string, {downloads: {total: number; last30: number}}> = {};
+  let counts: Record<string, {downloads: {total: number; last30: number}; likes?: number}> = {};
   let tag = params.get('tag') ?? '';
   let view = params.get('view') ?? (() => { try { return localStorage.getItem('motionhub.view'); } catch { return null; } })() ?? 'grid';
   q.value = params.get('q') ?? q.value;
@@ -98,6 +100,12 @@ const n = rows.length;
       else { el.innerHTML = ICON + fmt.format(n); el.hidden = n === 0; }
       el.title = `${d.total} downloads, ${d.last30} in the last 30 days`;
     }
+    const HEART = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-7-4.4-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6C19 16.6 12 21 12 21z"/></svg>';
+    for (const el of document.querySelectorAll<HTMLElement>('[data-lk]')) {
+      const n = counts[el.dataset.lk!]?.likes ?? 0;
+      if (el.tagName === 'TD') el.textContent = Object.keys(counts).length ? fmt.format(n) : '–';
+      else { el.innerHTML = HEART + fmt.format(n); el.hidden = n === 0; el.title = `${n} ${n === 1 ? 'like' : 'likes'}`; }
+    }
   }
 
   function apply() {
@@ -110,10 +118,11 @@ const n = rows.length;
       if (show && el.tagName === 'A') n++;
     }
     // order: A to Z (the page's own order), or by downloads with A to Z among equals
-    const by = sort.value as '' | 'total' | 'last30';
+    const by = sort.value as '' | 'total' | 'last30' | 'likes';
+    const score = (id: string) => (by === 'likes' ? counts[id]?.likes ?? 0 : by ? counts[id]?.downloads[by] ?? 0 : 0);
     for (const box of [grid, list.querySelector('tbody')!]) {
       const kids = [...box.children] as HTMLElement[];
-      kids.sort((a, b) => (by ? (counts[b.dataset.id!]?.downloads[by] ?? 0) - (counts[a.dataset.id!]?.downloads[by] ?? 0) : 0) || Number(a.dataset.order) - Number(b.dataset.order));
+      kids.sort((a, b) => score(b.dataset.id!) - score(a.dataset.id!) || Number(a.dataset.order) - Number(b.dataset.order));
       box.append(...kids);
     }
     paint(by === 'last30' ? 'last30' : 'total');
@@ -125,7 +134,7 @@ const n = rows.length;
     if (tag) parts.push(`tagged ${tag}`);
     if (t) parts.push(`ready for ${t}`);
     if (words.length) parts.push(`matching “${q.value.trim()}”`);
-    $('#count')!.textContent = parts.join(' ') + ', ' + (by ? `most downloaded${by === 'last30' ? ' in 30 days' : ''} first` : 'A to Z');
+    $('#count')!.textContent = parts.join(' ') + ', ' + (by === 'likes' ? 'most liked first' : by ? `most downloaded${by === 'last30' ? ' in 30 days' : ''} first` : 'A to Z');
     $<HTMLElement>('#empty')!.hidden = n > 0;
     const next = new URLSearchParams();
     if (q.value.trim()) next.set('q', q.value.trim());
@@ -151,7 +160,7 @@ const n = rows.length;
     counts = s.motions ?? {};
     $<HTMLElement>('#sortfield')!.hidden = false;
     const want = params.get('sort');
-    if (want === 'total' || want === 'last30') sort.value = want;
+    if (want === 'total' || want === 'last30' || want === 'likes') sort.value = want;
     apply();
   }).catch(() => {});
 </script>

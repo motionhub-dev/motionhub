@@ -3,8 +3,10 @@
 //
 // It also counts, with no cookie and nothing that names a person (HUB.md, "Counts"): a download of a package and a
 // view of a motion's page, each as one Analytics Engine data point [kind, id, version, country]. /api/stats.json
-// gives each motion's downloads, in all and in the last 30 days. Analytics Engine keeps three months, so a daily
+// gives each motion's downloads, in all and in the last 30 days, and its likes (people.mjs, with signing in). Analytics Engine keeps three months, so a daily
 // cron adds each finished day to stats/totals.json in the bucket; the total is that plus what came since.
+
+import {likeCounts, people} from './people.mjs';
 
 const PACKAGE = /^\/m\/((?:@[a-z0-9-]+\/)?[a-z0-9-]+)\/([0-9A-Za-z.+-]+)\.tgz$/;
 const PAGE = /^\/m\/((?:@[a-z0-9-]+\/)?[a-z0-9-]+)\/$/;
@@ -54,14 +56,18 @@ export async function rollup(env, now = Date.now()) {
   return kept;
 }
 
-/** The public counts: each motion's downloads in all and in the last 30 days. */
+/** The public counts: each motion's downloads in all and in the last 30 days, and its likes. */
 export async function stats(env, now = Date.now()) {
   const kept = await totals(env);
   const since = kept.through ? new Date(Date.parse(kept.through) + DAY) : new Date(dayStart(now) - 89 * DAY);
-  const [recent, month] = await Promise.all([downloads(env, since), downloads(env, new Date(now - 30 * DAY))]);
-  const ids = new Set([...Object.keys(kept.downloads), ...Object.keys(recent), ...Object.keys(month)]);
+  const [recent, month, likes] = await Promise.all([
+    downloads(env, since),
+    downloads(env, new Date(now - 30 * DAY)),
+    likeCounts(env).catch((e) => (console.error('likes', e?.message), {})),
+  ]);
+  const ids = new Set([...Object.keys(kept.downloads), ...Object.keys(recent), ...Object.keys(month), ...Object.keys(likes)]);
   const motions = {};
-  for (const id of [...ids].sort()) motions[id] = {downloads: {total: (kept.downloads[id] ?? 0) + (recent[id] ?? 0), last30: month[id] ?? 0}};
+  for (const id of [...ids].sort()) motions[id] = {downloads: {total: (kept.downloads[id] ?? 0) + (recent[id] ?? 0), last30: month[id] ?? 0}, likes: likes[id] ?? 0};
   return {generated: new Date(now).toISOString(), motions};
 }
 
@@ -79,7 +85,7 @@ async function statsResponse(request, env, ctx) {
   }
   const response = new Response(JSON.stringify(body), {status, headers: {
     'content-type': 'application/json; charset=utf-8',
-    'cache-control': `public, max-age=${status === 200 ? 600 : 60}`,
+    'cache-control': `public, max-age=${status === 200 ? 300 : 60}`,
     'access-control-allow-origin': '*',
   }});
   if (status === 200) ctx.waitUntil(cache.put(key, response.clone()));
@@ -108,6 +114,8 @@ export default {
   async fetch(request, env, ctx) {
     const {pathname} = new URL(request.url);
     if (pathname === '/api/stats.json') return statsResponse(request, env, ctx);
+    const own = await people(request, env);
+    if (own) return own;
     const pkg = PACKAGE.exec(pathname);
     if (pkg) return packageResponse(request, env, ctx, pkg, pathname);
     const response = await env.ASSETS.fetch(request);
