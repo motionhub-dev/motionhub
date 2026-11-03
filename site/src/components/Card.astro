@@ -5,7 +5,10 @@ const zh = other(row.name);
 const by = row.authors.map((a) => a.name).join(', ');
 ---
 <a class="card" href={`/m/${row.slug}/`} title={en(row.line)} {...attrs}>
-  <img class="poster" src={row.poster} alt={`A frame of a film in ${en(row.name)}`} loading="lazy" decoding="async" width="960" height="540">
+  <span class="shot">
+    <img class="poster" src={row.poster} alt={`A frame of a film in ${en(row.name)}`} loading="lazy" decoding="async" width="960" height="540">
+    {row.sample && <video class="poster clip" src={row.sample.url} muted loop playsinline preload="none" aria-hidden="true" tabindex="-1"></video>}
+  </span>
   <span class="t"><b>{en(row.name)}</b>{zh && <small>{zh}</small>}</span>
   {!small && <span class="m"><span>{by}</span><span class="dl" data-dl={row.slug} hidden></span></span>}
 </a>

@@ -1,5 +1,6 @@
 // motionhub.dev's Worker. The pages and files come from the static build (dist/); packages come from the R2 bucket,
-// where every version ever published stays (HUB.md), since the build only holds the newest ones.
+// where every version ever published stays (HUB.md), since the build only holds the newest ones, and so do the
+// motions' sample videos (samples.json), with byte ranges for a player.
 //
 // It also counts, with no cookie and nothing that names a person (HUB.md, "Counts"): a download of a package and a
 // view of a motion's page, each as one Analytics Engine data point [kind, id, version, country]. /api/stats.json
@@ -8,6 +9,7 @@
 
 const PACKAGE = /^\/m\/((?:@[a-z0-9-]+\/)?[a-z0-9-]+)\/([0-9A-Za-z.+-]+)\.tgz$/;
 const PAGE = /^\/m\/((?:@[a-z0-9-]+\/)?[a-z0-9-]+)\/$/;
+const SAMPLE = /^\/m\/((?:@[a-z0-9-]+\/)?[a-z0-9-]+)\/sample-[0-9a-f]{12}\.mp4$/;
 const DATASET = 'events.analyticsEngine.motionhub_events';
 const TOTALS = 'stats/totals.json';
 const DAY = 86400000;
@@ -104,12 +106,31 @@ async function packageResponse(request, env, ctx, [, id, version], pathname) {
   return new Response(request.method === 'HEAD' ? null : object.body, {headers});
 }
 
+/** A sample video from R2, with byte ranges, so a player can seek and a browser can fetch only the start */
+async function sampleResponse(request, env, pathname) {
+  if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method not allowed', {status: 405, headers: {allow: 'GET, HEAD'}});
+  const object = await env.PACKAGES.get(pathname.slice(1), {range: request.headers});
+  if (!object) return new Response('Not found', {status: 404});
+  const headers = new Headers({'content-type': 'video/mp4', 'accept-ranges': 'bytes', 'cache-control': 'public, max-age=31536000, immutable', 'access-control-allow-origin': '*', etag: object.httpEtag});
+  const range = object.range;
+  if (range && request.headers.has('range')) {
+    const start = range.offset ?? (range.suffix !== undefined ? object.size - range.suffix : 0);
+    const length = range.length ?? (range.suffix ?? object.size - start);
+    headers.set('content-range', `bytes ${start}-${start + length - 1}/${object.size}`);
+    headers.set('content-length', String(length));
+    return new Response(request.method === 'HEAD' ? null : object.body, {status: 206, headers});
+  }
+  headers.set('content-length', String(object.size));
+  return new Response(request.method === 'HEAD' ? null : object.body, {headers});
+}
+
 export default {
   async fetch(request, env, ctx) {
     const {pathname} = new URL(request.url);
     if (pathname === '/api/stats.json') return statsResponse(request, env, ctx);
     const pkg = PACKAGE.exec(pathname);
     if (pkg) return packageResponse(request, env, ctx, pkg, pathname);
+    if (SAMPLE.test(pathname)) return sampleResponse(request, env, pathname);
     const response = await env.ASSETS.fetch(request);
     // a person opening a motion's page: a document navigation that found the page
     const page = PAGE.exec(pathname);

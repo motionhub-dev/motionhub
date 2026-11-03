@@ -76,6 +76,9 @@ main.wrap { padding-top: 20px; padding-bottom: 56px; }
 .card:hover { color: inherit; }
 .poster { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--radius-md); background: var(--color-surface-2); outline: 1px solid var(--color-line); outline-offset: -1px; }
 .card:hover .poster { outline: 2px solid var(--color-text); outline-offset: -2px; }
+.shot { position: relative; display: block; }
+.shot .clip { position: absolute; inset: 0; height: 100%; opacity: 0; pointer-events: none; }
+.card.playing .clip { opacity: 1; }
 .card .t { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 8px; }
 .card b { font-weight: var(--weight-semibold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card small, .card .m { font-size: var(--size-xs); color: var(--color-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

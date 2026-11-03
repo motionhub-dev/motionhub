@@ -80,6 +80,19 @@ const {title, description, path, image = '/og-default.png', current, q = ''} = A
     const t = e.target as HTMLElement;
     if (e.key === '/' && q && !/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) && !t.isContentEditable) { e.preventDefault(); q.focus(); }
   });
+  // a card with a sample plays it, silent, while the pointer or the focus is on it; not for a reader who asked for less motion
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    for (const card of document.querySelectorAll<HTMLElement>('.card')) {
+      const clip = card.querySelector<HTMLVideoElement>('video.clip');
+      if (!clip) continue;
+      const play = () => clip.play().then(() => card.classList.add('playing')).catch(() => {});
+      const stop = () => { clip.pause(); clip.currentTime = 0; card.classList.remove('playing'); };
+      card.addEventListener('pointerenter', play);
+      card.addEventListener('pointerleave', stop);
+      card.addEventListener('focus', play);
+      card.addEventListener('blur', stop);
+    }
+  }
   // a copy button on every block marked data-copy
   for (const pre of document.querySelectorAll<HTMLElement>('[data-copy]')) {
     const b = document.createElement('button');

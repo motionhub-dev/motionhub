@@ -22,7 +22,7 @@ A motion is a directory:
 ## 1. Choose the motion
 
 - **The person named one** (a name, an id, or a `motionhub.dev/m/<id>` link): use it.
-- **Otherwise** search: `npx @motionhub/cli search <words>` (no words lists them all), or read the index, `https://motionhub.dev/api/motions.json`, whose rows have `slug` (the id), `name`, `line`, `tags`, `lang`, `poster` and `package`, with paths relative to `https://motionhub.dev`. Match the `line` and `tags` against the subject and the medium (a screen recording, a person's own footage, a dataset, a story), offer two or three with their posters, and let the person choose. Choose yourself only when they asked you to.
+- **Otherwise** search: `npx @motionhub/cli search <words>` (no words lists them all), or read the index, `https://motionhub.dev/api/motions.json`, whose rows have `slug` (the id), `name`, `line`, `tags`, `lang`, `poster`, `package` and often `sample` (a video of it, at most 20 seconds), with paths relative to `https://motionhub.dev`. Match the `line` and `tags` against the subject and the medium (a screen recording, a person's own footage, a dataset, a story), offer two or three with their posters and samples, and let the person choose. Choose yourself only when they asked you to.
 
 ## 2. Get it
 

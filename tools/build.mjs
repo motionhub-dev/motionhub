@@ -9,6 +9,7 @@
 //                                    `<slug>` or `@<scope>/<slug>`, so clients that only know motion/0.1 never confuse two)
 //   m/<id>/<file>                    the newest version's motion.json, MOTION*.md, tokens.json, CREDITS.md, poster.jpg
 //   m/<id>/<version>.tgz             the whole motion, its paths under <id>/; the same files always give the same bytes
+//                                    (a motion's sample video is not built: samples.json names it, and it is served from R2)
 //   llms.txt                         the generic skill, for agents (skills/motionhub/SKILL.md without its front matter),
 //                                    ending with the index of the docs' Markdown twins
 //   docs/<page>.md, llms-full.txt    each docs page as Markdown, and all of them in one file (tools/docs.mjs)
@@ -93,6 +94,22 @@ export function pack(dir) {
   return {row, archive, served: names.filter((n) => SERVED.test(n))};
 }
 
+/** A sample's file name: the first twelve hex digits of its SHA-256 name it, so a new video is a new URL that can be cached for ever */
+export const sampleFile = (sha256) => `sample-${sha256.slice(0, 12)}.mp4`;
+export const SAMPLE_SECONDS = 20, SAMPLE_BYTES = 8e6;
+
+/** samples.json: each motion's sample video, by id ({sha256, bytes, seconds}); a row for no motion, or out of bounds, is refused */
+export function samples(root, ids) {
+  const path = join(root, 'samples.json');
+  if (!existsSync(path)) return {};
+  const list = JSON.parse(readFileSync(path, 'utf8'));
+  for (const [id, s] of Object.entries(list)) {
+    if (!ids.includes(id)) throw new Error(`samples.json names ${id}, which is not a motion here`);
+    if (!/^[0-9a-f]{64}$/.test(s.sha256 ?? '') || !(s.bytes > 0 && s.bytes <= SAMPLE_BYTES) || !(s.seconds > 0 && s.seconds <= SAMPLE_SECONDS)) throw new Error(`samples.json: ${id} needs a SHA-256, at most ${SAMPLE_BYTES} bytes and at most ${SAMPLE_SECONDS} seconds`);
+  }
+  return list;
+}
+
 export function build(out, root = ROOT) {
   const motions = join(root, 'motions');
   const dirs = listMotions(motions);
@@ -109,6 +126,11 @@ export function build(out, root = ROOT) {
     for (const n of served) copyFileSync(join(motions, d, n), join(at, n));
     writeFileSync(join(at, `${row.version}.tgz`), archive);
     rows.push(row);
+  }
+  const videos = samples(root, rows.map((r) => r.slug));
+  for (const row of rows) {
+    const s = videos[row.slug];
+    if (s) row.sample = {url: `/m/${row.slug}/${sampleFile(s.sha256)}`, sha256: s.sha256, bytes: s.bytes, seconds: s.seconds};
   }
   mkdirSync(join(out, 'api'), {recursive: true});
   writeFileSync(join(out, 'api/motions.json'), JSON.stringify({spec: INDEX_SPEC, motions: rows}, null, 2) + '\n');

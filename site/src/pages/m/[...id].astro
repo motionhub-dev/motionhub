@@ -32,7 +32,9 @@ const uses = [
 
   <section class="head">
     <div class="media">
-      <img class="poster" src={row.poster} alt={`A frame of a film in ${name}`} width="960" height="540" fetchpriority="high">
+      {row.sample
+        ? <video class="poster" src={row.sample.url} poster={row.poster} controls playsinline preload="metadata" width="960" height="540" aria-label={`A sample of ${name}`}></video>
+        : <img class="poster" src={row.poster} alt={`A frame of a film in ${name}`} width="960" height="540" fetchpriority="high">}
     </div>
     <aside>
       <div>

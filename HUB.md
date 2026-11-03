@@ -1,6 +1,6 @@
 # The hub
 
-> **Status:** Plan — the build, the site, the generic skill and the deploy are written; sample videos, listing levels and votes are not
+> **Status:** Plan — the build, the site, the generic skill, the deploy and sample videos are written; listing levels and votes are not
 
 How this repository is published at [motionhub.dev](https://motionhub.dev): the catalogue, the files a tool or an agent fetches, sample videos and the levels a motion is listed at. This is the hub's policy and distribution, not the motion format: the format is [SPEC.md](SPEC.md), and nothing here changes it.
 
@@ -20,6 +20,7 @@ How this repository is published at [motionhub.dev](https://motionhub.dev): the 
 | `tools/site.mjs` | What the pages share with the build, with no dependencies: the Markdown a motion's documents use, its colours and faces, and `_headers`, `robots.txt` and `sitemap.xml` |
 | `site/worker.mjs`, `wrangler.jsonc` | The Cloudflare Worker: it serves the build as static assets and the packages from the R2 bucket `motionhub` |
 | `.github/workflows/deploy.yml` | Builds, publishes each new package to R2 and deploys, on every push to the main branch and every six hours. It refuses to replace a published package |
+| `samples.json`, `tools/samples.mjs` | Each motion's sample video, by id: its SHA-256, size and length. The tool checks a video, records it and, with `--upload`, puts it in R2 |
 | `skills/motionhub/SKILL.md` | The generic skill: how any agent chooses a motion, fetches it and makes a film in it. `/llms.txt` is the same text, followed by the index of the docs |
 
 The repository keeps text, code and posters only. Sample videos are not committed (below).
@@ -31,10 +32,11 @@ A static site, rebuilt from the main branch whenever it changes and every six ho
 | Path | What it is |
 | --- | --- |
 | `/` and `/m/<id>` | The gallery and a page per motion: poster, sample, colours, faces, `MOTION.md` |
-| `/api/motions.json` | The index: `spec`, and `motions`, one row per motion ordered by id, with `slug` (the motion's id, `<slug>` or `@<scope>/<slug>`, so a client that only knows `motion/0.1` never takes one motion for another), `scope` (when it has one), `spec` (its motion's), `version`, `name`, `line`, `lang`, `tags`, `authors`, `license`, `poster`, `tools` (the directories it has for tools) and `package` (`url`, `sha256`, `bytes`). Paths are relative to the site |
+| `/api/motions.json` | The index: `spec`, and `motions`, one row per motion ordered by id, with `slug` (the motion's id, `<slug>` or `@<scope>/<slug>`, so a client that only knows `motion/0.1` never takes one motion for another), `scope` (when it has one), `spec` (its motion's), `version`, `name`, `line`, `lang`, `tags`, `authors`, `license`, `poster`, `tools` (the directories it has for tools), `package` (`url`, `sha256`, `bytes`) and, when it has one, `sample` (`url`, `sha256`, `bytes`, `seconds`). Paths are relative to the site |
 | `/api/stats.json` | Each motion's downloads: `motions`, by id, with `downloads.total` and `downloads.last30`, and `generated`. Kept for ten minutes; see Counts below |
 | `/m/<id>/MOTION.md`, `/m/<id>/tokens.json`, `/m/<id>/motion.json` | The newest version's files, to read directly |
 | `/m/<id>/<version>.tgz` | The whole motion at that version, its paths under `<id>/`, with its SHA-256 in the index. The same files always give the same bytes |
+| `/m/<id>/sample-<hash>.mp4` | The motion's sample video, named by the first twelve hex digits of its SHA-256, from R2, with byte ranges |
 | `/llms.txt` | For agents: what a motion is, how to choose one from the index and how to use it, then every docs page's Markdown twin |
 | `/docs/<page>/`, `/docs/<page>.md`, `/llms-full.txt` | The docs: the repository's own documents (`SPEC.md`, `CONTRIBUTING.md`, this file, the skill, the packages' READMEs, `brand/BRAND.md`) and the guides in `docs/`, each as a page and as Markdown, and all of them in one file. The list is `tools/docs.mjs` |
 
@@ -44,7 +46,9 @@ Sample players run code written by contributors. They are served from their own 
 
 ## Sample videos
 
-A motion with a sample has a short video of it (at most 20 seconds, H.264, at most 8 MB), stored next to the site rather than in the repository. A pull request's sample is built by its checks and shown on the pull request.
+A motion with a sample has a short video of it: an H.264 MP4 of at most 20 seconds and 8 MB, with sound or without, showing the motion's moves at a brisk pace rather than a film's story. The motion's page plays it with its sound when the reader presses play; a card plays it silently while it is pointed at or focused, unless the reader asked for less motion.
+
+The video is never in the repository. `samples.json` records it by the motion's id, and it is stored in the R2 bucket at `m/<id>/sample-<hash>.mp4`, so a new video is a new URL and an old one never changes under a page that cached it. A contributor attaches the video to their pull request; a maintainer runs `node tools/samples.mjs <dir> --upload`, which checks it, uploads it and writes `samples.json`, and commits that. The official motions' samples are cut from the films they were made with, twenty seconds played a third faster, with no narration or captions and a soundtrack synthesised from what happens in the picture.
 
 ## Listing levels
 
