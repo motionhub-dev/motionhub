@@ -273,15 +273,19 @@ pre { margin: 0; padding: 12px 14px; background: var(--color-code); color: var(-
 
 /* footer */
 .foot { border-top: 1px solid var(--color-line); }
-.foot .wrap { padding-top: 16px; padding-bottom: 28px; display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: var(--size-sm); color: var(--color-muted); }
-.foot a { color: var(--color-muted); }
-.foot .gap { flex: 1; }
-.foot .brand .mark { width: 27px; height: 16px; }
-.foot .brand .word { height: 16px; }
-.foot .brand { margin-right: 4px; }
-.foot a.mono { font-size: var(--size-xs); }
-.foot .wrap { align-items: center; }
-.foot .theme { margin-left: auto; }
+/* the logo and its line at the left, the links in columns at the right, and under a rule the licence and the theme switch */
+.foot .wrap { padding-top: 40px; padding-bottom: 16px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px 48px; font-size: var(--size-sm); color: var(--color-muted); }
+.foot .about { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.foot .about p { margin: 0; }
+.foot a.brand { color: var(--color-text); }
+.foot .links { display: grid; grid-template-columns: repeat(3, auto); gap: 24px 64px; }
+.foot h2 { margin: 0 0 10px; font-size: var(--size-sm); font-weight: var(--weight-medium); color: var(--color-text); }
+.foot ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.foot .links a { color: var(--color-muted); text-decoration: none; }
+.foot .links a:hover { color: var(--color-text); }
+.foot .legal { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 16px; border-top: 1px solid var(--color-line); }
+@media (max-width: 860px) { .foot .wrap { grid-template-columns: minmax(0, 1fr); padding-top: 32px; } }
+@media (max-width: 480px) { .foot .links { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; } }
 .theme { display: flex; border: 1px solid var(--color-line); border-radius: var(--radius-pill); padding: 2px; gap: 2px; }
 .theme button { display: grid; place-items: center; width: 26px; height: 24px; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--color-muted); cursor: pointer; }
 .theme button:hover { color: var(--color-text); }
