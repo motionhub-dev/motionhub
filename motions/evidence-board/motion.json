@@ -1,7 +1,7 @@
 {
   "spec": "motion/0.1",
   "slug": "evidence-board",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "name": {
     "en": "Evidence Board",
     "zh-CN": "证据墙"
@@ -11,7 +11,7 @@
   },
   "authors": [
     {
-      "name": "VisoTalk",
+      "name": "SuoSi",
       "github": "iamsuosi"
     }
   ],

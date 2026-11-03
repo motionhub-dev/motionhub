@@ -1,7 +1,7 @@
 {
   "spec": "motion/0.1",
   "slug": "red-pencil",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "name": {
     "en": "Red Pencil",
     "zh-CN": "红笔批注"
@@ -11,7 +11,7 @@
   },
   "authors": [
     {
-      "name": "VisoTalk",
+      "name": "SuoSi",
       "github": "iamsuosi"
     }
   ],

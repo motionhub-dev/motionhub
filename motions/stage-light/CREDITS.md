@@ -1,6 +1,6 @@
 # Credits
 
-Stage Light is an original motion made by VisoTalk, exported from its built-in library.
+Stage Light is an original motion by SuoSi.
 
 ## Fonts
 
@@ -8,7 +8,3 @@ Stage Light is an original motion made by VisoTalk, exported from its built-in l
 - Noto Sans SC: SIL Open Font License 1.1
 - JetBrains Mono: SIL Open Font License 1.1
 - Big Shoulders Display: SIL Open Font License 1.1
-
-## Sample assets
-
-- None.

@@ -1,7 +1,7 @@
 {
   "spec": "motion/0.1",
   "slug": "pixel-quest",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "name": {
     "en": "Pixel Quest",
     "zh-CN": "像素关卡"
@@ -11,7 +11,7 @@
   },
   "authors": [
     {
-      "name": "VisoTalk",
+      "name": "SuoSi",
       "github": "iamsuosi"
     }
   ],

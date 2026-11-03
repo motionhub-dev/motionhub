@@ -1,6 +1,6 @@
 # Credits
 
-Lab Notebook is an original motion made by VisoTalk, exported from its built-in library.
+Lab Notebook is an original motion by SuoSi.
 
 ## Fonts
 
@@ -9,7 +9,3 @@ Lab Notebook is an original motion made by VisoTalk, exported from its built-in 
 - JetBrains Mono: SIL Open Font License 1.1
 - Shantell Sans: SIL Open Font License 1.1
 - LXGW WenKai: SIL Open Font License 1.1
-
-## Sample assets
-
-- None.

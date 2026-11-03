@@ -1,6 +1,6 @@
 # Credits
 
-Red Pencil is an original motion made by VisoTalk, exported from its built-in library.
+Red Pencil is an original motion by SuoSi.
 
 ## Fonts
 
@@ -9,7 +9,3 @@ Red Pencil is an original motion made by VisoTalk, exported from its built-in li
 - JetBrains Mono: SIL Open Font License 1.1
 - Caveat: SIL Open Font License 1.1
 - LXGW WenKai: SIL Open Font License 1.1
-
-## Sample assets
-
-- None.

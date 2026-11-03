@@ -1,6 +1,6 @@
 # Credits
 
-Field Atlas is an original motion made by VisoTalk, exported from its built-in library.
+Field Atlas is an original motion by SuoSi.
 
 ## Fonts
 
@@ -10,10 +10,6 @@ Field Atlas is an original motion made by VisoTalk, exported from its built-in l
 - Newsreader: SIL Open Font License 1.1
 - Noto Serif SC: SIL Open Font License 1.1
 
-## Sample assets
+## Assets
 
-- None.
-
-## Motion assets
-
-- `visotalk/assets/world.json`: its source and licence are given in MOTION.md
+- `react/assets/world.json`: its source and licence are given in MOTION.md
