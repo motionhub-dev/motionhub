@@ -77,8 +77,8 @@ main.wrap { padding-top: 20px; padding-bottom: 56px; }
 .lead h1, .lead h2 { margin: 0; font-size: var(--size-lg); font-weight: var(--weight-semibold); letter-spacing: -0.01em; }
 
 /* the home page's opening: what a motion is, where it works, and a prompt to try one */
-.intro { display: flex; flex-wrap: wrap; gap: 32px 48px; align-items: center; padding: 48px 0 40px; margin-bottom: 24px; border-bottom: 1px solid var(--color-line); }
-.pitch { flex: 7 1 460px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.intro { display: flex; flex-wrap: wrap; gap: 32px 48px; padding: 48px 0 40px; margin-bottom: 24px; border-bottom: 1px solid var(--color-line); }
+.pitch { flex: 7 1 460px; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 16px; }
 .pitch h1 { margin: 0; font-size: 36px; line-height: 1.12; font-weight: var(--weight-semibold); letter-spacing: -0.02em; }
 .pitch .sub { margin: 0; max-width: 600px; font-size: var(--size-md); line-height: 1.6; color: var(--color-text-2); }
 .engines { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
@@ -100,7 +100,9 @@ a.pill:hover { border-color: var(--color-text-2); }
 .open a > .go { margin-top: auto; padding-top: 6px; color: var(--color-text-2); }
 .open a:hover .go { color: var(--color-text); text-decoration: underline; }
 @media (max-width: 640px) { .intro { padding-top: 24px; } .pitch h1 { font-size: 28px; } .open { grid-template-columns: minmax(0, 1fr); gap: 10px; } }
-.try { flex: 5 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 16px; padding: 20px; border: 1px solid var(--color-line); border-radius: var(--radius-xl); background: var(--color-surface); }
+.try { flex: 5 1 360px; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 20px; padding: 24px; border: 1px solid var(--color-line); border-radius: var(--radius-xl); background: var(--color-surface); }
+/* beside the pitch, the card stands a little taller than it, whichever of the two has the more to say */
+@media (min-width: 940px) { .try { margin-block: -12px; } }
 .try-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
 .agent-marks { display: inline-flex; align-items: center; gap: 8px; }
 .agent-marks svg { display: block; flex: none; }
