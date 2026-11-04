@@ -94,3 +94,20 @@ test('nothing is built while a motion has an issue', () => {
   assert.throws(() => build(join(root, 'dist'), root), /not built/);
   assert.ok(!existsSync(join(root, 'dist')));
 });
+
+test('a creator has one page, at a key every build agrees on; their other logins are sent there, and the sitemap lists only keys', async () => {
+  const {creatorKeys, writeSiteFiles} = await import('../tools/site.mjs');
+  // tess (id 7) published @tester/a as tester, renamed, and published @tess/b and co-authored @bo/c as tess; bo is someone else
+  const row = (slug, scope, logins) => ({slug: `@${scope}/${slug}`, scope, authors: logins.map((github) => ({name: github, github}))});
+  const rows = [row('c', 'bo', ['bo', 'Tess']), row('b', 'tess', ['tess']), row('a', 'tester', ['tester'])];
+  const accounts = new Map([['tester', 7], ['tess', 7], ['bo', 8]]);
+  const keys = creatorKeys(rows, accounts);
+  assert.deepEqual([...keys].sort(), [['bo', 'bo'], ['tess', 'tess'], ['tester', 'tess']], 'a scope they publish under, the first A to Z');
+  assert.deepEqual(creatorKeys([...rows].reverse(), accounts), keys, 'whatever the order of the motions');
+  assert.deepEqual([...creatorKeys(rows)].sort(), [['bo', 'bo'], ['tess', 'tess'], ['tester', 'tester']], 'unrecorded logins are each their own');
+  const out = mkdtempSync(join(tmpdir(), 'site-'));
+  writeSiteFiles(out, rows, [], accounts);
+  assert.equal(readFileSync(join(out, '_redirects'), 'utf8'), '/creators/tester/ /creators/tess/ 301\n/creators/tester /creators/tess/ 301\n');
+  const sitemap = readFileSync(join(out, 'sitemap.xml'), 'utf8');
+  assert.ok(sitemap.includes('/creators/tess/') && sitemap.includes('/creators/bo/') && !sitemap.includes('/creators/tester/'));
+});

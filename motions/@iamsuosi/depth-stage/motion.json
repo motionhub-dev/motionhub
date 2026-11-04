@@ -1,8 +1,8 @@
 {
-  "spec": "motion/0.3",
+  "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "depth-stage",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "name": {
     "en": "Depth Stage",
     "zh-CN": "景深舞台"
@@ -25,5 +25,16 @@
     "layered",
     "modern",
     "dark"
-  ]
+  ],
+  "fit": {
+    "kind": "topic",
+    "for": {
+      "en": "Places and history at dusk, explained on the way: a place through time, journeys, archaeology and strata, terms defined and sizes compared.",
+      "zh-CN": "黄昏里的地点与历史，边讲边解释：一个地方的变迁、旅程、考古与地层、术语释义与尺度对比。"
+    },
+    "not": {
+      "en": "Software, finance and dense data.",
+      "zh-CN": "软件、金融和密集数据。"
+    }
+  }
 }
