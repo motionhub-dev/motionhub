@@ -7,22 +7,23 @@ import {StepRail} from './parts/rail.tsx';
 import {CreasePattern} from './parts/pattern.tsx';
 import {paperPlane} from './parts/models.ts';
 
-export const reel = {seconds: 24, width: 1920, height: 1080};
+export const reel = {seconds: 30, width: 1920, height: 1080};
 
-// the beats: per step a mark, a fold and a short hold; a precrease folds and opens, so its fold beat is longer
-const MARK = 0.6, FOLD = 1.2, HOLD = 0.5, START = 0.6;
+// the beats, as MOTION.md times them: per step a mark, a fold and a hold; a precrease folds and opens, so its fold beat
+// is longer
+const MARK = 0.9, FOLD = 1.5, PRECREASE = 2.6, HOLD = 1.0, START = 0.5;
 type Beat = {step: number; mark: number; fold: number; end: number};
 const BEATS: Beat[] = [];
 {
   let t = START;
   paperPlane.steps.forEach((st, i) => {
-    const marked = !!st.folds?.length, fold = st.precrease ? 1.7 : FOLD;
+    const marked = !!st.folds?.length, fold = st.precrease ? PRECREASE : FOLD;
     const mark = t, foldAt = t + (marked ? MARK : 0), end = foldAt + fold + HOLD;
     BEATS.push({step: i + 1, mark, fold: foldAt, end});
     t = end;
   });
 }
-const FOLDED = BEATS[BEATS.length - 1].end; // about 16 s
+const FOLDED = BEATS[BEATS.length - 1].end; // about 21 s
 const WALK = FOLDED + 4.2, OPEN = reel.seconds;
 
 /** What happens when, for the motion's sound (sound.json): the crease scored, the fold, the paper landing, the model done */
@@ -62,7 +63,7 @@ export default function Reel() {
   // the camera: high over the sheet, lower and closer once the plane stands up, then a walk round
   const fourth = BEATS[3];
   const el = interpolate(t, [0, fourth.fold, fourth.end, FOLDED, WALK], [52, 50, 28, 26, 22], {...clamp, easing: ease});
-  const zoom = interpolate(t, [0, BEATS[1].fold, BEATS[1].end, fourth.fold, fourth.end, WALK, WALK + 0.8], [0.86, 0.86, 0.95, 0.95, 1.35, 1.35, 0.95], {...clamp, easing: ease});
+  const zoom = interpolate(t, [0, BEATS[1].fold, BEATS[1].end, fourth.fold, fourth.end, WALK, WALK + 0.8], [0.86, 0.86, 0.95, 0.95, 1.22, 1.22, 0.95], {...clamp, easing: ease});
   const az = interpolate(t, [0, FOLDED, WALK, OPEN], [24, 36, 36 + 230, 36 + 260], {...clamp, easing: ease});
   const railOut = interpolate(t, [FOLDED, FOLDED + 0.5], [1, 0], clamp);
   const shift = interpolate(t, [FOLDED, FOLDED + 0.8, WALK, WALK + 0.8], [190, 0, 0, 430], {...clamp, easing: ease});

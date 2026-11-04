@@ -14,7 +14,7 @@ Origami is an original motion. Its folding engine (`react/parts/fold.ts`) is wri
 
 ## Fonts
 
-- IBM Plex Sans, IBM Plex Mono: SIL Open Font License 1.1
+- IBM Plex Sans: SIL Open Font License 1.1
 - Noto Sans SC: SIL Open Font License 1.1
 
 ## Code

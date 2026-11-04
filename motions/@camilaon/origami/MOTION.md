@@ -85,14 +85,14 @@ Optional, from `react/sound.json`: a dry scratch as a fold line is marked (`draw
 - **Mark, fold, rest.** The next fold drawn on, made, held. *Fits content like:* any procedure in steps; assembling a flat-packed thing; a recipe's order of work.
 - **Through the layers.** One line folds a stack at once, every layer finding its own valley or mountain. *Fits content like:* why order matters; how one action propagates through layers; a stack of paper folded into a booklet.
 - **Turn it over.** A half turn shows the other side, and the other colour. *Fits content like:* the other side of an argument; what is underneath; a reveal.
-- **Walk round the model.** The finished model turned slowly, low over the table, its shadow under it. *Fits content like:* the result; a satellite's solar array deployed; a structure from every side.
+- **Walk round the model.** The finished model turned slowly, low over the table, its shadow under it. *Fits content like:* the result; a structure from every side.
 - **Open it back out.** `CreasePattern` beside the folded model: everything the model is, on one flat sheet. *Fits content like:* compression; how much a small thing holds; a plan and its result.
 
 ## Avoid: pitfalls
 
 - Folding without marking first: the viewer cannot follow. Fix: mark every step with creases, before `at` moves.
 - Two accent things at once (a red title, a second marked step). Fix: the accent is the fold in hand and its step only.
-- A fold too fast to read (under 1.2 s) or no hold. Fix: mark, fold, hold, each its full beat.
+- A fold too fast to read (under 1.4 s) or a hold under 1 s. Fix: mark, fold, hold, each its full beat.
 - Text on the paper, or arrows floating in 3D. Fix: words live in the title, the step list and the caption.
 - Moving the camera while a fold is marked or made fast. Fix: keep camera moves slow and between steps.
 - A model written with lines in the unfolded sheet's coordinates after the first fold. Fix: `line` and `moving` are where the paper lies now; use `whereIs` and check the chords in Node.
