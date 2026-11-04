@@ -8,6 +8,7 @@
 
 import {likeCounts, people} from './people.mjs';
 import {avatar} from './avatars.mjs';
+import {submissions} from './submissions.mjs';
 
 const PACKAGE = /^\/m\/((?:@[a-z0-9-]+\/)?[a-z0-9-]+)\/([0-9A-Za-z.+-]+)\.tgz$/;
 // the video of a motion at a version (site/player/render.mjs), beside its package: the default player on its page
@@ -183,6 +184,13 @@ export default {
     if (face && (request.method === 'GET' || request.method === 'HEAD')) return avatar(request, env, ctx, face[1]);
     const own = await people(request, env, ctx);
     if (own) return own;
+    const shared = await submissions(request, env);
+    if (shared) return shared;
+    // a share's page is one static page for every share: its script reads the id from the address
+    if (/^\/share\/[A-Za-z0-9_-]{22}\/?$/.test(pathname) && request.method === 'GET') {
+      const page = await env.ASSETS.fetch(new Request(new URL('/share/', request.url), request));
+      return new Response(page.body, {status: page.status, headers: new Headers({...Object.fromEntries(page.headers), 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex'})});
+    }
     if (VIDEO.test(pathname)) return videoResponse(request, env, pathname);
     const pkg = PACKAGE.exec(pathname);
     if (pkg) return packageResponse(request, env, ctx, pkg, pathname);

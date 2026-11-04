@@ -9,10 +9,14 @@
 //                                               the account gh is signed in as (or --github): its id is @<login>/<slug>
 //   motionhub tokens [MOTION.md] [--out <file>] a motion in one file's tokens, as tokens.json; by default the project's
 //                                               (./MOTION.md, else ./motion/MOTION.md), to standard output
-//   motionhub share <dir> [--github <login>] [--pr]
-//                                               the pull request's checks, as the person and against what is published;
-//                                               with --pr, the pull request itself, from the fork of the account gh is
-//                                               signed in as (--github must then name that account)
+//   motionhub share <dir> [--wait]              the pull request's checks, then the motion uploaded to motionhub.dev and a
+//                                               link (and a code) where the person signs in with GitHub and opens the
+//                                               pull request; nothing of git, gh or a GitHub token is needed here. With
+//                                               --wait, waits for the pull request and prints its address
+//   motionhub share <dir> --pr [--github <login>]
+//                                               the pull request from the fork of the account gh is signed in as, with
+//                                               git (--github must then name that account); --github alone runs the
+//                                               checks as that account and opens nothing
 
 import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
@@ -21,6 +25,7 @@ import {tmpdir} from 'node:os';
 import {basename, dirname, join, resolve} from 'node:path';
 import {gunzipSync} from 'node:zlib';
 import {SPEC, checkMotion, expandTokens, motionId, parseFrontMatter} from './check.mjs';
+import {files as filesOf, tgz} from './pack.mjs';
 
 export const HUB = 'https://motionhub.dev';
 
@@ -114,8 +119,10 @@ export async function main(command, args, base = HUB) {
     return 0;
   }
   if (command === 'share') {
-    if (!slug) { console.error('usage: motionhub share <dir> [--github <login>] [--pr]'); return 2; }
-    console.log(await share(resolve(slug), {pr: args.includes('--pr'), github: value('--github')}, base));
+    if (!slug) { console.error('usage: motionhub share <dir> [--wait] | motionhub share <dir> --pr [--github <login>]'); return 2; }
+    // through motionhub.dev unless asked for gh and a fork (--pr), or only for the checks as someone (--github)
+    if (args.includes('--pr') || value('--github')) console.log(await share(resolve(slug), {pr: args.includes('--pr'), github: value('--github')}, base));
+    else console.log(await shareLink(resolve(slug), {wait: args.includes('--wait'), log: (l) => console.log(l)}, base));
     return 0;
   }
   if (command === 'init') {
@@ -179,6 +186,42 @@ export function scaffold(slug, author) {
  * is published for its id; with `pr`, fork this repository, commit it signed off as the person's git identity and
  * open the pull request from their fork. Nothing is published without `pr`.
  */
+/**
+ * Share a motion through motionhub.dev, with no git, gh or GitHub token here: check it as its pull request will be
+ * checked (all but who you are, which the site and the pull request judge), pack it, upload it, and say where to open
+ * the pull request: a link to sign in with GitHub at and a code to type there. With `wait`, ask until the pull request
+ * is open (or `log` says it is not yet) and give its address. `ask` is the time between asks, in ms.
+ */
+export async function shareLink(dir, {wait = false, log = () => {}, ask = 5000, most = 30 * 60 * 1000} = {}, base = HUB) {
+  if (!existsSync(join(dir, 'motion.json'))) throw new Error(`${dir} has no motion.json: share a motion's directory (motionhub init <slug> makes one)`);
+  const manifest = JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8'));
+  const id = motionId(manifest);
+  const published = (await index(base)).find((m) => m.slug === id);
+  const was = published ? await (await get(`${base}/m/${id}/motion.json`)).json() : undefined;
+  const issues = checkMotion(dir, {was});
+  if (issues.length) throw new Error(`${dir} does not pass the hub's checks:\n${issues.map((i) => `${i.at}  ${i.code}  ${i.message}`).join('\n')}`);
+  const bytes = tgz(filesOf(dir).map((n) => [`${id}/${n}`, readFileSync(join(dir, n))]));
+  if (bytes.length > 1024 * 1024) throw new Error(`${id} packs to ${bytes.length} bytes: a motion is at most 1 MB, its poster included`);
+  const res = await fetch(`${base}/api/submissions`, {method: 'POST', headers: {'content-type': 'application/gzip', 'user-agent': 'motionhub-cli'}, body: bytes});
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`motionhub.dev did not take it (${res.status}): ${body.error ?? res.statusText}`);
+  const lines = [
+    `${id} ${manifest.version} passes the checks and is uploaded${published ? `, after ${published.version}` : ''}. Nothing is published yet. To open its pull request under your GitHub name:`,
+    `  1. Open ${body.url}`,
+    `  2. Sign in with GitHub, check the motion, and type this code: ${body.code}`,
+    `The link works until ${body.expires}. Never type the code on a page you did not open from this terminal.`,
+  ];
+  if (!wait) return lines.join('\n');
+  log(lines.join('\n'));
+  for (const until = Date.now() + most; Date.now() < until;) {
+    await new Promise((r) => setTimeout(r, ask));
+    const s = await (await fetch(`${base}/api/submissions/${body.id}?poll=${encodeURIComponent(body.poll)}`, {headers: {'user-agent': 'motionhub-cli'}})).json().catch(() => ({}));
+    if (s.prUrl) return `The pull request is open: ${s.prUrl}`;
+    if (s.status === 'expired') throw new Error('the share link expired before it was submitted: share again');
+  }
+  return `Not submitted yet; the link still works until ${body.expires}: ${body.url}`;
+}
+
 export async function share(dir, {pr = false, github} = {}, base = HUB) {
   // the pull request is made by whoever gh is signed in as, so --github may only name that account; without --pr it says whose checks to run
   const signedIn = github && !pr ? undefined : githubAccount();

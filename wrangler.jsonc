@@ -10,7 +10,7 @@
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "404-page",
-    "run_worker_first": ["/m/*", "/play/*", "/api/stats.json", "/api/me", "/api/me/pulls", "/api/likes/*", "/auth/*", "/avatar/*", "/docs/hub*", "/docs/skill*"]
+    "run_worker_first": ["/m/*", "/play/*", "/api/stats.json", "/api/me", "/api/me/pulls", "/api/likes/*", "/auth/*", "/avatar/*", "/api/submissions", "/api/submissions/*", "/share/*", "/docs/hub*", "/docs/skill*"]
   },
   "r2_buckets": [{"binding": "PACKAGES", "bucket_name": "motionhub"}],
   "analytics_engine_datasets": [{"binding": "EVENTS", "dataset": "motionhub_events"}],
@@ -18,7 +18,11 @@
   // signing in with GitHub and likes (site/people.mjs); GITHUB_CLIENT_SECRET is a secret set on the Worker, and so is
   // GITHUB_TOKEN, optional: a read-only token that raises GitHub's rate limit for /api/me/pulls (site/pulls.mjs)
   "d1_databases": [{"binding": "DB", "database_name": "motionhub", "database_id": "b3cb4780-83d2-4424-9b6a-66edeec440c7", "migrations_dir": "site/migrations"}],
-  "vars": {"GITHUB_CLIENT_ID": "Ov23liASjeKx0TOW1gNl"},
+  // sharing without gh (site/submissions.mjs, site/github-app.mjs): GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY are
+  // secrets on the Worker; until both are set, or with SUBMISSIONS "off", an upload is refused and the command line says
+  // to use --pr. A package waits in PACKAGES under submissions/, which an R2 lifecycle rule empties after a day.
+  "vars": {"GITHUB_CLIENT_ID": "Ov23liASjeKx0TOW1gNl", "SUBMISSIONS": "on"},
+  "ratelimits": [{"name": "SUBMIT_LIMIT", "namespace_id": "1001", "simple": {"limit": 5, "period": 60}}],
   "triggers": {"crons": ["7 0 * * *"]},
   "routes": [{"pattern": "motionhub.dev", "custom_domain": true}],
   "observability": {"enabled": true}

@@ -525,3 +525,15 @@ test('main\'s checker on a pull request: its new accounts, links refused, motion
     assert.equal(await main(['--removed', '--was', wasFile, '--author', 'tester', '--author-id', '7']), 0);
   } finally { console.log = log; }
 });
+
+test('a pull request motionhub opened for someone is theirs: every commit that names a submitter names the same one', async () => {
+  const {submitter} = await import('../tools/check.mjs');
+  const c = (message) => ({commit: {message}});
+  const by = 'Add X 1.0.0\n\nSigned-off-by: Ana <7+ana@users.noreply.github.com>\nMotionhub-Submitted-By: 7 ana\nMotionhub-Submission: abc\n';
+  assert.deepEqual(submitter([c(by), c('Fix a typo\n\nSigned-off-by: Maintainer <m@example.com>'), c(by.replace('Add X 1.0.0', 'Update X 1.0.1'))]), {id: 7, login: 'ana'}, 'a maintainer\'s commit names no one and changes nothing');
+  assert.ok(submitter([c('x')]).error, 'no line');
+  assert.ok(submitter([c(by), c(by.replace('7 ana', '8 bo'))]).error, 'two submitters');
+  assert.ok(submitter([c(by.replace('7 ana', '7 ana\nAUTHOR=evil'))]).id === 7, 'a line ends where it ends');
+  assert.ok(submitter([c(by.replace('7 ana', '0x7 ana'))]).error, 'an id is digits');
+  assert.ok(submitter([c(by.replace('7 ana', '7 an$a'))]).error, 'a login is a GitHub login');
+});

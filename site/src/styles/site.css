@@ -579,3 +579,31 @@ pre { margin: 0; padding: 12px 14px; background: var(--color-code); color: var(-
   .mnums { order: 3; }
   .macts { order: 4; margin-left: auto; }
 }
+
+/* a share's page (/share/<id>) */
+.share { max-width: 860px; margin: 0 auto; padding: 24px 0 48px; display: flex; flex-direction: column; gap: 16px; }
+.share .note { margin: 0; font-size: var(--size-sm); color: var(--color-muted); }
+.share-body { display: flex; flex-direction: column; gap: 16px; }
+.share-warn { margin: 0; padding: 10px 14px; border: 1px solid var(--color-line); border-radius: var(--radius-lg); background: var(--color-surface); font-size: var(--size-sm); color: var(--color-text); }
+.share-head { display: flex; flex-wrap: wrap; gap: 16px 20px; align-items: flex-start; }
+.share-head img { width: 280px; max-width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--radius-md); border: 1px solid var(--color-line); background: var(--color-surface-2); }
+.share-head > div { flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.share-head h1 { margin: 0; font-size: var(--size-xl); font-weight: var(--weight-semibold); letter-spacing: -0.015em; }
+.share-line { margin: 4px 0; color: var(--color-text-2); }
+.share-files { border: 1px solid var(--color-line); border-radius: var(--radius-lg); padding: 10px 14px; }
+.share-files summary { cursor: pointer; font-weight: var(--weight-medium); color: var(--color-text); }
+.share-files .n { margin-left: 6px; font-size: var(--size-xs); color: var(--color-muted); }
+.share-files ul { margin: 10px 0; padding-left: 18px; font-family: var(--font-mono); font-size: var(--size-xs); color: var(--color-text-2); }
+.share-files code { font-family: var(--font-mono); font-size: var(--size-xs); overflow-wrap: anywhere; }
+.share-doc { margin-top: 10px; max-height: 420px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.share-form, .share-no, .share-done { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 20px; border: 1px solid var(--color-line); border-radius: var(--radius-xl); background: var(--color-surface); }
+.share-form h2, .share-no h2, .share-done h2 { margin: 0; font-size: var(--size-md); font-weight: var(--weight-semibold); }
+.share-no p, .share-done p { margin: 0; color: var(--color-text-2); }
+.share-code { display: flex; flex-direction: column; gap: 6px; font-weight: var(--weight-medium); color: var(--color-text); }
+.share-code input { height: 40px; width: 220px; padding: 0 12px; border: 1px solid var(--color-line); border-radius: var(--radius-lg); background: var(--color-bg); color: var(--color-text); font-family: var(--font-mono); font-size: var(--size-md); letter-spacing: 0.04em; text-transform: uppercase; }
+.share-code input:focus { outline: 2px solid var(--color-text); outline-offset: 1px; }
+.share-check { display: flex; gap: 10px; align-items: flex-start; max-width: 64ch; color: var(--color-text-2); }
+.share-check input { margin-top: 3px; width: 16px; height: 16px; flex: none; }
+.share-error { margin: 0; color: var(--color-text); font-weight: var(--weight-medium); }
+.share-form .btn.accent { height: 40px; }
+.share-form .btn.accent:disabled { opacity: 0.6; cursor: progress; }

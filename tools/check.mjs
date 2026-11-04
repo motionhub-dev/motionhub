@@ -6,6 +6,7 @@
 //   node tools/check.mjs --accounts-was <dir> [--accounts <dir>]
 //   node tools/check.mjs --removed --was <motion.json> --author <github-login> --author-id <github-id> [--accounts <dir>]
 //   node tools/check.mjs --signoff <commits.json>
+//   node tools/check.mjs --submitter <commits.json>
 //   npx @motionhub/cli check ...                  the same, from the published package (bin/motionhub.mjs)
 //
 // With no directory it checks the current directory when it is a motion, else every motion under ./motions/ (a scoped
@@ -22,7 +23,8 @@
 // must name the id GitHub gives that login now. `--accounts` names the accounts to judge by when they are not ./accounts/:
 // main's checker reading a pull request's files (.github/workflows/ownership.yml). `--signoff` names a pull request's
 // commits as GitHub lists them, each of which must be signed off. `--removed` judges a published motion a pull request
-// takes out or moves away: only one of its authors may. Exit status 1 when any issue is found.
+// takes out or moves away: only one of its authors may. `--submitter` prints the account a pull request motionhub's
+// GitHub App opened was submitted by (its commits' Motionhub-Submitted-By line). Exit status 1 when any issue is found.
 
 import {readFileSync, readdirSync, statSync, lstatSync, existsSync} from 'node:fs';
 import {join, basename, dirname, resolve, relative, extname} from 'node:path';
@@ -711,10 +713,34 @@ export function unsigned(commits) {
   return (Array.isArray(commits) ? commits : []).filter((c) => (c?.parents?.length ?? 1) <= 1 && !/^Signed-off-by: \S/m.test(body(c))).map((c) => c?.sha);
 }
 
+/**
+ * Who submitted a pull request that motionhub's GitHub App opened for them (site/github-app.mjs): the account its
+ * commits name in a `Motionhub-Submitted-By: <id> <login>` line. Every commit that carries one names the same account,
+ * and at least one does; else {error}. ownership.yml asks only for the app's own pull requests from this repository,
+ * whose branches no one but the app and the maintainers can push to.
+ */
+export function submitter(commits) {
+  const named = [];
+  for (const c of Array.isArray(commits) ? commits : []) {
+    for (const m of String(c?.commit?.message ?? '').matchAll(/^Motionhub-Submitted-By: (\S+) (\S+)\s*$/gm)) named.push([m[1], m[2]]);
+  }
+  if (!named.length) return {error: 'no commit says who submitted it (Motionhub-Submitted-By)'};
+  const [id, login] = named[0];
+  if (!/^[1-9]\d{0,11}$/.test(id) || !GITHUB.test(login)) return {error: `Motionhub-Submitted-By names no GitHub account: ${id} ${login}`};
+  if (named.some(([i, l]) => i !== id || l.toLowerCase() !== login.toLowerCase())) return {error: 'its commits name different submitters'};
+  return {id: Number(id), login};
+}
+
 export async function main(args) {
   const hub = !args.includes('--format-only');
   const value = (flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : undefined; };
   const author = value('--author'), authorId = value('--author-id'), wasPath = value('--was'), accountsWas = value('--accounts-was');
+  if (value('--submitter') !== undefined) {
+    const who = submitter(JSON.parse(readFileSync(value('--submitter'), 'utf8')));
+    if (who.error) { console.error(who.error); return 1; }
+    console.log(`${who.id} ${who.login}`);
+    return 0;
+  }
   if (value('--signoff') !== undefined) {
     const missing = unsigned(JSON.parse(readFileSync(value('--signoff'), 'utf8')));
     if (missing.length) console.log(`These commits have no Signed-off-by line (git commit -s):\n${missing.join('\n')}`);
@@ -738,7 +764,7 @@ export async function main(args) {
     console.log(`taken out, ${issues.length} issue(s)`);
     return issues.length ? 1 : 0;
   }
-  let dirs = args.filter((a, i) => !a.startsWith('--') && !['--author', '--author-id', '--was', '--accounts', '--accounts-was', '--signoff'].includes(args[i - 1]));
+  let dirs = args.filter((a, i) => !a.startsWith('--') && !['--author', '--author-id', '--was', '--accounts', '--accounts-was', '--signoff', '--submitter'].includes(args[i - 1]));
   let count = 0;
   if (!dirs.length) {
     const root = resolve('motions');

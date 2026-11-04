@@ -21,10 +21,15 @@ ask your agent from the project whose look you want to share:
 It runs the steps below for you and asks before it opens the pull request. By hand:
 
 ```sh
-npx @motionhub/cli init <slug>          # ./<slug>/ with every required file to fill in, scoped to you
-npx @motionhub/cli share <slug>         # the checks below, as your GitHub account (gh)
-npx @motionhub/cli share <slug> --pr    # the pull request, from your fork, signed off
+npx @motionhub/cli init <slug> --github <you>   # ./<slug>/ with every required file to fill in, scoped to you
+npx @motionhub/cli share <slug>                 # the checks below, then a link: sign in with GitHub there to open the pull request
 ```
+
+`share` needs no git, `gh` or GitHub token, so it works from any machine an agent runs on, a cloud one included. It checks the motion and uploads it to motionhub.dev, then prints a link and a code. Open the link and sign in with GitHub; motionhub asks GitHub for no permissions. Check the motion, type the code your terminal shows, and certify the DCO. motionhub's GitHub App then opens the pull request on your behalf. The commit carries your name, signed off; the app shows as the pull request's author, and the pull request names you. Add `--wait` to have the command wait and print the pull request. To change it, share it again: the new version is added to the same pull request. A link works for a day, and only your GitHub account can submit a motion under your scope.
+
+Never type a share's code on a page you did not open from your own terminal.
+
+To open the pull request yourself instead, from your fork with git and gh: `npx @motionhub/cli share <slug> --pr`.
 
 ## Before you open it
 
