@@ -12,7 +12,7 @@ A motion is a directory:
 | File | What you take from it |
 | --- | --- |
 | `motion.json` | Its scope and slug (together its id), version, name, one line, authors and licence; `lang` is the language of `MOTION.md`; `fit` is what it is for |
-| `MOTION.md` | The look in words. Five sections always: **Essence**, **Colour**, **Type**, **Motion**, **Avoid**. The format's latest definition: https://motionhub.dev/MOTION.md |
+| `MOTION.md` | The look in words. Five sections always: **Essence**, **Colour**, **Type**, **Motion**, **Avoid**. The format's definition: https://github.com/motionhub-dev/motions/blob/main/SPEC.md#5-motionmd |
 | `tokens.json` | The exact values, as W3C design tokens: `color`, `font`, and often `duration` and `cubicBezier` |
 | `poster.jpg` | One frame of a film made in it |
 | `CREDITS.md` | Every font and asset it needs, with its licence and source |

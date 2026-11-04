@@ -9,8 +9,7 @@ import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {build, pack, tgz} from '../tools/build.mjs';
-import {SPEC, listMotions} from '../tools/check.mjs';
-import {PROPOSE, motionDefinition} from '../tools/docs.mjs';
+import {listMotions} from '../tools/check.mjs';
 
 const ROOT = resolve(fileURLToPath(import.meta.url), '../..');
 // every motion's id, as its directory under motions/ names it: @<scope>/<slug>
@@ -59,25 +58,7 @@ test('a path longer than 100 bytes is split into the tar prefix', () => {
   assert.equal(readFileSync(join(into, path), 'utf8'), 'long');
 });
 
-test('/MOTION.md is the format in one file, from the specification and the contributing guide', () => {
-  const spec = readFileSync(join(ROOT, 'SPEC.md'), 'utf8');
-  const served = motionDefinition(ROOT);
-  assert.ok(served.includes(`\`${SPEC}\``));
-  for (const heading of ['`MOTION.md`', '`tokens.json`']) assert.ok(served.includes(spec.split(`. ${heading}\n\n`)[1].split('\n\n## ')[0].split('\n')[0]), heading);
-  assert.ok(served.includes('A motion is a directory named after its slug'));
-  assert.ok(served.includes('`react/parts/*.tsx` are React components'));
-  for (const topic of ['Essence', 'Colour', 'Type', 'Motion', 'Avoid']) assert.ok(served.includes(`| \`${topic}\``), topic);
-  assert.ok(!/\]\((?!https?:|#)[^)]+\)/.test(served.replace(/```[\s\S]*?```/g, '')), 'every link is absolute');
-  const guide = readFileSync(join(ROOT, 'docs/motion-md.md'), 'utf8');
-  for (const url of Object.values(PROPOSE)) assert.ok(served.includes(url) && guide.includes(url), url);
-  const bare = mkdtempSync(join(tmpdir(), 'motionhub-spec-'));
-  writeFileSync(join(bare, 'SPEC.md'), '# Motion format\n\n## 1. Something else\n\nText.\n');
-  writeFileSync(join(bare, 'CONTRIBUTING.md'), '# Contributing\n');
-  assert.throws(() => motionDefinition(bare));
-});
-
 test('the served files and llms.txt are written', () => {
-  assert.ok(readFileSync(join(out, 'MOTION.md'), 'utf8').startsWith('# MOTION.md'));
   for (const slug of SLUGS) for (const f of ['motion.json', 'MOTION.md', 'tokens.json', 'CREDITS.md', 'poster.jpg']) assert.ok(existsSync(join(out, 'm', slug, f)), `${slug}/${f}`);
   const llms = readFileSync(join(out, 'llms.txt'), 'utf8');
   assert.ok(llms.startsWith('# '));

@@ -103,9 +103,6 @@ const HEADERS = `/api/*
 /docs/*.md
   Access-Control-Allow-Origin: *
   Content-Type: text/markdown; charset=utf-8
-/MOTION.md
-  Access-Control-Allow-Origin: *
-  Content-Type: text/markdown; charset=utf-8
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin

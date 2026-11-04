@@ -73,7 +73,7 @@ To make a film in a look, follow [Use a motion](use.md). To write a `MOTION.md` 
 
 ## The definition
 
-The latest definition is always at [motionhub.dev/MOTION.md](https://motionhub.dev/MOTION.md), in one file for agents and tools: the directory, `MOTION.md`, `tokens.json` and the components. It comes from the [specification](../SPEC.md) and [Share a motion](../CONTRIBUTING.md). The format is still a draft, and it only grows: a later version never changes the meaning of what an earlier one says.
+The format is defined in the [specification](../SPEC.md): `MOTION.md` is its [section 5](https://github.com/motionhub-dev/motions/blob/main/SPEC.md#5-motionmd), and the directory and `tokens.json` are there too. The rules for components are in [Share a motion](../CONTRIBUTING.md#tool-directories). The format is still a draft, and it only grows: a later version never changes the meaning of what an earlier one says.
 
 ## Propose a change
 

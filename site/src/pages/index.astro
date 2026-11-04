@@ -5,7 +5,7 @@ import Engine from '../components/Engine.astro';
 import Agents from '../components/Agents.astro';
 import Prompt from '../components/Prompt.astro';
 import ShareCard from '../components/ShareCard.astro';
-import {ENGINE_LINKS, en, motionTree, recommended, rows, toolEngines} from '../lib/catalogue.mjs';
+import {ENGINE_LINKS, REPO, en, motionTree, recommended, rows, toolEngines} from '../lib/catalogue.mjs';
 
 // the looks the try card offers, far apart from each other; any that is gone is left out
 const TRY = ['@iamsuosi/clay-world', '@iamsuosi/ink-scroll', '@iamsuosi/drafting-table', '@iamsuosi/field-atlas', '@iamsuosi/lab-notebook'];
@@ -82,7 +82,7 @@ const featured = recommended.slice(0, 10);
       </dl>
       <p class="format-links">
         <a href="/docs/motion-md/">What is MOTION.md <span aria-hidden="true">→</span></a>
-        <a href="/MOTION.md">The latest definition <span aria-hidden="true">→</span></a>
+        <a href={`${REPO}/blob/main/SPEC.md#5-motionmd`}>The definition on GitHub <span aria-hidden="true">→</span></a>
       </p>
     </div>
     <figure>
