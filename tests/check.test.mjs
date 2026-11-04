@@ -394,6 +394,13 @@ test('the specification names the version the checker knows, and its example pas
   for (const purpose of PURPOSES) assert.ok(SPEC_TEXT.split('## 12.')[1].includes(`\`${purpose}\``), purpose);
 });
 
+test('the guide\'s one-file example is a valid motion', () => {
+  const guide = readFileSync(fileURLToPath(new URL('../docs/motion-md.md', import.meta.url)), 'utf8');
+  const dir = oneFile(`${/```markdown\n(---[\s\S]*?)\n```/.exec(guide)[1]}\n`);
+  assert.deepEqual(checkMotion(join(dir, 'MOTION.md'), {hub: false}), []);
+  rmSync(dir, {recursive: true});
+});
+
 // motion/0.5: a motion in a directory, held to §12
 const PART = (extra = '', meta = "export const meta = {name: 'Title', purpose: 'title', line: 'A title.', fits: 'A title.', params: {}, preview: 'title.jpg'};") => `import React from 'react';\nimport {useTime} from '@motionhub/runtime';\nimport * as THREE from 'three';\nimport {helper} from './helper';\n${extra}\n${meta}\nexport default function Title() { return null; }\n`;
 function raised(extra, part = PART(), doc) {

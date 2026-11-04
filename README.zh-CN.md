@@ -42,7 +42,7 @@
 
 ## 什么是 motion
 
-每个 motion 都围绕一份 [`MOTION.md`](docs/motion-md.md) 写成。这是一种开放格式，用法和 `SKILL.md` 相似：它是一个目录的入口，说明一部片子长什么样、怎么动，并带上现成的组件，供 agent 优先使用。
+每个 motion 都围绕一份 [`MOTION.md`](docs/motion-md.md) 写成。这是一种开放格式，用法和 `SKILL.md` 相似：一个文件就能说明一部片子长什么样、怎么动，外面的目录还可以带上现成的组件，供 agent 优先使用。
 
 Motion（风格）只管外观，不含片子：底色、配色、字体，以及画面元素怎么出现、变化和离开。它没有故事、脚本、场景和时间轴。故事由你来定，外观交给 motion，换什么引擎都一样。
 
@@ -79,7 +79,7 @@ npx @motionhub/cli get @iamsuosi/red-pencil   # 下载到 ./motion，并核对 S
 
 ## 一个 motion 长什么样
 
-一个 motion 是一个目录，里面有五个文件；需要现成部件的工具，还可以各有一个自己的目录：
+在 motionhub 上，一个 motion 是一个包含五个文件的目录，每个需要现成组件的工具还可以有自己的目录（在你自己的项目里，[一个 `MOTION.md` 就够了](docs/motion-md.md#start-with-one-file)）：
 
 ```
 motions/@<scope>/<slug>/   一个 motion，id 为 @<scope>/<slug>：创作者的 GitHub 用户名加 slug
