@@ -2,7 +2,8 @@
 // the frame, with play and pause, a scrubber that keeps playing, the motion's sound (react/sound.json) on the reel's
 // cues, full screen and keys. It runs in a sandboxed frame (site/player/build.mjs, _headers). A motion's page loads it
 // when the viewer presses play, with ?autoplay=1&sound=1: it then starts at once with the sound on, and tells the page
-// when its first frame is drawn (a "motionhub:ready" message), so the page can take its poster away.
+// when its first frame is drawn (a "motionhub:ready" message), so the page can take its poster away. With ?render=1 it is
+// a still for player/render.mjs instead: the frame at full size, no controls and no clock, moved by window.__motionhub.seek.
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {MotionRoot, MotionRuntimeProvider} from '@motionhub/runtime';
@@ -176,4 +177,27 @@ function Player() {
   );
 }
 
-createRoot(document.getElementById('player')).render(<Player />);
+/** The reel held still at a time it is told, for a renderer that photographs it frame by frame (player/render.mjs) */
+function Still() {
+  const [at, setAt] = useState({t: 0, n: 0});
+  const drawn = useRef(null);
+  useEffect(() => {
+    // seek(t) resolves once the frame at t is painted; what the renderer needs to know of the reel rides along
+    window.__motionhub = {seconds: LENGTH, width: W, height: H, cues, sound: audible ? sound : null,
+      seek: (t) => new Promise((done) => { drawn.current = done; setAt((a) => ({t, n: a.n + 1})); })};
+  }, []);
+  useEffect(() => {
+    const done = drawn.current;
+    if (!done) return;
+    drawn.current = null;
+    requestAnimationFrame(() => requestAnimationFrame(() => done(at.t)));
+  }, [at]);
+  const value = {useTime: () => at.t, useCompositionTime: () => at.t, fps: 30, width: W, height: H, tokens, Video: Footage};
+  return (
+    <div style={{position: 'absolute', left: 0, top: 0, width: W, height: H, overflow: 'hidden'}}>
+      <MotionRuntimeProvider value={value}><MotionRoot tokens={tokens}><Reel /></MotionRoot></MotionRuntimeProvider>
+    </div>
+  );
+}
+
+createRoot(document.getElementById('player')).render(params.get('render') === '1' ? <Still /> : <Player />);
