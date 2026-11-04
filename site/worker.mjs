@@ -1,5 +1,5 @@
-// motionhub.dev's Worker. The pages and files come from the static build (dist/); packages come from the R2 bucket,
-// where every version ever published stays (HUB.md), since the build only holds the newest ones.
+// motionhub.dev's Worker. The pages and files come from the static build (dist/); packages and the videos of reels come
+// from the R2 bucket, where every version ever published stays (HUB.md), since the build only holds the newest ones.
 //
 // It also counts, with no cookie and nothing that names a person (HUB.md, "Counts"): a download of a package and a
 // view of a motion's page, each as one Analytics Engine data point [kind, id, version, country]. /api/stats.json
@@ -10,6 +10,8 @@ import {likeCounts, people} from './people.mjs';
 import {avatar} from './avatars.mjs';
 
 const PACKAGE = /^\/m\/((?:@[a-z0-9-]+\/)?[a-z0-9-]+)\/([0-9A-Za-z.+-]+)\.tgz$/;
+// the video of a motion at a version (site/player/render.mjs), beside its package: the default player on its page
+const VIDEO = /^\/m\/@[a-z0-9-]+\/[a-z0-9-]+\/[0-9A-Za-z.+-]+\.mp4$/;
 const PAGE = /^\/m\/((?:@[a-z0-9-]+\/)?[a-z0-9-]+)\/$/;
 const DATASET = 'events.analyticsEngine.motionhub_events';
 const TOTALS = 'stats/totals.json';
@@ -116,6 +118,57 @@ async function packageResponse(request, env, ctx, [, id, version], pathname) {
   return new Response(request.method === 'HEAD' ? null : object.body, {headers});
 }
 
+/**
+ * The bytes a Range header asks of an object of `size` bytes, as {offset, length}: undefined for the whole object (no
+ * header, one that is not a single byte range, or one the client may ignore), null for a range that lies outside it
+ */
+export function byteRange(header, size) {
+  const m = /^bytes=(\d*)-(\d*)$/.exec((header ?? '').trim());
+  if (!m || (!m[1] && !m[2])) return undefined;
+  if (!m[1]) {
+    // the last n bytes
+    const n = Math.min(Number(m[2]), size);
+    return n > 0 ? {offset: size - n, length: n} : null;
+  }
+  const start = Number(m[1]), end = m[2] ? Math.min(Number(m[2]), size - 1) : size - 1;
+  return start < size && start <= end ? {offset: start, length: end - start + 1} : null;
+}
+
+/**
+ * A motion's video from R2, as a phone's player asks for it: a HEAD for its size, then ranges of it (Safari plays nothing
+ * that does not answer a Range with 206). The video of a version never changes, so it is cached for a year and revalidated
+ * by its etag. Not counted: the page that plays it already was
+ */
+async function videoResponse(request, env, pathname) {
+  if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method not allowed', {status: 405, headers: {allow: 'GET, HEAD'}});
+  const key = pathname.slice(1);
+  const meta = await env.PACKAGES.head(key);
+  if (!meta) return new Response('Not found', {status: 404, headers: {'content-type': 'text/plain; charset=utf-8', 'cache-control': 'public, max-age=60', 'access-control-allow-origin': '*'}});
+  const headers = new Headers({
+    'content-type': 'video/mp4',
+    'accept-ranges': 'bytes',
+    'cache-control': 'public, max-age=31536000, immutable',
+    'access-control-allow-origin': '*',
+    etag: meta.httpEtag,
+  });
+  if (request.headers.get('if-none-match') === meta.httpEtag) return new Response(null, {status: 304, headers});
+  // If-Range: a range of the copy the client holds, or the whole video when that copy is not this one
+  const ifRange = request.headers.get('if-range');
+  const range = ifRange && ifRange !== meta.httpEtag ? undefined : byteRange(request.headers.get('range'), meta.size);
+  if (range === null) {
+    headers.set('content-range', `bytes */${meta.size}`);
+    return new Response(null, {status: 416, headers});
+  }
+  if (range) {
+    headers.set('content-range', `bytes ${range.offset}-${range.offset + range.length - 1}/${meta.size}`);
+    headers.set('content-length', String(range.length));
+  } else headers.set('content-length', String(meta.size));
+  if (request.method === 'HEAD') return new Response(null, {status: range ? 206 : 200, headers});
+  const object = await env.PACKAGES.get(key, range ? {range} : undefined);
+  if (!object) return new Response('Not found', {status: 404});
+  return new Response(object.body, {status: range ? 206 : 200, headers});
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -130,6 +183,7 @@ export default {
     if (face && (request.method === 'GET' || request.method === 'HEAD')) return avatar(request, env, ctx, face[1]);
     const own = await people(request, env, ctx);
     if (own) return own;
+    if (VIDEO.test(pathname)) return videoResponse(request, env, pathname);
     const pkg = PACKAGE.exec(pathname);
     if (pkg) return packageResponse(request, env, ctx, pkg, pathname);
     // the static files under m/@<scope>/ and play/@<scope>/ (wrangler.jsonc runs the Worker first for both) are found

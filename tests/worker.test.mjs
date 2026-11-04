@@ -2,7 +2,7 @@
 // else, and adds finished days to the totals once.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import worker, {count, rollup, stats} from '../site/worker.mjs';
+import worker, {byteRange, count, rollup, stats} from '../site/worker.mjs';
 
 const DAY = 86400000;
 const NOW = Date.parse('2026-11-03T12:00:00Z');
@@ -37,6 +37,66 @@ test('a package is served from R2 and its download counted, a HEAD and a robot a
   assert.equal(e.points.length, 1);
   e.store.set('m/red-pencil/1.0.2.tgz', 'tgz');
   assert.equal((await worker.fetch(req('/m/red-pencil/1.0.2.tgz'), e, ctx)).status, 404, 'an unscoped id is no longer served');
+});
+
+test('byteRange: one byte range of an object, the whole of it, or none', () => {
+  assert.equal(byteRange(null, 100), undefined);
+  assert.equal(byteRange('bytes=0-9,20-29', 100), undefined, 'several ranges: the whole video');
+  assert.equal(byteRange('items=0-9', 100), undefined);
+  assert.equal(byteRange('bytes=-', 100), undefined);
+  assert.deepEqual(byteRange('bytes=0-1', 100), {offset: 0, length: 2}, 'the probe Safari sends first');
+  assert.deepEqual(byteRange('bytes=10-', 100), {offset: 10, length: 90});
+  assert.deepEqual(byteRange('bytes=90-500', 100), {offset: 90, length: 10}, 'an end past the object stops at its last byte');
+  assert.deepEqual(byteRange('bytes=-30', 100), {offset: 70, length: 30});
+  assert.deepEqual(byteRange('bytes=-500', 100), {offset: 0, length: 100});
+  assert.equal(byteRange('bytes=100-', 100), null);
+  assert.equal(byteRange('bytes=5-4', 100), null);
+  assert.equal(byteRange('bytes=-0', 100), null);
+});
+
+test('a video is served whole or by range, never counted, and only for a scoped motion', async () => {
+  const bytes = new Uint8Array(100).map((_, i) => i);
+  const asked = [];
+  const e = env();
+  e.PACKAGES.head = async (k) => (k === 'm/@ana/red-pencil/1.0.2.mp4' ? {size: 100, httpEtag: '"v"'} : null);
+  e.PACKAGES.get = async (k, o) => { asked.push(o?.range ?? null); return {body: o?.range ? bytes.slice(o.range.offset, o.range.offset + o.range.length) : bytes, httpEtag: '"v"'}; };
+  const path = '/m/@ana/red-pencil/1.0.2.mp4';
+
+  const whole = await worker.fetch(req(path), e, ctx);
+  assert.equal(whole.status, 200);
+  assert.equal(whole.headers.get('content-type'), 'video/mp4');
+  assert.equal(whole.headers.get('accept-ranges'), 'bytes');
+  assert.equal(whole.headers.get('content-length'), '100');
+  assert.match(whole.headers.get('cache-control'), /immutable/);
+  assert.equal((await whole.arrayBuffer()).byteLength, 100);
+
+  const part = await worker.fetch(req(path, {range: 'bytes=0-1'}), e, ctx);
+  assert.equal(part.status, 206);
+  assert.equal(part.headers.get('content-range'), 'bytes 0-1/100');
+  assert.equal(part.headers.get('content-length'), '2');
+  assert.deepEqual([...new Uint8Array(await part.arrayBuffer())], [0, 1]);
+
+  const tail = await worker.fetch(req(path, {range: 'bytes=-10'}), e, ctx);
+  assert.equal(tail.headers.get('content-range'), 'bytes 90-99/100');
+
+  const head = await worker.fetch(req(path, {}, 'HEAD'), e, ctx);
+  assert.equal(head.status, 200);
+  assert.equal(head.headers.get('content-length'), '100');
+  assert.equal(await head.text(), '');
+
+  const outside = await worker.fetch(req(path, {range: 'bytes=200-'}), e, ctx);
+  assert.equal(outside.status, 416);
+  assert.equal(outside.headers.get('content-range'), 'bytes */100');
+
+  assert.equal((await worker.fetch(req(path, {'if-none-match': '"v"'}), e, ctx)).status, 304);
+  assert.equal((await worker.fetch(req(path, {range: 'bytes=0-1', 'if-range': '"old"'}), e, ctx)).status, 200, 'a range of another copy: the whole video');
+  assert.equal((await worker.fetch(req(path, {range: 'bytes=0-1', 'if-range': '"v"'}), e, ctx)).status, 206);
+  assert.deepEqual(asked, [null, {offset: 0, length: 2}, {offset: 90, length: 10}, null, {offset: 0, length: 2}], 'R2 reads only the bytes asked for');
+
+  assert.equal((await worker.fetch(req('/m/@ana/red-pencil/9.9.9.mp4'), e, ctx)).status, 404);
+  assert.equal((await worker.fetch(req('/m/%40ana/red-pencil/1.0.2.mp4', {range: 'bytes=0-1'}), e, ctx)).status, 206, 'the %40 spelling too');
+  assert.equal((await worker.fetch(req(path, {}, 'POST'), e, ctx)).status, 405);
+  assert.equal(e.points.length, 0);
 });
 
 test('a view is a document navigation to a motion page that exists', async () => {
