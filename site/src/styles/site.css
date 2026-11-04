@@ -120,11 +120,12 @@ pre.prompt { padding: 12px 14px; white-space: pre-wrap; overflow-wrap: break-wor
 /* the part of a prompt the visitor fills in */
 pre .nb { white-space: nowrap; }
 .slot { background-color: var(--color-accent); color: var(--color-on-accent); border-radius: var(--radius-sm); padding: 1px 4px; font-weight: 500; }
-/* the one call to action a screen has (brand/BRAND.md) */
+/* the one call to action a page has (brand/BRAND.md) */
 .btn.accent { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-on-accent); font-weight: var(--weight-semibold); }
 .btn.accent:hover { opacity: 0.9; background: var(--color-accent); color: var(--color-on-accent); }
 .btn.accent:focus-visible { outline-color: var(--color-accent); }
-.try .btn.accent { height: 40px; }
+.try .btn.accent, .make .btn.accent { height: 34px; padding: 0 12px; gap: 6px; font-size: var(--size-sm); }
+.try .btn.accent svg, .make .btn.accent svg { width: 14px; height: 14px; }
 .try-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
 .lead p { margin: 0; color: var(--color-muted); }
 .lead.wall { justify-content: space-between; margin-top: 32px; }
@@ -236,7 +237,6 @@ pre .nb { white-space: nowrap; }
 .head .aka { margin: 4px 0 0; font-size: var(--size-sm); color: var(--color-muted); }
 .make { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 1px solid var(--color-line); border-radius: var(--radius-xl); background: var(--color-surface); }
 @media (min-width: 1057px) and (min-height: 460px) { .make { position: sticky; top: 16px; } }
-.make .btn.accent { height: 40px; }
 .make p { margin: 0; font-size: var(--size-xs); color: var(--color-muted); }
 .make .skill { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--color-line); font-size: var(--size-xs); color: var(--color-muted); }
 .make .skill .code { display: flex; align-items: center; border: 1px solid var(--color-code); border-radius: var(--radius-lg); background: var(--color-code); }
