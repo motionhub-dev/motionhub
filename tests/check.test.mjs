@@ -1,10 +1,10 @@
 // The checker against motions built in a temporary directory: one valid motion, then one change at a time.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs';
+import {cpSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {checkMotion, checkAccounts, readAccounts, compareVersions, spdx, jpegSize} from '../tools/check.mjs';
+import {PURPOSES, SPEC, listMotions, checkMotion, checkAccounts, expandTokens, parseFrontMatter, readAccounts, compareVersions, spdx, jpegSize} from '../tools/check.mjs';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
@@ -82,7 +82,7 @@ test('in the catalogue the directory is the id; a project\'s copy may be named o
 
 test('the manifest\'s members, slug, version, localized strings and licence', () => {
   const bad = (manifest) => codes(motion({manifest: {...MANIFEST, ...manifest}}), {hub: false});
-  assert.ok(bad({spec: 'motion/0.5'}).includes('manifest.spec'));
+  assert.ok(bad({spec: 'motion/9.9'}).includes('manifest.spec'));
   assert.ok(bad({slug: 'Other'}).includes('manifest.slug'));
   assert.ok(bad({version: '1.0'}).includes('manifest.version'));
   assert.ok(bad({name: {'zh-CN': '只有中文'}}).includes('manifest.name'));
@@ -317,4 +317,135 @@ test('a motion\'s sound names only roles, voices and instruments the synthesiser
   assert.ok(sound({kit: ['banjo']}).includes('hub.sound'));
   assert.ok(sound({roles: {land: {voice: 'violin'}}}).includes('hub.sound'));
   assert.ok(sound({roles: {jump: {voice: 'click'}}}).includes('hub.sound'));
+});
+
+// motion/0.5: a motion in one file (SPEC.md §11)
+const SECTIONS = '# A look\n\n## Essence\nE.\n\n## Colour\nC.\n\n## Type\nT.\n\n## Motion\nM.\n\n## Avoid\nA.\n';
+const FRONT = 'spec: motion/0.5\nname: A look\ntokens:\n  color:\n    ground: "#FFFFFF"\n    ink: "#000000"\n    title: "{color.ink}"\n  font:\n    sans: ["Inter", "sans-serif"]\n';
+function oneFile(text) {
+  const dir = mkdtempSync(join(tmpdir(), 'motion-one-'));
+  writeFileSync(join(dir, 'MOTION.md'), text);
+  return dir;
+}
+
+test('a MOTION.md with front matter is a motion on its own, as a file or in a project', () => {
+  const dir = oneFile(`---\n${FRONT}---\n\n${SECTIONS}`);
+  writeFileSync(join(dir, 'package.json'), '{}');
+  assert.deepEqual(checkMotion(join(dir, 'MOTION.md'), {hub: false}), []);
+  assert.deepEqual(checkMotion(dir, {hub: false}), [], 'other files in a project are not its business');
+  assert.deepEqual(codes(dir), ['hub.directory'], 'the hub still wants a directory');
+  rmSync(dir, {recursive: true});
+});
+
+test('a motion in one file needs its members, its sections and its values', () => {
+  const check = (front, body = SECTIONS) => {
+    const dir = oneFile(`---\n${front}---\n\n${body}`);
+    const found = codes(join(dir, 'MOTION.md'), {hub: false});
+    rmSync(dir, {recursive: true});
+    return found;
+  };
+  assert.ok(check(FRONT.replace('spec: motion/0.5', 'spec: motion/0.4')).includes('doc.spec'));
+  assert.ok(check(FRONT.replace('name: A look\n', '')).includes('doc.name'));
+  assert.ok(check(FRONT.replace('name: A look', `name: ${'x'.repeat(61)}`)).includes('doc.name'));
+  assert.ok(check('spec: motion/0.5\nname: A look\n').includes('tokens.required'));
+  assert.ok(check(FRONT.replace('  font:\n    sans: ["Inter", "sans-serif"]\n', '')).includes('tokens.required'));
+  assert.ok(check(FRONT.replace('"#FFFFFF"', '"white"')).includes('tokens.value'));
+  assert.ok(check(FRONT.replace('{color.ink}', '{color.none}')).includes('tokens.alias'));
+  assert.ok(check(`${FRONT}other: x\n`).includes('doc.frontmatter'));
+  assert.deepEqual(check(`${FRONT}x-remotion: y\nlang: zh-CN\n`), []);
+  assert.ok(check(FRONT, SECTIONS.replace('## Motion\nM.\n\n', '')).includes('doc.heading'), 'motion is never optional');
+  assert.ok(check(`${FRONT}  sizes:\n    a: 1\n`).includes('tokens.group'));
+  const none = oneFile(SECTIONS);
+  assert.ok(codes(join(none, 'MOTION.md'), {hub: false}).includes('doc.frontmatter'));
+  rmSync(none, {recursive: true});
+});
+
+test('front matter is a small part of YAML, and anything else in it is refused', () => {
+  assert.deepEqual(parseFrontMatter('---\n# a note\na: b\nc:\n  d: "#FFF"\n  e: [1, "f"]\ng: h # why\n---\nbody').data, {a: 'b', c: {d: '#FFF', e: [1, 'f']}, g: 'h'});
+  assert.equal(parseFrontMatter('---\na: b\n---\nbody').body, 'body');
+  assert.equal(parseFrontMatter('# no front matter\n'), null);
+  assert.deepEqual(parseFrontMatter('\uFEFF---\na: b\n---\n').data, {a: 'b'}, 'a byte-order mark is not front matter');
+  for (const text of ['a: &x y', 'a: *x', 'a: |', 'a: >', 'a: {b: c}', "a: 'b'", 'a: #FFF', '- a', 'a: [b]', 'a: b\na: c', ' a: b', '\ta: b', 'a:\n    b: c'])
+    assert.throws(() => parseFrontMatter(`---\n${text}\n---\n`), undefined, text);
+});
+
+test('the short form of tokens stands for the same tokens as tokens.json', () => {
+  const issues = [];
+  const long = expandTokens({color: {ink: '#1B2A47', title: '{color.ink}'}, font: {sans: ['Inter', 'sans-serif']}, duration: {enter: '0.6s', fast: '200ms'}, easing: {arrive: [0.22, 1, 0.36, 1]}}, (code, at, message) => issues.push(message));
+  assert.deepEqual(issues, []);
+  assert.deepEqual(long.color.ink.$value, {colorSpace: 'srgb', components: [0.1059, 0.1647, 0.2784], hex: '#1B2A47'});
+  assert.equal(long.color.$type, 'color');
+  assert.equal(long.color.title.$value, '{color.ink}');
+  assert.deepEqual(long.font, {$type: 'fontFamily', sans: {$value: ['Inter', 'sans-serif']}});
+  assert.deepEqual(long.duration.enter.$value, {value: 0.6, unit: 's'});
+  assert.deepEqual(long.duration.fast.$value, {value: 200, unit: 'ms'});
+  assert.deepEqual(long.easing, {$type: 'cubicBezier', arrive: {$value: [0.22, 1, 0.36, 1]}});
+});
+
+// the specification and the checker say the same thing
+const SPEC_TEXT = readFileSync(fileURLToPath(new URL('../SPEC.md', import.meta.url)), 'utf8');
+
+test('the specification names the version the checker knows, and its example passes', () => {
+  assert.ok(SPEC_TEXT.includes(`**Version:** \`${SPEC}\``));
+  const example = /```markdown\n(---[\s\S]*?\n---)\n/.exec(SPEC_TEXT)[1];
+  const dir = oneFile(`${example}\n\n${SECTIONS}`);
+  assert.deepEqual(checkMotion(join(dir, 'MOTION.md'), {hub: false}), []);
+  rmSync(dir, {recursive: true});
+  for (const purpose of PURPOSES) assert.ok(SPEC_TEXT.split('## 12.')[1].includes(`\`${purpose}\``), purpose);
+});
+
+// motion/0.5: a motion in a directory, held to §12
+const PART = (extra = '', meta = "export const meta = {name: 'Title', purpose: 'title', line: 'A title.', fits: 'A title.', params: {}, preview: 'title.jpg'};") => `import React from 'react';\nimport {useTime} from '@motionhub/runtime';\nimport * as THREE from 'three';\nimport {helper} from './helper';\n${extra}\n${meta}\nexport default function Title() { return null; }\n`;
+function raised(extra, part = PART(), doc) {
+  const dir = mkdtempSync(join(tmpdir(), 'motion-05-'));
+  cpSync(fileURLToPath(new URL('../motions/@iamsuosi/clay-world', import.meta.url)), dir, {recursive: true});
+  const manifest = JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8'));
+  writeFileSync(join(dir, 'motion.json'), JSON.stringify({...manifest, spec: 'motion/0.5', ...extra}));
+  rmSync(join(dir, 'react/parts'), {recursive: true});
+  mkdirSync(join(dir, 'react/parts'));
+  writeFileSync(join(dir, 'react/parts/title.tsx'), part);
+  if (doc) writeFileSync(join(dir, 'MOTION.md'), doc(readFileSync(join(dir, 'MOTION.md'), 'utf8')));
+  const found = codes(dir, {hub: false});
+  rmSync(dir, {recursive: true});
+  return found;
+}
+
+test('a motion/0.5 directory is held to the rules for components; an earlier one is not', () => {
+  assert.deepEqual(raised(), []);
+  assert.ok(raised({}, PART("import x from 'lodash';")).includes('react.import'));
+  assert.ok(raised({}, PART("import 'left-pad';")).includes('react.import'));
+  assert.ok(raised({}, PART("export {y} from 'lodash';")).includes('react.import'));
+  assert.ok(raised({}, `import React from 'react'; import x from 'lodash';\n${PART()}`).includes('react.import'), 'a second import on one line');
+  assert.ok(raised({}, `const a = 1; export {b} from 'lodash';\n${PART()}`).includes('react.import'));
+  assert.ok(raised({}, PART('', '')).includes('react.meta'));
+  const below = "export const meta = {name: 'T', purpose: 'title', line: 'l'};\nconst other = {fits: 1, params: {}, preview: 2};";
+  assert.ok(raised({}, PART('', below)).includes('react.meta'), 'a key below the literal is not in it');
+  const nested = "export const meta = {name: 'T', purpose: 'title', line: 'l', fits: 'f', params: {preview: {type: 'string', doc: 'd'}}};";
+  assert.ok(raised({}, PART('', nested)).includes('react.meta'), 'a key inside params is not one of its own');
+  assert.ok(raised({}, PART('', "export const meta = {name: 'T}', purpose: 'title', line: 'a: {b', fits: 'f', params: {}, preview: 'p'};")).length === 0, 'braces in a string are text');
+  assert.ok(raised({}, PART('', 'export const meta = makeMeta();')).includes('react.meta'), 'it is a literal');
+  assert.ok(raised({}, PART('', "export const meta = {name: 'Title', purpose: 'title'};")).includes('react.meta'));
+  assert.ok(raised({}, PART('', "export const meta = {name: 'T', purpose: 'nope', line: 'l', fits: 'f', params: {}, preview: 'p'};")).includes('react.meta'));
+  assert.ok(raised({}, PART(), (t) => t.replace(/^## Components.*$/m, '## Parts')).includes('doc.heading'));
+  assert.deepEqual(raised({spec: 'motion/0.4'}, PART("import x from 'lodash';"), (t) => t.replace(/^## Components.*$/m, '## Parts')), [], 'a published version keeps its meaning');
+});
+
+test('every motion in the catalogue holds when raised to motion/0.5', () => {
+  const root = fileURLToPath(new URL('../motions', import.meta.url));
+  const dirs = listMotions(root);
+  assert.ok(dirs.length > 0);
+  for (const d of dirs) {
+    const dir = mkdtempSync(join(tmpdir(), 'motion-raised-'));
+    cpSync(join(root, d), dir, {recursive: true});
+    const manifest = JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8'));
+    writeFileSync(join(dir, 'motion.json'), JSON.stringify({...manifest, spec: 'motion/0.5'}));
+    assert.deepEqual(checkMotion(dir, {hub: false}), [], d);
+    rmSync(dir, {recursive: true});
+  }
+});
+
+test('a motion in a directory keeps its values in tokens.json alone', () => {
+  assert.ok(raised({}, PART(), (t) => `---\nname: A look\ntokens:\n  color:\n    a: "#000000"\n---\n\n${t}`).includes('doc.tokens'));
+  assert.deepEqual(raised({}, PART(), (t) => `---\nname: A look\n---\n\n${t}`), []);
+  assert.ok(raised({}, PART(), (t) => `---\na: &x y\n---\n\n${t}`).includes('doc.frontmatter'));
 });

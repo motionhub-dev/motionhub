@@ -2,7 +2,7 @@
 // The motion checker: the rules of SPEC.md (code `format.*` and the rest without a `hub.` prefix) and the hub's
 // acceptance rules of CONTRIBUTING.md (`hub.*`), with no dependencies.
 //
-//   node tools/check.mjs [dir ...] [--format-only] [--author <github-login>] [--author-id <github-id>] [--was <motion.json>]
+//   node tools/check.mjs [dir or MOTION.md ...] [--format-only] [--author <github-login>] [--author-id <github-id>] [--was <motion.json>]
 //   node tools/check.mjs --accounts-was <dir>
 //   npx @motionhub/cli check ...                  the same, from the published package (bin/motionhub.mjs)
 //
@@ -24,8 +24,8 @@ import {join, basename, dirname, resolve, relative, extname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 /** The newest version of the format; every version before it is still read (SPEC.md §9). */
-export const SPEC = 'motion/0.4';
-export const SPECS = ['motion/0.1', 'motion/0.2', 'motion/0.3', 'motion/0.4'];
+export const SPEC = 'motion/0.5';
+export const SPECS = ['motion/0.1', 'motion/0.2', 'motion/0.3', 'motion/0.4', 'motion/0.5'];
 const SCOPE = /^[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,38}$/;
 const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const LANG = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{1,8})*$/;
@@ -76,7 +76,9 @@ const UNSAFE = [
 export function checkMotion(dir, {hub = true, author, authorId, was, accounts} = {}) {
   const issues = [];
   const add = (code, at, message) => issues.push({code, at, message});
+  if (existsSync(dir) && statSync(dir).isFile() && basename(dir) === 'MOTION.md') return checkOneFile(dir, hub, add), issues;
   if (!existsSync(dir) || !statSync(dir).isDirectory()) return add('format.dir', '.', 'not a directory'), issues;
+  if (!existsSync(join(dir, 'motion.json')) && existsSync(join(dir, 'MOTION.md')) && oneFileSpec(join(dir, 'MOTION.md'))) return checkOneFile(join(dir, 'MOTION.md'), hub, add), issues;
 
   const entries = readdirSync(dir, {withFileTypes: true});
   for (const file of FILES) if (!entries.some((e) => e.isFile() && e.name === file)) add('format.missing', file, `${file} is required`);
@@ -90,7 +92,11 @@ export function checkMotion(dir, {hub = true, author, authorId, was, accounts} =
   if (manifest) checkManifest(manifest, add);
   const tokens = readJson(join(dir, 'tokens.json'), 'tokens.json', add);
   if (tokens) checkTokens(tokens, add);
-  for (const e of entries) if (e.isFile() && /^MOTION(\.[A-Za-z0-9-]+)?\.md$/.test(e.name)) checkDoc(join(dir, e.name), e.name, add);
+  const held = since(manifest?.spec, 'motion/0.5');
+  const parts = held ? componentFiles(dir) : [];
+  for (const e of entries) if (e.isFile() && /^MOTION(\.[A-Za-z0-9-]+)?\.md$/.test(e.name)) checkDoc(join(dir, e.name), e.name, add, {components: parts.length > 0});
+  if (held) checkDocFrontMatter(join(dir, 'MOTION.md'), add);
+  if (parts.length) checkComponents(dir, parts, add);
   if (entries.some((e) => e.name === 'poster.jpg' && e.isFile())) checkPoster(join(dir, 'poster.jpg'), add);
   if (entries.some((e) => e.name === 'CREDITS.md' && e.isFile()) && !readFileSync(join(dir, 'CREDITS.md'), 'utf8').trim()) add('format.credits', 'CREDITS.md', 'CREDITS.md is empty: name every asset, or say there is none');
   if (manifest?.license && typeof manifest.license === 'object' && !manifest.license.code) {
@@ -204,8 +210,7 @@ export function spdx(expr) {
 
 const spdxIds = (expr) => (expr.match(/[^\s()]+/g) ?? []).filter((t) => !['AND', 'OR', 'WITH'].includes(t));
 
-function checkTokens(tokens, add) {
-  const at = 'tokens.json';
+function checkTokens(tokens, add, at = 'tokens.json') {
   const found = new Map();
   const visit = (node, path, inherited) => {
     const type = typeof node.$type === 'string' ? node.$type : inherited;
@@ -250,12 +255,164 @@ const TYPE_CHECKS = {
   cubicBezier: (v) => Array.isArray(v) && v.length === 4 && v.every(num) && v[0] >= 0 && v[0] <= 1 && v[2] >= 0 && v[2] <= 1 ? undefined : 'a cubic Bézier is [x1, y1, x2, y2] with x1 and x2 between 0 and 1',
 };
 
-function checkDoc(path, at, add) {
+function checkDoc(path, at, add, {components = false} = {}) {
   const bytes = statSync(path).size;
   if (bytes > DOC_BYTES) add('doc.size', at, `${bytes} bytes: at most ${DOC_BYTES}`);
   const text = readFileSync(path, 'utf8');
   const words = [...text.replace(/```[\s\S]*?```/g, '').matchAll(/^##[ \t]+([A-Za-z]+)/gm)].map((m) => m[1].toLowerCase());
   for (const names of HEADINGS) if (!names.some((n) => words.includes(n))) add('doc.heading', at, `a "## ${names[0][0].toUpperCase()}${names[0].slice(1)}" heading is required`);
+  if (components && !words.includes('components')) add('doc.heading', at, 'a "## Components" heading is required: the motion has components (SPEC.md §5)');
+}
+
+/** Whether a version of the format is `version` or later. */
+const since = (spec, version) => SPECS.includes(spec) && SPECS.indexOf(spec) >= SPECS.indexOf(version);
+
+/**
+ * A MOTION.md's front matter (SPEC.md §11) and its body, or null when it has none. Front matter is a small part of YAML,
+ * which this reads with no dependency: anything else in it throws, with what is wrong.
+ */
+export function parseFrontMatter(raw) {
+  const text = raw.replace(/^\uFEFF/, '');
+  const m = /^---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/.exec(text);
+  if (!m) return null;
+  const data = {};
+  const stack = [{indent: 0, map: data}];
+  for (const raw of m[1].split(/\r?\n/)) {
+    if (!raw.trim() || /^\s*#/.test(raw)) continue;
+    if (raw.includes('\t')) throw new Error(`a tab in "${raw.trim()}": indent with two spaces`);
+    const line = /^( *)([A-Za-z0-9_-]+):(?: +(.*?))?\s*$/.exec(raw);
+    if (!line) throw new Error(`"${raw.trim()}" is not a "key: value" line`);
+    const [, spaces, key, value] = line;
+    if (spaces.length % 2) throw new Error(`"${raw.trim()}": indent with two spaces`);
+    while (stack.length > 1 && stack.at(-1).indent > spaces.length) stack.pop();
+    if (stack.at(-1).indent !== spaces.length) throw new Error(`"${raw.trim()}" is indented too far`);
+    const {map} = stack.at(-1);
+    if (key in map) throw new Error(`"${key}" appears twice`);
+    if (value === undefined || value === '') { map[key] = {}; stack.push({indent: spaces.length + 2, map: map[key]}); } else map[key] = frontMatterValue(value);
+  }
+  return {data, body: text.slice(m[0].length)};
+}
+
+function frontMatterValue(value) {
+  if (value.startsWith('"') || value.startsWith('[')) {
+    try { return JSON.parse(value); } catch { throw new Error(`${value} is neither a double-quoted string nor a list written as JSON`); }
+  }
+  if (/^[#&*!|>{'%@\`-]/.test(value)) throw new Error(`${value} is not allowed: quote it in double quotes`);
+  return value.replace(/\s+#.*$/, '');
+}
+
+/** The tokens a MOTION.md's short form (SPEC.md §11) stands for, in the form of tokens.json; what cannot be read is reported. */
+export function expandTokens(short, add = () => {}, at = 'MOTION.md') {
+  const TYPES = {color: 'color', font: 'fontFamily', duration: 'duration', easing: 'cubicBezier'};
+  const out = {};
+  for (const [group, tokens] of Object.entries(short && typeof short === 'object' ? short : {})) {
+    if (!TYPES[group]) { add('tokens.group', at, `"${group}" is not a group of the short form: ${Object.keys(TYPES).join(', ')}`); continue; }
+    if (!tokens || typeof tokens !== 'object' || Array.isArray(tokens)) { add('tokens.group', at, `"${group}" is not a group of tokens`); continue; }
+    out[group] = {$type: TYPES[group]};
+    for (const [name, value] of Object.entries(tokens)) {
+      const alias = typeof value === 'string' && /^\{[^{}]+\}$/.test(value);
+      let read = value;
+      if (!alias && group === 'color') {
+        if (typeof value === 'string' && /^#[0-9A-Fa-f]{6}$/.test(value)) read = {colorSpace: 'srgb', components: [1, 3, 5].map((i) => Number((parseInt(value.slice(i, i + 2), 16) / 255).toFixed(4))), hex: value};
+        else { add('tokens.value', at, `color.${name}: a colour is "#RRGGBB" or an alias`); continue; }
+      } else if (!alias && group === 'duration') {
+        const time = /^(\d+(?:\.\d+)?)(ms|s)$/.exec(String(value));
+        if (time) read = {value: Number(time[1]), unit: time[2]};
+        else { add('tokens.value', at, `duration.${name}: a duration is like 0.6s or 600ms`); continue; }
+      }
+      out[group][name] = {$value: read};
+    }
+  }
+  return out;
+}
+
+/** The `spec` a MOTION.md's front matter names, when it is a version that allows a motion in one file. */
+function oneFileSpec(path) {
+  try {
+    const spec = parseFrontMatter(readFileSync(path, 'utf8'))?.data.spec;
+    return since(spec, 'motion/0.5') ? spec : null;
+  } catch {
+    return null;
+  }
+}
+
+const ONE_FILE_MEMBERS = new Set(['spec', 'name', 'tokens', 'lang']);
+
+/** A motion in one file (SPEC.md §11). */
+function checkOneFile(path, hub, add) {
+  const at = 'MOTION.md';
+  checkDoc(path, at, add);
+  let front;
+  try { front = parseFrontMatter(readFileSync(path, 'utf8')); } catch (e) { return add('doc.frontmatter', at, e.message); }
+  if (!front) return add('doc.frontmatter', at, 'a motion in one file starts with front matter: spec, name and tokens');
+  const {spec, name, tokens, lang} = front.data;
+  for (const key of Object.keys(front.data)) if (!ONE_FILE_MEMBERS.has(key) && !key.startsWith('x-')) add('doc.frontmatter', at, `"${key}" is not a member of the front matter`);
+  if (!since(spec, 'motion/0.5')) add('doc.spec', at, `spec must be "motion/0.5" or a later version of this format${spec ? `, not "${spec}"` : ''}`);
+  if (typeof name !== 'string' || !name.trim() || [...name].length > 60) add('doc.name', at, 'name is a string of at most 60 characters');
+  if (lang !== undefined && !(typeof lang === 'string' && LANG.test(lang))) add('doc.frontmatter', at, 'lang is a BCP 47 tag');
+  if (!tokens || typeof tokens !== 'object' || Array.isArray(tokens)) add('tokens.required', at, 'tokens is required: its color and font groups');
+  else checkTokens(expandTokens(tokens, add, at), add, at);
+  if (hub) add('hub.directory', '.', 'on motionhub a motion is a directory: add motion.json, tokens.json, poster.jpg and CREDITS.md (CONTRIBUTING.md), or check it with --format-only');
+}
+
+/** A motion in a directory keeps its values in tokens.json alone (SPEC.md §11). */
+function checkDocFrontMatter(path, add) {
+  if (!existsSync(path)) return;
+  let front;
+  try { front = parseFrontMatter(readFileSync(path, 'utf8')); } catch (e) { return add('doc.frontmatter', 'MOTION.md', e.message); }
+  if (front?.data.tokens !== undefined) add('doc.tokens', 'MOTION.md', 'tokens belong in tokens.json in a motion with a directory: a value has one source');
+}
+
+const componentFiles = (dir) => (existsSync(join(dir, 'react/parts')) ? readdirSync(join(dir, 'react/parts')).filter((f) => /\.(tsx|jsx)$/.test(f)).sort() : []);
+const IMPORTABLE = /^(?:\.{1,2}\/|react(?:\/|$)|@motionhub\/runtime(?:\/|$)|three(?:\/|$))/;
+
+/** The `{...}` literal at the start of `text`, however deep it nests and whatever its strings hold; null when there is none. */
+function metaLiteral(text) {
+  const open = text.indexOf('{');
+  if (open < 0 || /[;(]/.test(text.slice(0, open))) return null;
+  let depth = 0, quote = null;
+  for (let i = open; i < text.length; i++) {
+    const c = text[i];
+    if (quote) { if (c === '\\') i++; else if (c === quote) quote = null; continue; }
+    if (c === '"' || c === "'" || c === '`') quote = c;
+    else if (c === '{' || c === '[') depth++;
+    else if (c === '}' || c === ']') { depth--; if (depth === 0) return text.slice(open, i + 1); }
+  }
+  return null;
+}
+
+/** A literal with its strings emptied and everything nested inside it left out, so only its own members remain. */
+function topLevel(literal) {
+  let depth = 0, quote = null, out = '';
+  for (let i = 0; i < literal.length; i++) {
+    const c = literal[i];
+    if (quote) { if (c === '\\') i++; else if (c === quote) { quote = null; if (depth === 1) out += c; } continue; }
+    if (c === '"' || c === "'" || c === '`') { quote = c; if (depth === 1) out += c; continue; }
+    if (c === '{' || c === '[') { depth++; continue; }
+    if (c === '}' || c === ']') { depth--; continue; }
+    if (depth === 1) out += c;
+  }
+  return out;
+}
+
+/** The components of a motion held to SPEC.md §12: what each imports, and the `meta` beside it. */
+function checkComponents(dir, parts, add) {
+  for (const n of parts) {
+    const at = `react/parts/${n}`;
+    const src = readFileSync(join(dir, at), 'utf8');
+    for (const m of src.matchAll(/(?:^|[\n;}])\s*(?:import|export)\b[^;'"]*?\bfrom\s+['"]([^'"]+)['"]|(?:^|[\n;}])\s*import\s+['"]([^'"]+)['"]/g)) {
+      const target = m[1] ?? m[2];
+      if (!IMPORTABLE.test(target)) add('react.import', at, `imports "${target}": a component imports only react, @motionhub/runtime, three and files by a relative path`);
+    }
+    const start = /export\s+const\s+meta\b/.exec(src);
+    if (!start) { add('react.meta', at, 'a component exports a literal meta'); continue; }
+    const meta = metaLiteral(src.slice(start.index));
+    if (meta === null) { add('react.meta', at, 'a component exports a literal meta'); continue; }
+    const top = topLevel(meta);
+    for (const key of ['name', 'purpose', 'line', 'fits', 'params', 'preview']) if (!new RegExp(`(?:^|[{,\\s])['"]?${key}['"]?\\s*:`).test(top)) add('react.meta', at, `meta has no ${key}`);
+    const purpose = /(?:^|[{,\s])['"]?purpose['"]?\s*:\s*['"]([^'"]*)['"]/.exec(meta)?.[1];
+    if (purpose !== undefined && !PURPOSES.includes(purpose)) add('react.meta', at, `meta.purpose is one of ${PURPOSES.join(', ')}, not "${purpose}"`);
+  }
 }
 
 /** The width and height of a JPEG, read from its first start-of-frame marker; null when it is not a JPEG. */
@@ -528,7 +685,7 @@ export async function main(args) {
   let count = 0;
   if (!dirs.length) {
     const root = resolve('motions');
-    dirs = existsSync('motion.json') ? ['.'] : listMotions(root).map((d) => join(root, d));
+    dirs = existsSync('motion.json') || (existsSync('MOTION.md') && oneFileSpec('MOTION.md')) ? ['.'] : listMotions(root).map((d) => join(root, d));
     if (hub && accountsDir && !existsSync('motion.json')) {
       for (const i of await checkAccounts(accountsDir)) { console.log(`accounts/${i.at}  ${i.code}  ${i.message}`); count++; }
     }
@@ -536,7 +693,7 @@ export async function main(args) {
   const accounts = hub && accountsDir ? readAccounts(accountsDir) : undefined;
   for (const dir of dirs) {
     const issues = checkMotion(dir, {hub, author, authorId, was, accounts});
-    const name = relative(process.cwd(), resolve(dir)) || '.';
+    const name = relative(process.cwd(), basename(dir) === 'MOTION.md' ? dirname(resolve(dir)) : resolve(dir)) || '.';
     for (const i of issues) console.log(`${name}/${i.at}  ${i.code}  ${i.message}`);
     if (!issues.length) console.log(`${name}  ok`);
     count += issues.length;
