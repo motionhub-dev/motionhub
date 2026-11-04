@@ -50,6 +50,17 @@ A tool needs the index to search and one package to use a motion; it never downl
 
 A motion's page plays the motion live, from its reel: `react/reel.tsx`, a React component that composes the motion's components and animates them by `useTime()` for at most 30 seconds (`export const reel = {seconds}` and a default export; `hub.reel`). It shows how the motion moves, at a brisk pace, with no narration and no story of a film. The site's build bundles each reel with its components, React and `@motionhub/runtime` into `/play/<id>/` (`site/player/build.mjs`), and the page shows it in a frame sandboxed to scripts alone, with no origin of its own; `/play/*` is served under a content security policy that loads nothing from anywhere else and connects nowhere. A component's `<Video>` draws a quiet stand-in there, since the catalogue holds no footage. Its sound is synthesised in the page by `@motionhub/runtime/sound` from the motion's `react/sound.json` (`hub.sound`) and the reel's `export const cues`, off until the viewer turns it on. Its faces are the motion's own (`react/fonts/`) and, for the rest, Google Fonts' Latin files, copied in at build: the player fetches nothing. The player stops drawing while it is scrolled out of sight, and a reel that draws in 3D waits for a tap on a device with few cores, little memory or a touch screen. A card in the gallery shows the poster.
 
+## The gallery's order
+
+The gallery lists motions in a recommended order, and anyone can switch to A to Z, most downloaded or most liked.
+
+- First come the few motions named in `FEATURED` (`site/src/lib/catalogue.mjs`), in that order. This is the only part kept by hand: a short pick for a catalogue with little data yet.
+- The rest are ordered by what they are for (`fit.kind`, SPEC.md §3): general motions first, then motions drawn over the maker's own footage, then topic motions, then motions that do not say.
+- Within a kind, a motion whose components cover more of the core purposes comes first. The core purposes are title, data, compare, steps, term, link and transition, read from each component's `meta.purpose`.
+- Motions that tie are listed A to Z.
+
+A new motion takes its place with no one moving it. Downloads and likes will weigh in once there are enough of them.
+
 ## Listing levels
 
 | Level | Means |
