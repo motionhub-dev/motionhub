@@ -119,7 +119,7 @@ export default {
     let pathname = url.pathname;
     try { pathname = decodeURIComponent(pathname); } catch {}
     if (pathname === '/api/stats.json') return statsResponse(request, env, ctx);
-    const own = await people(request, env);
+    const own = await people(request, env, ctx);
     if (own) return own;
     const pkg = PACKAGE.exec(pathname);
     if (pkg) return packageResponse(request, env, ctx, pkg, pathname);
