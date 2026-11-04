@@ -52,6 +52,8 @@ A motion's page plays the motion live, from its reel: `react/reel.tsx`, a React 
 
 Every pull request and every push to main plays every reel (`site/player/smoke.mjs`, the check's "Every reel plays"). Each player opens in a headless Chrome under the policy above and is scrubbed to four moments. A reel fails when its page throws or logs an error, a request fails or is refused, a moment draws nothing, or every moment draws the same picture. A change to `@motionhub/runtime` or the player is a change to every reel, and this is how it shows which reels it broke.
 
+A reel is also rendered to a video (`site/player/render.mjs`): 1920×1080 at 30 frames a second, H.264 with the reel's sound in AAC, its index ahead of its frames so it plays while it downloads. The player opens with `?render=1`, which draws the reel still at full size, without controls or a clock, and is moved to each frame's time in turn and photographed; the sound is `renderSound` on the same cues and `sound.json`. Chrome rasterises on one thread there, so the same reel renders to the same pixels every time. The video of a motion at a version is `m/<id>/<version>.mp4` and, like its package, never changes after it is made. A render fails, and writes nothing, when the page throws, the video's length is not the reel's, a checked frame draws nothing, or every checked frame is the same.
+
 ## The gallery's order
 
 The gallery (`/motions/`) lists motions in a recommended order, and anyone can switch to A to Z, most downloaded or most liked. The home page shows the first ten.
