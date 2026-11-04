@@ -7,8 +7,9 @@
 //
 // It is the shared core every reel's page loads first (/play/_shared/core-<hash>.js, player/build.mjs): React, the runtime
 // and this player, which then wait for the motion's own script to call mount() with its reel, sound and tokens.
-import * as React from 'react';
-import * as jsxRuntime from 'react/jsx-runtime';
+// React and its JSX runtime as their CommonJS exports, what a reel's script would get from require('react')
+import React from 'react';
+import jsxRuntime from 'react/jsx-runtime';
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import * as runtime from '@motionhub/runtime';
@@ -216,6 +217,6 @@ function mount({module, sound: s, tokens: t}) {
   createRoot(document.getElementById('player')).render(params.get('render') === '1' ? <Still /> : <Player />);
 }
 
-// What a motion's script may take from the core, by the name it imports: the interface it is built against. A change that
-// removes or alters any of it is a new major version beside this one (HUB.md, "Reels")
+// What a motion's script may take from the core, by the name it imports (player/build.mjs). The core and every reel are
+// built together, so this is named v1 for the day a reel built once is kept and played by a later core
 globalThis.__motionhubPlayer = {...globalThis.__motionhubPlayer, v1: {modules: {react: React, 'react/jsx-runtime': jsxRuntime, '@motionhub/runtime': runtime}, mount}};

@@ -150,8 +150,8 @@ function hashed(dir, name, bytes) {
  * interface v1) and three.js for the reels in 3D. Returns their paths
  */
 async function shared() {
+  // added to, never emptied: a reel built before, by another run over fewer ids, keeps the files it names
   const dir = join(OUT, '_shared');
-  rmSync(dir, {recursive: true, force: true});
   const core = await build({...common([]), entryPoints: [join(HERE, 'player.jsx')]});
   const three = await build({...common([]), stdin: {contents: "import * as THREE from 'three';\nglobalThis.__motionhubPlayer = {...globalThis.__motionhubPlayer, three: THREE};", resolveDir: SITE, loader: 'js'}});
   return {core: `/play/_shared/${hashed(dir, 'core-v1', core.outputFiles[0].contents)}`, three: `/play/_shared/${hashed(dir, 'three', three.outputFiles[0].contents)}`};
@@ -179,8 +179,8 @@ async function player(id, {core, three}) {
           return {path: args.path, namespace: 'core'};
         }
         // three.js's addons are the motion's own, and import three.js from the shared script like the motion does
-        if (args.path.startsWith('three/')) return undefined;
-        return {errors: [{text: `${args.path} is not something a reel can import: a reel has react, @motionhub/runtime and three (with its addons)`}]};
+        if (/^three\/(examples\/jsm|addons)\//.test(args.path)) return undefined;
+        return {errors: [{text: `${args.path} is not something a reel can import: a reel has react, @motionhub/runtime, three and three's addons (three/addons/, three/examples/jsm/)`}]};
       });
       b.onLoad({filter: /.*/, namespace: 'core'}, ({path}) => ({contents: `module.exports = globalThis.__motionhubPlayer.${FROM_CORE[path]};`, loader: 'js'}));
       b.onResolve({filter: /^motionhub:reel$/}, () => ({path: join(dir, 'react/reel.tsx')}));
@@ -192,6 +192,9 @@ async function player(id, {core, three}) {
     }}]),
     stdin: {contents: "import * as module from 'motionhub:reel';\nimport sound from 'motionhub:sound';\nimport tokens from 'motionhub:tokens';\nglobalThis.__motionhubPlayer.v1.mount({module, sound, tokens});", resolveDir: dir, loader: 'js'},
   });
+  // a second React or three.js in a reel's script would draw with objects the shared ones do not know
+  const copied = Object.keys(result.metafile.inputs).filter((f) => /node_modules\/(react|react-dom|scheduler|three\/(build|src))\//.test(f));
+  if (copied.length) throw new Error(`play/${id}/ would carry its own copy of ${copied[0]}: import it so the shared scripts provide it`);
   const reel = hashed(out, 'reel', result.outputFiles[0].contents);
   writeFileSync(join(out, 'index.html'), page(name, id, manifest.version, heavy, [core, ...(heavy ? [three] : []), reel]));
   return missing;
