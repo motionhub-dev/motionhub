@@ -1,4 +1,4 @@
-import {PEN, unit} from './pens.ts';
+import {PEN, fit, unit, written} from './pens.ts';
 
 export const meta = {
   name: {en: 'Working', 'zh-CN': '推导'},
@@ -10,12 +10,14 @@ export const meta = {
     write: {type: 'number', default: 99, doc: 'how many lines are written so far, with fractions mid-line: tween 0 to 1, then to 2, on each line\'s word'},
     size: {type: 'px', default: 52, doc: 'the hand\'s size'},
     box: {type: 'progress', default: 0, doc: '0 to 1: how much of the box around the result is drawn'},
+    result: {type: 'boolean', default: true, doc: 'the last line is the result, in red; false for working with no result in this scene'},
+    width: {type: 'px', doc: 'the widest a line may be: all lines write smaller to fit'},
   },
-  preview: 23,
+  preview: 16.5,
 };
 
 /** The red box round the result, drawn side by side as a pen goes round it: top, right, bottom, left; it fits whatever the line's width is */
-function Box({progress}: {progress: number}) {
+export function Box({progress}: {progress: number}) {
   const side = (i: number) => unit(progress * 4 - i);
   const pen = {position: 'absolute' as const, background: PEN.red, borderRadius: 2};
   return (
@@ -28,14 +30,16 @@ function Box({progress}: {progress: number}) {
   );
 }
 
-export function Formula({lines, write = 99, size = 52, box = 0}: {lines: string[]; write?: number; size?: number; box?: number}) {
+export function Formula({lines, write = 99, size: most = 52, box = 0, result = true, width}: {lines: string[]; write?: number; size?: number; box?: number; result?: boolean; width?: number}) {
+  // one size for all its lines, so a long one does not stand apart
+  const size = width ? Math.min(...lines.map((l) => fit(l, width - 40, most))) : most;
   return (
     <div style={{fontFamily: 'var(--font-display)', fontSize: size, lineHeight: 1.5, fontWeight: 500}}>
       {lines.map((text, i) => {
-        const last = i === lines.length - 1, shown = unit(write - i);
+        const last = result && i === lines.length - 1, shown = unit(write - i);
         return (
           <div key={i} style={{position: 'relative', display: 'table', marginTop: last ? size * 0.35 : 0, padding: last ? '0 18px' : 0, color: last ? PEN.red : PEN.ink}}>
-            <span style={{display: 'inline-block', whiteSpace: 'nowrap', clipPath: `inset(-25% ${((1 - shown) * 100).toFixed(1)}% -25% -4%)`}}>{text}</span>
+            <span style={{display: 'inline-block', whiteSpace: 'nowrap', ...written(shown)}}>{text}</span>
             {last && box > 0 && <Box progress={box} />}
           </div>
         );

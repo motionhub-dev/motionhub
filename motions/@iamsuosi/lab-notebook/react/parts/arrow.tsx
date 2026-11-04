@@ -12,7 +12,7 @@ export const meta = {
     draw: {type: 'progress', default: 1, doc: '0 to 1: how much is drawn'},
     pen: {type: 'ink | red | pencil', default: 'ink', doc: 'which pen'},
   },
-  preview: 19.4,
+  preview: 13.2,
 };
 
 export function CurveArrow({from, to, bend = 0.25, draw = 1, pen = 'ink'}: {from: [number, number]; to: [number, number]; bend?: number; draw?: number; pen?: Pen}) {

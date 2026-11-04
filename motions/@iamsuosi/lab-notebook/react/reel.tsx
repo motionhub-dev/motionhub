@@ -1,4 +1,4 @@
-// Lab Notebook's reel: eighteen seconds of its components at a brisk pace, for a player. Not a template: read it for how the parts move.
+// Lab Notebook's reel: thirty seconds of its components at a brisk pace, for a player. Not a template: read it for how the parts move.
 import type {ReactNode} from 'react';
 import {Easing, Sequence, interpolate, useTime} from '@motionhub/runtime';
 import {Sheet} from './parts/sheet.tsx';
@@ -8,8 +8,14 @@ import {CurveArrow} from './parts/arrow.tsx';
 import {Tab} from './parts/tab.tsx';
 import {Formula} from './parts/formula.tsx';
 import {Frame} from './parts/frame.tsx';
+import {Bars} from './parts/bars.tsx';
+import {Figure} from './parts/figure.tsx';
+import {Versus} from './parts/versus.tsx';
+import {Graph} from './parts/graph.tsx';
+import {Clipping} from './parts/clipping.tsx';
+import {Takeaway} from './parts/takeaway.tsx';
 
-export const reel = {seconds: 18, width: 1920, height: 1080};
+export const reel = {seconds: 30, width: 1920, height: 1080};
 
 /** What happens when, for the motion's sound (sound.json): the pen draws a line or writes, a tab is stuck on, the page turns, the result is boxed */
 export const cues = [
@@ -17,6 +23,8 @@ export const cues = [
   {at: 3.5, role: 'draw', dur: 1.2}, {at: 5.3, role: 'draw', dur: 0.6}, {at: 6.3, role: 'land'}, {at: 8.0, role: 'cut'},
   {at: 8.9, role: 'draw', dur: 2.0}, {at: 10.9, role: 'draw', dur: 0.9}, {at: 12.1, role: 'land'}, {at: 12.5, role: 'draw', dur: 0.6},
   {at: 12.9, role: 'draw', dur: 1.6}, {at: 14.7, role: 'draw', dur: 0.8}, {at: 16.3, role: 'count'},
+  {at: 18.2, role: 'draw', dur: 2.0}, {at: 20.3, role: 'draw', dur: 0.8}, {at: 22, role: 'cut'}, {at: 22.1, role: 'draw', dur: 1.8}, {at: 24.2, role: 'draw', dur: 0.6},
+  {at: 25, role: 'cut'}, {at: 25.1, role: 'draw', dur: 1.9}, {at: 27.1, role: 'land'}, {at: 27.8, role: 'cut'}, {at: 27.9, role: 'draw', dur: 1.4}, {at: 29.3, role: 'count'},
 ];
 
 const hand = Easing.inOutSine, lin = Easing.linear;
@@ -97,12 +105,77 @@ function Lattice() {
   );
 }
 
+/** 18–22 s: a clean page: the densities by hand, and the one figure they come to */
+function HowMuch() {
+  const t = useTime();
+  return (
+    <>
+      <Sheet title="How much lighter?" date="Oct 30" />
+      <Box x={280} y={170} w={900} h={460}>
+        <Bars items={[{label: 'pine', value: 0.5, display: '0.50'}, {label: 'ice', value: 0.92, display: '0.92'}, {label: 'water', value: 1, display: '1.00'}]} focus={1} width={900} height={420} draw={at(t, 0.2, 2.2, 1, 0, lin)} />
+      </Box>
+      <Box x={1230} y={210} w={560} h={330}><Figure value="8%" note="less dense than water" width={540} write={at(t, 2.3, 3.1, 1, 0, lin)} /></Box>
+      <Box x={280} y={620} w={700} h={60}><HandLabel text="grams per cubic centimetre" size={34} pen="pencil" tilt={0} write={at(t, 3.1, 3.6, 1, 0, lin)} /></Box>
+    </>
+  );
+}
+
+/** 22–25 s: facing columns, row by row, a pencil ring round the number, the verdict in red */
+function Facing() {
+  const t = useTime();
+  return (
+    <>
+      <Sheet title="Ice against water" date="Oct 30" />
+      <Box x={290} y={160} w={1460} h={600}>
+        <Versus left="ice" right="liquid water" width={1460} height={560} verdict="the open one floats"
+          rows={[{left: 'a fixed lattice', right: 'molecules jostling'}, {left: 'hexagons hold gaps', right: 'gaps collapse'}, {left: '0.92 g/cm³', right: '1.00 g/cm³', ring: 'left'}]}
+          shown={at(t, 0.1, 1.9, 4, 0, lin)} rings={at(t, 1.9, 2.2, 1, 0, lin)} conclude={at(t, 2.2, 2.8, 1, 0, lin)} />
+      </Box>
+    </>
+  );
+}
+
+/** 25–27.8 s: the graph of density against temperature (0 to 20 °C, in g/cm³), and a clipping stuck on beside it */
+function Winter() {
+  const t = useTime();
+  return (
+    <>
+      <Sheet title="Why lakes freeze from the top" date="Oct 31" />
+      <Box x={280} y={130} w={900} h={640}>
+        <Graph width={900} height={620} zero={false} points={[[0, 0.99984], [4, 0.99997], [10, 0.9997], [15, 0.9991], [20, 0.99821]]} mark={1} markLabel="densest at 4 °C"
+          xLabel="temperature" yLabel="density of water" xTicks={[[0, '0 °C'], [4, '4'], [10, '10'], [20, '20 °C']]} draw={at(t, 0.1, 2.0, 1, 0, lin)} />
+      </Box>
+      <Box x={1210} y={300} w={590} h={320} on={at(t, 2.1, 2.22, 1, 0, lin)}>
+        <Clipping width={570} text="The coldest water floats, so a lake freezes from the top and keeps liquid water beneath." source="Lab note, winter term" tilt={1.2} />
+      </Box>
+    </>
+  );
+}
+
+/** 27.8–30 s: the takeaway, boxed in red */
+function Remember() {
+  const t = useTime();
+  return (
+    <>
+      <Sheet title="So" date="Oct 31" />
+      <Box x={300} y={190} w={1400} h={560}>
+        <Takeaway points={['Bonds open up as water freezes', 'Same mass, more room']} result="Ice floats because of its gaps" width={1400} size={88}
+          write={at(t, 0.1, 1.5, 3, 0, lin)} box={at(t, 1.5, 2.0)} />
+      </Box>
+    </>
+  );
+}
+
 export default function Reel() {
   return (
     <>
-      <Sheet title="Why does ice float?" date="Oct 30" />
+      <Sequence from={0} duration={18}><Sheet title="Why does ice float?" date="Oct 30" /></Sequence>
       <Sequence from={0} duration={8}><Glass /></Sequence>
-      <Sequence from={8}><Lattice /></Sequence>
+      <Sequence from={8} duration={10}><Lattice /></Sequence>
+      <Sequence from={18} duration={4}><HowMuch /></Sequence>
+      <Sequence from={22} duration={3}><Facing /></Sequence>
+      <Sequence from={25} duration={2.8}><Winter /></Sequence>
+      <Sequence from={27.8}><Remember /></Sequence>
     </>
   );
 }
