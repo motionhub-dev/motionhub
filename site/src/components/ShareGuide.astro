@@ -1,0 +1,29 @@
+---
+// How to share a motion, in three steps: on /you/ itself for someone with no motions, in a dialog for someone with some.
+import Agents from './Agents.astro';
+import {skillInstall, skillShare} from '../lib/catalogue.mjs';
+interface Props { title: string; titleId: string; skip?: boolean }
+const {title, titleId, skip = false} = Astro.props;
+---
+<div class="share-guide">
+  <div class="share-intro">
+    <h2 id={titleId}>{title}</h2>
+    <p>A motion is the look of a film you made: its colours, type and movement, never its story. Your agent writes it from your project, and nothing is published until you say yes and the pull request is merged.</p>
+    <p class="share-need">You need an agent that can run commands, and the GitHub CLI signed in (<code>gh auth login</code>).</p>
+    <a href="/docs/contribute/">Read the full guide <span aria-hidden="true">→</span></a>
+  </div>
+  <ol class="steps">
+    <li>
+      <span class="label">Install the motionhub skill, once per computer{skip && <small>Skip this if you have it already</small>}</span>
+      <div class="code"><pre data-copy tabindex="0"><code>{skillInstall}</code></pre></div>
+    </li>
+    <li>
+      <span class="label share-ask">Open the project of your film, and ask your agent<Agents /></span>
+      <div class="code"><pre data-copy tabindex="0"><code>{skillShare}</code></pre></div>
+    </li>
+    <li>
+      <span class="label">Check the result, then say yes</span>
+      <p>Your agent runs the checks and shows you the result. With your yes, it opens a pull request under your GitHub name. Follow it under In review; it joins Your motions once merged.</p>
+    </li>
+  </ol>
+</div>

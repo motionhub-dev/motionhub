@@ -60,7 +60,7 @@ const {title, description, path, image = '/og-default.png', current, q = '', sea
       <a class="wide" href={REPO}>GitHub</a>
     </nav>
     <div class="actions">
-      <a class="btn share" id="share" href="/auth/login?next=/you/" rel="nofollow" title="Sign in with GitHub to share a motion"><Trail /><span>Share<span class="long"> a motion</span></span></a>
+      <a class="btn share" id="share-link" href="/auth/login?next=%2Fyou%2F%23share" rel="nofollow" title="Sign in with GitHub to share a motion"><Trail /><span>Share<span class="long"> a motion</span></span></a>
       <details class="menu" id="who" hidden>
         <summary aria-label="Your account"><img alt="" width="28" height="28"></summary>
         <div class="menu-body">
@@ -132,8 +132,8 @@ const {title, description, path, image = '/og-default.png', current, q = '', sea
     who.querySelector('b')!.textContent = me.person.name ?? me.person.login;
     who.querySelector('small')!.textContent = `@${me.person.login}`;
     // signed in, sharing starts on their own page, which is where signing in would have sent them
-    const share = document.getElementById('share') as HTMLAnchorElement;
-    share.href = '/you/';
+    const share = document.getElementById('share-link') as HTMLAnchorElement;
+    share.href = '/you/#share';
     share.removeAttribute('rel');
     share.removeAttribute('title');
     who.hidden = false;

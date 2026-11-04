@@ -6,7 +6,8 @@
 import Base from '../layouts/Base.astro';
 import Card from '../components/Card.astro';
 import Dropdown from '../components/Dropdown.astro';
-import {REPO, accounts, builtOnBy, creators, en, rows, skillInstall, skillShare} from '../lib/catalogue.mjs';
+import ShareGuide from '../components/ShareGuide.astro';
+import {REPO, accounts, builtOnBy, creators, en, rows, skillInstall} from '../lib/catalogue.mjs';
 
 /** Who may change a motion, as the page matches them: an account's id where it is recorded, else `login:<login>`. */
 const owners = (r) => r.authors.map((a) => (accounts.has(a.github.toLowerCase()) ? String(accounts.get(a.github.toLowerCase())) : `login:${a.github.toLowerCase()}`)).join(' ');
@@ -39,16 +40,16 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
 
     <div class="tabs" role="tablist" aria-label="Yours">
       <button type="button" role="tab" id="tab-motions" aria-controls="panel-motions" aria-selected="true" data-tab="motions">Your motions <span class="n" data-n="motions"></span></button>
-      <button type="button" role="tab" id="tab-review" aria-controls="panel-review" aria-selected="false" tabindex="-1" data-tab="review" hidden>In review <span class="n" data-n="review"></span></button>
+      <button type="button" role="tab" id="tab-review" aria-controls="panel-review" aria-selected="false" tabindex="-1" data-tab="review">In review <span class="n" data-n="review"></span></button>
       <button type="button" role="tab" id="tab-liked" aria-controls="panel-liked" aria-selected="false" tabindex="-1" data-tab="liked">Liked <span class="n" data-n="liked"></span></button>
     </div>
 
     <section class="you-panel" id="panel-motions" role="tabpanel" aria-labelledby="tab-motions">
       <div class="you-bar" id="you-bar" hidden>
-        <p>Every motion you are an author of, by your GitHub account. A change is a pull request: nothing is edited here.</p>
+        <p>To change one of these, use New version. To add another look, share a new motion.</p>
         <div class="you-acts">
           <Dropdown id="you-sort" label="Sort" options={[{value: 'name', text: 'Name'}, {value: 'downloads', text: 'Most downloaded'}, {value: 'likes', text: 'Most liked'}]} />
-          <button type="button" class="btn accent" data-copy-share><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span>Copy share prompt</span></button>
+          <button type="button" class="btn accent" id="share-new">Share a new motion</button>
         </div>
       </div>
 
@@ -76,19 +77,7 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
       <button type="button" class="btn more-btn" id="you-more" hidden></button>
 
       <section class="first" id="first" aria-labelledby="first-title" hidden>
-        <div>
-          <h2 id="first-title">Share the look of a film you made</h2>
-          <p>A motion is how a film looks and moves, not the film. Your agent takes the look from your project, checks it, and opens the pull request under your GitHub name.</p>
-          <div class="first-acts">
-            <button type="button" class="btn accent" data-copy-share><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span>Copy share prompt</span></button>
-            <a class="btn" href="/docs/contribute/">Read: Share a motion</a>
-          </div>
-        </div>
-        <ol class="steps">
-          <li>Once, for every agent on your computer: <code>{skillInstall}</code></li>
-          <li>In the project, paste the prompt. Your agent writes the motion and runs the checks.</li>
-          <li>Say yes to the pull request. It shows here under In review, and as yours once it is merged.</li>
-        </ol>
+        <ShareGuide title="Share your first motion" titleId="first-title" />
       </section>
     </section>
 
@@ -109,7 +98,10 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
     </section>
   </div>
 
-  <pre id="share-prompt" hidden>{skillShare}</pre>
+  <dialog class="dlg share-dlg" id="sg" aria-labelledby="sg-title">
+    <form method="dialog" class="dlg-x"><button class="btn icon" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></form>
+    <ShareGuide title="Share a new motion" titleId="sg-title" skip />
+  </dialog>
 
   <dialog class="dlg" id="nv" aria-labelledby="nv-title">
     <form method="dialog" class="dlg-x"><button class="btn icon" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></form>
@@ -191,7 +183,6 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
     if (mine.length) {
       $('you-bar').hidden = false;
       $('you-tally').hidden = false;
-      $('tab-review').hidden = false;
       $('you-tally').querySelector('[data-t="motions"]')!.textContent = String(mine.length);
       const built = new Set(mine.flatMap((li) => builtBy(li).map((b) => b.id)).filter((id) => !ids.has(id)));
       $('you-tally').querySelector('[data-t="built"]')!.textContent = String(built.size);
@@ -244,7 +235,6 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
       if (!ok || !body.pulls) { $('prs-down').hidden = false; $<HTMLAnchorElement>('prs-all').href = body.all ?? `${repo}/pulls`; return; }
       const pulls = body.pulls as Pull[];
       count('review', pulls.length);
-      if (pulls.length) $('tab-review').hidden = false;
       $('prs-empty').hidden = pulls.length > 0;
       const list = $('prs');
       for (const pr of pulls) {
@@ -299,14 +289,13 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
     window.addEventListener('hashchange', fromHash);
     fromHash();
 
-    // the share prompt, copied as plain text
-    for (const b of document.querySelectorAll<HTMLButtonElement>('[data-copy-share]')) {
-      const label = b.querySelector('span')!;
-      b.addEventListener('click', async () => {
-        try { await navigator.clipboard.writeText($('share-prompt').textContent!.trim()); label.textContent = 'Copied: paste it to your agent'; } catch { label.textContent = 'Select and copy'; }
-        setTimeout(() => (label.textContent = 'Copy share prompt'), 2000);
-      });
-    }
+    // sharing another motion: the guide in a dialog, opened by the button or by arriving at /you/#share
+    const sg = $<HTMLDialogElement>('sg');
+    $('share-new').addEventListener('click', () => sg.showModal());
+    const shareFromHash = () => { if (location.hash === '#share' && mine.length && !sg.open) sg.showModal(); };
+    window.addEventListener('hashchange', shareFromHash);
+    sg.addEventListener('close', () => { if (location.hash === '#share') history.replaceState(null, '', '/you/'); });
+    shareFromHash();
 
     // a new version: the prompt for an agent, or the commands
     const nv = $<HTMLDialogElement>('nv');
