@@ -5,6 +5,7 @@
 //   node tools/build.mjs [out]      default out: dist/
 //
 // It writes:
+//   api/accounts.json                each recorded login and its GitHub account id (accounts/), for the avatars
 //   api/motions.json                 the index, one row per motion, ordered by id (`slug` in a row is the motion's id:
 //                                    `<slug>` or `@<scope>/<slug>`, so clients that only know motion/0.1 never confuse two)
 //   m/<id>/<file>                    the newest version's motion.json, MOTION*.md, tokens.json, CREDITS.md, poster.jpg
@@ -115,6 +116,8 @@ export function build(out, root = ROOT) {
   }
   mkdirSync(join(out, 'api'), {recursive: true});
   writeFileSync(join(out, 'api/motions.json'), JSON.stringify({spec: INDEX_SPEC, motions: rows}, null, 2) + '\n');
+  // the recorded accounts, login → GitHub id: whose avatars the site serves (site/avatars.mjs)
+  writeFileSync(join(out, 'api/accounts.json'), JSON.stringify(Object.fromEntries([...readAccounts(join(ROOT, 'accounts'))].sort()), null, 2) + '\n');
   const skill = readFileSync(join(root, 'skills/motionhub/SKILL.md'), 'utf8');
   writeFileSync(join(out, 'llms.txt'), skill.replace(/^---\n[\s\S]*?\n---\n+/, '').trimEnd() + '\n' + llmsIndex(ROOT));
   const docs = writeDocs(ROOT, out);

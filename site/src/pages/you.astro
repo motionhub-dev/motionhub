@@ -174,7 +174,7 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
     const p = me.person;
     root.hidden = false;
     const avatar = $<HTMLImageElement>('you-avatar');
-    if (p.avatar) avatar.src = `${p.avatar}${p.avatar.includes('?') ? '&' : '?'}s=160`;
+    avatar.src = `/avatar/${p.id}?s=160`;
     $('you-name').textContent = p.name ?? p.login;
     $('you-login').textContent = `@${p.login}`;
 

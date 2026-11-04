@@ -7,6 +7,7 @@
 // cron adds each finished day to stats/totals.json in the bucket; the total is that plus what came since.
 
 import {likeCounts, people} from './people.mjs';
+import {avatar} from './avatars.mjs';
 
 const PACKAGE = /^\/m\/((?:@[a-z0-9-]+\/)?[a-z0-9-]+)\/([0-9A-Za-z.+-]+)\.tgz$/;
 const PAGE = /^\/m\/((?:@[a-z0-9-]+\/)?[a-z0-9-]+)\/$/;
@@ -119,6 +120,8 @@ export default {
     let pathname = url.pathname;
     try { pathname = decodeURIComponent(pathname); } catch {}
     if (pathname === '/api/stats.json') return statsResponse(request, env, ctx);
+    const face = /^\/avatar\/([^/]+)$/.exec(pathname);
+    if (face && (request.method === 'GET' || request.method === 'HEAD')) return avatar(request, env, ctx, face[1]);
     const own = await people(request, env, ctx);
     if (own) return own;
     const pkg = PACKAGE.exec(pathname);

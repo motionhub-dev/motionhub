@@ -129,8 +129,8 @@ const creatorOf = new Map(creators.flatMap((c) => [...c.logins].map((l) => [l, c
 export const creator = (login) => creatorOf.get(login.toLowerCase());
 /** A creator's page, by the creator or by any login they have published under. */
 export const creatorPath = (c) => `/creators/${typeof c === 'string' ? (creatorOf.get(c.toLowerCase())?.key ?? c.toLowerCase()) : c.key}/`;
-/** A creator's picture: by account id, which a rename does not change, else by login. */
-export const avatar = (c, size = 64) => (typeof c?.id === 'number' ? `https://avatars.githubusercontent.com/u/${c.id}?s=${size}&v=4` : `https://github.com/${c.login}.png?size=${size}`);
+/** A creator's picture: by account id, which a rename does not change, from motionhub itself (site/avatars.mjs); else GitHub's, by login. */
+export const avatar = (c, size = 64) => (typeof c?.id === 'number' ? `/avatar/${c.id}?s=${size}` : `https://github.com/${c.login}.png?size=${size}`);
 
 /** A poster's smaller copies (site/thumbs.mjs) as a srcset, the poster itself the largest. */
 export const posterSet = (poster) => `${poster.replace(/\.jpg$/, '-480.webp')} 480w, ${poster.replace(/\.jpg$/, '-960.webp')} 960w, ${poster} 1920w`;
