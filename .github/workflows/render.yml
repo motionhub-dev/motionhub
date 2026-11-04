@@ -1,5 +1,6 @@
-# After each deploy and by hand: render the video of every motion whose version has none yet (site/player/missing.mjs),
-# one job per motion, and put it in R2 at m/<id>/<version>.mp4, where the Worker serves it. A version's video is made
+# After each deploy of main and by hand on main: render the video of every motion whose version has none yet (site/player/missing.mjs),
+# one job per motion, and put it in R2 at m/<id>/<version>.mp4, where the Worker serves it. Only a version whose package
+# is published is rendered. A version's video is made
 # once: one already published is never replaced, and a change to the runtime or the player does not render again. A
 # motion that fails to render gets no video, and its page keeps playing it live; the next run tries it again.
 name: render
@@ -8,6 +9,7 @@ on:
   workflow_run:
     workflows: [deploy]
     types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -19,8 +21,10 @@ concurrency:
 
 jobs:
   plan:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    # only main's videos: a version is rendered once its package is published, which only main's deploy does
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       ids: ${{ steps.missing.outputs.ids }}
     steps:
@@ -48,9 +52,6 @@ jobs:
       matrix:
         id: ${{ fromJSON(needs.plan.outputs.ids) }}
     env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      WRANGLER: npx --yes wrangler@4.154.0
       ID: ${{ matrix.id }}
     steps:
       - uses: actions/checkout@v5
@@ -73,11 +74,17 @@ jobs:
       - name: Render
         working-directory: site
         run: node player/render.mjs "$ID" --out "$RUNNER_TEMP/render"
+      # the token reaches this step alone, not the installs and the render before it
       - name: Publish
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           version=$(node -p "require('./motions/$ID/motion.json').version")
           key="m/$ID/$version.mp4"
-          # made once: if this version's video is in R2 already (another run, or a site not yet serving it), it stays
-          if $WRANGLER r2 object get "motionhub/$key" --remote --file "$RUNNER_TEMP/published.mp4" >/dev/null 2>&1; then echo "kept $key"; exit 0; fi
-          $WRANGLER r2 object put "motionhub/$key" --remote --file "$RUNNER_TEMP/render/$key" --content-type video/mp4 >/dev/null
+          # made once: a video the site already serves stays; one it cannot say anything about stops here
+          set +e; node site/player/missing.mjs --has "https://motionhub.dev/$key"; has=$?; set -e
+          if [ $has = 0 ]; then echo "kept $key"; exit 0; fi
+          if [ $has != 1 ]; then exit 1; fi
+          npx --yes wrangler@4.154.0 r2 object put "motionhub/$key" --remote --file "$RUNNER_TEMP/render/$key" --content-type video/mp4 >/dev/null
           echo "published $key ($(stat -c %s "$RUNNER_TEMP/render/$key") bytes)"
