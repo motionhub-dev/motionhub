@@ -90,3 +90,56 @@ test('stats: the totals plus what came since, and the last 30 days', async () =>
   });
   for (const q of e.queries) assert.match(q.query, /FROM events\.analyticsEngine\.motionhub_events WHERE timestamp >= \$from/);
 });
+
+test('avatars: only the accounts motionhub shows, from GitHub once a day, the last copy when GitHub fails', async () => {
+  const {size} = await import('../site/avatars.mjs');
+  assert.deepEqual([1, 32, 33, 56, 160, 161, 999, 'x'].map(size), [32, 32, 56, 56, 160, 192, 320, 32]);
+  // the edge cache, as Cloudflare's Cache API: a copy is kept for its max-age
+  let now = 0;
+  const kept = new Map();
+  globalThis.caches = {default: {
+    match: async (r) => { const k = kept.get(r.url); return k && k.until > now ? k.response.clone() : undefined; },
+    put: async (r, res) => { kept.set(r.url, {until: now + Number(/max-age=(\d+)/.exec(res.headers.get('cache-control'))[1]), response: res.clone()}); },
+  }};
+  const waits = [];
+  const ctx = {waitUntil: (p) => waits.push(p)};
+  const signedIn = new Set([42]);
+  const e = {
+    ASSETS: {fetch: async (r) => (new URL(r.url).pathname === '/api/accounts.json' ? Response.json({iamsuosi: 264293696}) : new Response('', {status: 404}))},
+    DB: {prepare: () => ({bind: (id) => ({first: async () => (signedIn.has(id) ? {ok: 1} : null)})})},
+  };
+  const asked = [];
+  let github = 'up';
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    asked.push(String(url));
+    if (github === 'down') throw new Error('unreachable');
+    return new Response(new Uint8Array([0xff, 0xd8, github === 'new' ? 2 : 1]), {headers: {'content-type': 'image/jpeg', 'cache-control': 'max-age=300'}});
+  };
+  const get = async (path) => { const r = await worker.fetch(new Request(`https://motionhub.dev${path}`), e, ctx); await Promise.all(waits.splice(0)); return r; };
+  try {
+    assert.equal((await get('/avatar/7?s=64')).status, 404, 'an account motionhub does not show');
+    assert.equal((await get('/avatar/abc')).status, 404);
+    assert.equal(asked.length, 0, 'and GitHub is not asked for it');
+
+    let r = await get('/avatar/264293696?s=150');
+    assert.equal(r.status, 200);
+    assert.equal(r.headers.get('content-type'), 'image/jpeg');
+    assert.match(r.headers.get('cache-control'), /^public, max-age=86400, stale-while-revalidate=604800$/);
+    assert.deepEqual(asked, ['https://avatars.githubusercontent.com/u/264293696?s=160&v=4'], 'at a fixed size');
+    await get('/avatar/264293696?s=160');
+    assert.equal(asked.length, 1, 'then served from the edge');
+    assert.equal((await get('/avatar/42?s=56')).status, 200, 'someone who signed in');
+
+    now = 86400 + 1; github = 'down';
+    r = await get('/avatar/264293696?s=160');
+    assert.deepEqual([...new Uint8Array(await r.arrayBuffer())], [0xff, 0xd8, 1], 'GitHub down: the last copy');
+    assert.equal(r.headers.get('cache-control'), 'public, max-age=300');
+    now = 31 * 86400;
+    r = await get('/avatar/264293696?s=160');
+    assert.equal(r.headers.get('content-type'), 'image/svg+xml', 'no copy left: an empty picture, not a broken one');
+    github = 'new';
+    r = await get('/avatar/264293696?s=160');
+    assert.deepEqual([...new Uint8Array(await r.arrayBuffer())], [0xff, 0xd8, 2], 'back up: the new avatar');
+  } finally { globalThis.fetch = realFetch; globalThis.caches = undefined; }
+});

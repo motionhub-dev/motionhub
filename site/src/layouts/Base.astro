@@ -110,7 +110,7 @@ const {title, description, path, image = '/og-default.png', current, q = ''} = A
   mePromise.then((me) => {
     if (!me.person) return;
     const who = document.getElementById('who') as HTMLDetailsElement;
-    who.querySelector('img')!.src = me.person.avatar ? `${me.person.avatar}${me.person.avatar.includes('?') ? '&' : '?'}s=56` : '';
+    who.querySelector('img')!.src = `/avatar/${me.person.id}?s=56`;
     who.querySelector('b')!.textContent = me.person.name ?? me.person.login;
     who.querySelector('small')!.textContent = `@${me.person.login}`;
     signin.hidden = true;
