@@ -114,6 +114,7 @@ test('avatars: only the accounts motionhub shows, from GitHub once a day, the la
   globalThis.fetch = async (url) => {
     asked.push(String(url));
     if (github === 'down') throw new Error('unreachable');
+    if (github === 'svg') return new Response('<svg onload="alert(1)"/>', {headers: {'content-type': 'image/svg+xml'}});
     return new Response(new Uint8Array([0xff, 0xd8, github === 'new' ? 2 : 1]), {headers: {'content-type': 'image/jpeg', 'cache-control': 'max-age=300'}});
   };
   const get = async (path) => { const r = await worker.fetch(new Request(`https://motionhub.dev${path}`), e, ctx); await Promise.all(waits.splice(0)); return r; };
@@ -135,9 +136,19 @@ test('avatars: only the accounts motionhub shows, from GitHub once a day, the la
     r = await get('/avatar/264293696?s=160');
     assert.deepEqual([...new Uint8Array(await r.arrayBuffer())], [0xff, 0xd8, 1], 'GitHub down: the last copy');
     assert.equal(r.headers.get('cache-control'), 'public, max-age=300');
+    const tries = asked.length;
+    await get('/avatar/264293696?s=64');
+    assert.equal(asked.length, tries, 'a failure is remembered for a minute: GitHub is not waited on again');
     now = 31 * 86400;
     r = await get('/avatar/264293696?s=160');
     assert.equal(r.headers.get('content-type'), 'image/svg+xml', 'no copy left: an empty picture, not a broken one');
+    assert.equal(await r.text(), '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"></svg>');
+    now += 61; github = 'svg';
+    r = await get('/avatar/264293696?s=96');
+    assert.equal(await r.text(), '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"></svg>', 'an SVG from GitHub is never served from this origin');
+    assert.equal((await worker.fetch(new Request('https://motionhub.dev/avatar/264293696?s=96', {method: 'HEAD'}), e, ctx)).status, 200, 'HEAD too');
+    signedIn.delete(42);
+    assert.equal((await get('/avatar/42?s=128')).status, 404, 'someone forgotten (DELETE /api/me) is no longer served');
     github = 'new';
     r = await get('/avatar/264293696?s=160');
     assert.deepEqual([...new Uint8Array(await r.arrayBuffer())], [0xff, 0xd8, 2], 'back up: the new avatar');
