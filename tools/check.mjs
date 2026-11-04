@@ -4,6 +4,7 @@
 //
 //   node tools/check.mjs [dir or MOTION.md ...] [--format-only] [--author <github-login>] [--author-id <github-id>] [--was <motion.json>] [--accounts <dir>]
 //   node tools/check.mjs --accounts-was <dir> [--accounts <dir>]
+//   node tools/check.mjs --removed --was <motion.json> --author <github-login> --author-id <github-id> [--accounts <dir>]
 //   node tools/check.mjs --signoff <commits.json>
 //   npx @motionhub/cli check ...                  the same, from the published package (bin/motionhub.mjs)
 //
@@ -20,9 +21,10 @@
 // accounts/ directory before the pull request: a record is only ever added, never changed or removed, and an added one
 // must name the id GitHub gives that login now. `--accounts` names the accounts to judge by when they are not ./accounts/:
 // main's checker reading a pull request's files (.github/workflows/ownership.yml). `--signoff` names a pull request's
-// commits as GitHub lists them, each of which must be signed off. Exit status 1 when any issue is found.
+// commits as GitHub lists them, each of which must be signed off. `--removed` judges a published motion a pull request
+// takes out or moves away: only one of its authors may. Exit status 1 when any issue is found.
 
-import {readFileSync, readdirSync, statSync, existsSync} from 'node:fs';
+import {readFileSync, readdirSync, statSync, lstatSync, existsSync} from 'node:fs';
 import {join, basename, dirname, resolve, relative, extname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
@@ -79,6 +81,10 @@ const UNSAFE = [
 export function checkMotion(dir, {hub = true, author, authorId, was, accounts} = {}) {
   const issues = [];
   const add = (code, at, message) => issues.push({code, at, message});
+  // a link is refused before anything is read: it could name a file outside the motion (a runner's environment, a
+  // device), and a motion is files, never pointers to them
+  const linked = links(dir);
+  if (linked.length) { for (const l of linked) add('format.symlink', l, 'a motion holds files, never links: replace it with the file it points to'); return issues; }
   if (existsSync(dir) && statSync(dir).isFile() && basename(dir) === 'MOTION.md') return checkOneFile(dir, hub, add), issues;
   if (!existsSync(dir) || !statSync(dir).isDirectory()) return add('format.dir', '.', 'not a directory'), issues;
   if (!existsSync(join(dir, 'motion.json')) && existsSync(join(dir, 'MOTION.md')) && oneFileSpec(join(dir, 'MOTION.md'))) return checkOneFile(join(dir, 'MOTION.md'), hub, add), issues;
@@ -442,6 +448,18 @@ function checkPoster(path, add) {
   if (size.width < 960 || size.width > 3840) add('poster.size', 'poster.jpg', `${size.width} pixels wide: between 960 and 3840`);
 }
 
+/** The symbolic links at or under `path`, relative to it ('.' for the path itself), without following any. */
+export function links(path, prefix = '') {
+  let stat;
+  try { stat = lstatSync(path); } catch { return []; }
+  if (stat.isSymbolicLink()) return [prefix || '.'];
+  if (!stat.isDirectory()) return [];
+  return readdirSync(path, {withFileTypes: true}).flatMap((e) => {
+    const rel = prefix ? `${prefix}/${e.name}` : e.name;
+    return e.isSymbolicLink() ? [rel] : e.isDirectory() ? links(join(path, e.name), rel) : [];
+  });
+}
+
 function walk(dir, prefix = '') {
   const out = [];
   for (const e of readdirSync(dir, {withFileTypes: true})) {
@@ -479,6 +497,17 @@ function isAccount(login, {author, authorId, accounts}) {
   const id = accounts?.get(login.toLowerCase());
   if (id !== undefined && authorId !== undefined) return id === authorId;
   return login.toLowerCase() === author.toLowerCase();
+}
+
+/** A published motion taken out of the catalogue (or moved to another id): only one of its authors does it. */
+export function checkRemoval(was, {author, authorId, accounts} = {}) {
+  const issues = [];
+  const who = {author, authorId: authorId === undefined || authorId === null || authorId === '' ? undefined : Number(authorId), accounts};
+  const authors = Array.isArray(was?.authors) ? was.authors : [];
+  if (!author || !authors.some((a) => isAccount(a?.github, who))) {
+    issues.push({code: 'hub.owner', at: 'motion.json', message: `this motion is published by ${authors.map((a) => String(a?.github ?? '').toLowerCase()).join(', ') || 'nobody'}; only one of them may take it out or move it`});
+  }
+  return issues;
 }
 
 /** A change to a published motion: only one of its authors makes it, and it is a new, higher version. */
@@ -617,9 +646,9 @@ function checkHub(dir, manifest, {author, authorId, accounts, was}, add) {
 export function readAccounts(dir) {
   const accounts = new Map();
   if (!dir || !existsSync(dir)) return accounts;
-  for (const name of readdirSync(dir)) {
-    const login = /^(.+)\.json$/.exec(name)?.[1];
-    if (!login) continue;
+  for (const entry of readdirSync(dir, {withFileTypes: true})) {
+    const name = entry.name, login = /^(.+)\.json$/.exec(name)?.[1];
+    if (!login || !entry.isFile()) continue;
     try {
       const record = JSON.parse(readFileSync(join(dir, name), 'utf8'));
       if (Number.isSafeInteger(record?.id) && record.id > 0) accounts.set(login.toLowerCase(), record.id);
@@ -645,7 +674,9 @@ export async function githubId(login, {token = process.env.GITHUB_TOKEN, fetch: 
 export async function checkAccounts(dir, {was, lookup} = {}) {
   const issues = [];
   const add = (code, at, message) => issues.push({code, at, message});
-  const files = (d) => (d && existsSync(d) ? readdirSync(d).filter((n) => !n.startsWith('.')).sort() : []);
+  // a link is reported and never read: it could name a file outside the directory
+  const files = (d) => (d && existsSync(d) ? readdirSync(d, {withFileTypes: true}).filter((e) => !e.name.startsWith('.') && !e.isSymbolicLink()).map((e) => e.name).sort() : []);
+  for (const name of links(dir ?? '')) if (name !== '.') add('hub.accounts', name, 'a record is a file, never a link');
   const read = (d, name) => { try { return JSON.parse(readFileSync(join(d, name), 'utf8')); } catch { return undefined; } };
   for (const name of files(dir)) {
     const login = /^(.+)\.json$/.exec(name)?.[1];
@@ -676,7 +707,8 @@ export async function checkAccounts(dir, {was, lookup} = {}) {
  * sha. A merge commit carries none of its own and is left out.
  */
 export function unsigned(commits) {
-  return (Array.isArray(commits) ? commits : []).filter((c) => (c?.parents?.length ?? 1) <= 1 && !/^Signed-off-by: \S/m.test(c?.commit?.message ?? '')).map((c) => c?.sha);
+  const body = (c) => String(c?.commit?.message ?? '').split('\n').slice(1).join('\n');
+  return (Array.isArray(commits) ? commits : []).filter((c) => (c?.parents?.length ?? 1) <= 1 && !/^Signed-off-by: \S/m.test(body(c))).map((c) => c?.sha);
 }
 
 export async function main(args) {
@@ -699,6 +731,13 @@ export async function main(args) {
     return issues.length ? 1 : 0;
   }
   const was = wasPath ? JSON.parse(readFileSync(wasPath, 'utf8')) : undefined;
+  if (args.includes('--removed')) {
+    const accounts = accountsDir ? readAccounts(accountsDir) : undefined;
+    const issues = checkRemoval(was, {author, authorId, accounts});
+    for (const i of issues) console.log(`${wasPath}  ${i.code}  ${i.message}`);
+    console.log(`taken out, ${issues.length} issue(s)`);
+    return issues.length ? 1 : 0;
+  }
   let dirs = args.filter((a, i) => !a.startsWith('--') && !['--author', '--author-id', '--was', '--accounts', '--accounts-was', '--signoff'].includes(args[i - 1]));
   let count = 0;
   if (!dirs.length) {
