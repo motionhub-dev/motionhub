@@ -10,14 +10,14 @@ const {c} = Astro.props;
 const n = c.motions.length;
 const tags = [...c.motions.flatMap((r) => r.tags).reduce((m, t) => m.set(t, (m.get(t) ?? 0) + 1), new Map())].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([t]) => t);
 ---
-<Base title={`${c.name} (@${c.login}): motionhub`} description={`${n} ${n === 1 ? 'motion' : 'motions'} by ${c.name} on motionhub: ${c.motions.slice(0, 3).map((r) => en(r.name)).join(', ')}.`} path={creatorPath(c.login)} image={c.motions[0]?.poster} current="creators">
+<Base title={`${c.name} (@${c.login}): motionhub`} description={`${n} ${n === 1 ? 'motion' : 'motions'} by ${c.name} on motionhub: ${c.motions.slice(0, 3).map((r) => en(r.name)).join(', ')}.`} path={creatorPath(c)} image={c.motions[0]?.poster} current="creators">
   <p class="crumb"><a href="/creators/">Creators</a> / @{c.login}</p>
 
   <section class="profile">
-    <img src={avatar(c.login, 160)} alt="" width="80" height="80">
+    <img src={avatar(c, 160)} alt="" width="80" height="80">
     <div>
       <h1>{c.name}</h1>
-      <p class="handle"><a href={`https://github.com/${c.login}`}>@{c.login} on GitHub</a></p>
+      <p class="handle"><a href={`https://github.com/${c.login}`}>@{c.login} on GitHub</a>{c.formerly.length > 0 && <>; also published as {c.formerly.map((l, i) => <>{i > 0 && ', '}@{l}</>)}</>}</p>
       {tags.length > 0 && <p class="tags">Makes {tags.map((t, i) => <>{i > 0 && ', '}<a href={`/?tag=${encodeURIComponent(t)}`}>{t}</a></>)}</p>}
     </div>
     <dl class="tally" data-ids={c.motions.map((r) => r.slug).join(' ')}>

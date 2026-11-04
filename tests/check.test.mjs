@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {checkMotion, compareVersions, spdx, jpegSize} from '../tools/check.mjs';
+import {checkMotion, checkAccounts, readAccounts, compareVersions, spdx, jpegSize} from '../tools/check.mjs';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
@@ -227,6 +227,57 @@ test('a change to a published motion comes from one of its authors, with a highe
   assert.ok(update('1.2.0', 'tester').includes('hub.version'));
   assert.ok(update('1.1.9', 'tester').includes('hub.version'));
   assert.deepEqual(codes(motion({manifest: {...MANIFEST, version: '1.0.0'}}), {hub: false, was}), [], 'the format alone knows nothing of what is published');
+});
+
+test('who owns a scope and a motion is decided by the GitHub account\'s id, not its login', () => {
+  // tester (id 7) published @tester/test-motion, then renamed the account to tess; someone else (id 99) took "tester"
+  const accounts = new Map([['tester', 7], ['tess', 7]]);
+  const was = {...MANIFEST, version: '1.0.0'};
+  const next = {...MANIFEST, version: '1.0.1'};
+  assert.deepEqual(codes(motion({manifest: next}), {author: 'tess', authorId: 7, was, accounts}), [], 'renamed, the author still changes their motion');
+  assert.deepEqual(codes(motion({manifest: {...next, authors: [{name: 'Tess', github: 'tess'}]}}), {author: 'tess', authorId: 7, was, accounts}), [], 'and may credit it to the new login');
+  assert.deepEqual(codes(motion({manifest: {...MANIFEST, slug: 'second', dir: undefined}, dir: 'second'}), {author: 'tess', authorId: 7, accounts}), [], 'and publish a new one under the old scope');
+  const taken = codes(motion({manifest: next}), {author: 'tester', authorId: 99, was, accounts});
+  assert.ok(taken.includes('hub.owner'), 'whoever takes the old login does not get the motion');
+  assert.ok(taken.includes('hub.author'));
+  assert.ok(codes(motion({manifest: {...MANIFEST, slug: 'second'}, dir: 'second'}), {author: 'tester', authorId: 99, accounts}).includes('hub.scope'), 'nor the scope');
+  assert.deepEqual(codes(motion({manifest: next}), {author: 'tester', was}), [], 'with no accounts to look up (a motion checked outside this repository) the login decides');
+});
+
+test('in this repository every login a motion names is recorded', () => {
+  const unrecorded = checkMotion(motion(), {author: 'tester', authorId: 7, accounts: new Map()});
+  assert.deepEqual(unrecorded.map((i) => i.code), ['hub.account']);
+  assert.match(unrecorded[0].message, /accounts\/tester\.json with \{"login": "tester", "id": 7\}/, 'it says what to add, with the opener\'s own id');
+  const coauthor = {...MANIFEST, authors: [...MANIFEST.authors, {name: 'Bo', github: 'Bo'}]};
+  assert.deepEqual(codes(motion({manifest: coauthor}), {author: 'tester', authorId: 7, accounts: new Map([['tester', 7]])}), ['hub.account'], 'a co-author too, in lowercase');
+  assert.deepEqual(codes(motion({manifest: coauthor}), {author: 'tester', authorId: 7, accounts: new Map([['tester', 7], ['bo', 8]])}), []);
+});
+
+test('an account is recorded once and never changes, and an added one is what GitHub says', async () => {
+  const dir = (records) => {
+    const d = mkdtempSync(join(tmpdir(), 'accounts-'));
+    for (const [name, content] of Object.entries(records)) writeFileSync(join(d, name), typeof content === 'string' ? content : JSON.stringify(content));
+    return d;
+  };
+  const before = dir({'tester.json': {login: 'tester', id: 7}});
+  const lookup = async (login) => ({tester: 99, tess: 7, ana: 12})[login];
+  const at = async (records) => (await checkAccounts(dir(records), {was: before, lookup})).map((i) => `${i.at} ${i.code}`);
+  assert.deepEqual(await at({'tester.json': {login: 'tester', id: 7}, 'tess.json': {login: 'tess', id: 7}}), [], 'a rename is a new record with the same id');
+  assert.deepEqual(await at({'tester.json': {login: 'tester', id: 99}}), ['tester.json hub.accounts'], 'a record is never changed, even to what GitHub says now');
+  assert.deepEqual(await at({}), ['tester.json hub.accounts'], 'nor removed');
+  assert.deepEqual(await at({'tester.json': {login: 'tester', id: 7}, 'ana.json': {login: 'ana', id: 13}}), ['ana.json hub.accounts'], 'an added record names the id GitHub gives that login');
+  assert.deepEqual(await at({'tester.json': {login: 'tester', id: 7}, 'nobody.json': {login: 'nobody', id: 5}}), ['nobody.json hub.accounts'], 'one GitHub cannot confirm is not taken');
+  for (const bad of [{'Ana.json': {login: 'Ana', id: 12}}, {'ana.json': {login: 'ana', id: '12'}}, {'ana.json': {login: 'bo', id: 12}}, {'ana.json': {login: 'ana', id: 12, name: 'Ana'}}, {'ana.json': '{'}, {'ana.txt': 'x'}]) {
+    assert.ok((await checkAccounts(dir(bad))).some((i) => i.code === 'hub.accounts'), JSON.stringify(bad));
+  }
+  assert.deepEqual([...readAccounts(dir({'tess.json': {login: 'tess', id: 7}, 'ana.json': '{'}))], [['tess', 7]]);
+  assert.deepEqual(await checkAccounts(join(tmpdir(), 'no-such-accounts')), []);
+});
+
+test('this repository records every account its motions name', async () => {
+  const repo = fileURLToPath(new URL('..', import.meta.url));
+  assert.deepEqual(await checkAccounts(join(repo, 'accounts')), []);
+  assert.equal(readAccounts(join(repo, 'accounts')).get('iamsuosi'), 264293696);
 });
 
 test('semantic versions compare by precedence', () => {

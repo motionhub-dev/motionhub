@@ -12,7 +12,7 @@
 //   llms.txt                         the generic skill, for agents (skills/motionhub/SKILL.md without its front matter),
 //                                    ending with the index of the docs' Markdown twins
 //   docs/<page>.md, llms-full.txt    each docs page as Markdown, and all of them in one file (tools/docs.mjs)
-//   _headers, robots.txt, sitemap.xml  beside the pages (tools/site.mjs); the pages themselves, index.html,
+//   _headers, _redirects, robots.txt, sitemap.xml  beside the pages (tools/site.mjs); the pages themselves, index.html,
 //                                    m/<id>/index.html and 404.html, are site/'s Astro build over these files
 //   favicon.svg, favicon-32.png, apple-touch-icon.png, icon-192.png, icon-512.png, site.webmanifest, og-default.png
 //                                    the brand's icons and default share card, copied from brand/
@@ -26,7 +26,7 @@ import {copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, 
 import {dirname, join, relative, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {gzipSync} from 'node:zlib';
-import {checkMotion, listMotions, motionId} from './check.mjs';
+import {checkMotion, listMotions, motionId, readAccounts} from './check.mjs';
 
 /** The index's own format. A row adds members over time and says its motion's `spec`; readers of motion/0.1 still read it. */
 export const INDEX_SPEC = 'motion/0.1';
@@ -118,7 +118,7 @@ export function build(out, root = ROOT) {
   const skill = readFileSync(join(root, 'skills/motionhub/SKILL.md'), 'utf8');
   writeFileSync(join(out, 'llms.txt'), skill.replace(/^---\n[\s\S]*?\n---\n+/, '').trimEnd() + '\n' + llmsIndex(ROOT));
   const docs = writeDocs(ROOT, out);
-  writeSiteFiles(out, rows, docs);
+  writeSiteFiles(out, rows, docs, readAccounts(join(ROOT, 'accounts')));
   // the brand's favicons, web manifest and default share card, from brand/ (BRAND.md)
   for (const [dir, names] of [['favicon', ['favicon.svg', 'favicon-32.png', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'site.webmanifest']], ['social', ['og-default.png']]]) {
     for (const name of names) copyFileSync(join(ROOT, 'brand', dir, name), join(out, name));

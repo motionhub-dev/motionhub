@@ -1,6 +1,6 @@
 // What motionhub.dev's pages share with tools/build.mjs, with no dependencies: the Markdown a motion's documents use, its
-// colours and faces as the pages show them, and the files written beside the pages (_headers, robots.txt and
-// sitemap.xml). The pages themselves are the Astro project in site/.
+// colours and faces as the pages show them, and the files written beside the pages (_headers, _redirects,
+// robots.txt and sitemap.xml). The pages themselves are the Astro project in site/.
 
 import {writeFileSync} from 'node:fs';
 import {join} from 'node:path';
@@ -108,11 +108,39 @@ const HEADERS = `/api/*
   Referrer-Policy: strict-origin-when-cross-origin
 `;
 
+/**
+ * The creators' page addresses: one creator per GitHub account (`accounts`, login in lowercase → id; a login not
+ * recorded is its own account), with every login it has published under. `key` is its page's address: a scope it
+ * publishes under, the first A to Z, else its first login A to Z. Every other login gets a page that sends a visitor
+ * to the key's, so an address once given keeps working even when a new scope moves the key.
+ */
+export function creatorKeys(rows, accounts = new Map()) {
+  const who = (login) => accounts.get(login) ?? `login:${login}`;
+  const groups = new Map();
+  for (const r of rows) for (const a of r.authors) {
+    const login = a.github.toLowerCase();
+    const g = groups.get(who(login)) ?? {logins: new Set(), scopes: new Set()};
+    g.logins.add(login);
+    groups.set(who(login), g);
+  }
+  for (const r of rows) if (r.scope && groups.has(who(r.scope.toLowerCase()))) groups.get(who(r.scope.toLowerCase())).scopes.add(r.scope.toLowerCase());
+  const keys = new Map();
+  for (const g of groups.values()) {
+    const key = [...(g.scopes.size ? g.scopes : g.logins)].sort()[0];
+    for (const login of g.logins) keys.set(login, key);
+  }
+  return keys;
+}
+
 /** The files beside the pages: the headers file, robots.txt and the sitemap of the gallery and every motion's page. */
-export function writeSiteFiles(out, rows, docs = []) {
+export function writeSiteFiles(out, rows, docs = [], accounts = new Map()) {
   writeFileSync(join(out, '_headers'), HEADERS);
   writeFileSync(join(out, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml\n`);
-  const creators = [...new Set(rows.flatMap((r) => r.authors.map((a) => a.github.toLowerCase())))].sort();
+  // one address per creator; every other login a creator published under is sent there for good (_redirects)
+  const keys = creatorKeys(rows, accounts);
+  const creators = [...new Set(keys.values())].sort();
+  const moved = [...keys].filter(([login, key]) => login !== key).sort();
+  writeFileSync(join(out, '_redirects'), moved.map(([login, key]) => `/creators/${login}/ /creators/${key}/ 301\n/creators/${login} /creators/${key}/ 301\n`).join(''));
   const urls = ['/', ...docs, '/creators/', ...creators.map((c) => `/creators/${c}/`), ...rows.map((r) => `/m/${r.slug}/`)];
   writeFileSync(join(out, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((u) => `  <url><loc>${SITE}${u}</loc></url>`).join('\n')}\n</urlset>\n`);
 }

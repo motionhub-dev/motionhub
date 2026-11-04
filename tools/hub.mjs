@@ -129,6 +129,12 @@ export function githubAccount() {
   return r.error || r.status !== 0 ? undefined : JSON.parse(r.stdout);
 }
 
+/** A GitHub account by login, as GitHub gives it now ({login, id, …}), or undefined. */
+export function githubUser(login) {
+  const r = run('gh', ['api', `users/${encodeURIComponent(login)}`]);
+  return r.error || r.status !== 0 ? undefined : JSON.parse(r.stdout);
+}
+
 /** A new motion's starting files, by path: every required file but the poster, with what each part is for, scoped to its author. */
 export function scaffold(slug, author) {
   const title = slug.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
@@ -164,7 +170,7 @@ export async function share(dir, {pr = false, github} = {}, base = HUB) {
   const id = motionId(manifest);
   const published = (await index(base)).find((m) => m.slug === id);
   const was = published ? await (await get(`${base}/m/${id}/motion.json`)).json() : undefined;
-  const issues = checkMotion(dir, {author: account.login, was});
+  const issues = checkMotion(dir, {author: account.login, authorId: account.id, was});
   if (issues.length) throw new Error(`${dir} does not pass the hub's checks:\n${issues.map((i) => `${i.at}  ${i.code}  ${i.message}`).join('\n')}`);
   const what = `${published ? 'Update' : 'Add'} ${manifest.name.en} ${manifest.version}`;
   if (!pr) return `${id} ${manifest.version} passes the hub's checks as ${account.login}${published ? `, after ${published.version}` : ''}. Nothing is published yet: run again with --pr to open "${what}" on github.com/${REPO}.`;
@@ -177,6 +183,16 @@ export async function share(dir, {pr = false, github} = {}, base = HUB) {
     rmSync(join(clone, 'motions', id), {recursive: true, force: true});
     cpSync(dir, join(clone, 'motions', id), {recursive: true});
     must('git', ['add', join('motions', id)], clone);
+    // every login the motion names is recorded with its account's id (accounts/, CONTRIBUTING.md), once
+    for (const login of new Set([manifest.scope, ...manifest.authors.map((a) => a.github)].filter(Boolean).map((l) => l.toLowerCase()))) {
+      const file = join(clone, 'accounts', `${login}.json`);
+      if (existsSync(file)) continue;
+      const user = login === account.login.toLowerCase() ? account : githubUser(login);
+      if (!Number.isSafeInteger(user?.id)) throw new Error(`GitHub has no account ${login}: check the scope and authors in motion.json`);
+      mkdirSync(dirname(file), {recursive: true});
+      writeFileSync(file, `${JSON.stringify({login, id: user.id})}\n`);
+      must('git', ['add', join('accounts', `${login}.json`)], clone);
+    }
     must('git', ['commit', '--quiet', '--signoff', '-m', what], clone);
     must('git', ['-c', 'credential.helper=', '-c', 'credential.helper=!gh auth git-credential', 'push', '--quiet', `https://github.com/${account.login}/motions.git`, `HEAD:refs/heads/${branch}`], clone);
     return must('gh', ['pr', 'create', '--repo', REPO, '--head', `${account.login}:${branch}`, '--title', what, '--body', `${manifest.line.en}\n\nChecked with @motionhub/cli.`], clone);

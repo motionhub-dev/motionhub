@@ -2,7 +2,7 @@
 // The motionhub command, published as @motionhub/cli: check motions against the format and the hub's rules
 // (tools/check.mjs, the same checks a pull request runs); search, get, start and share them (tools/hub.mjs).
 //
-//   motionhub check [dir ...] [--format-only] [--author <github-login>] [--was <motion.json>]
+//   motionhub check [dir ...] [--format-only] [--author <github-login>] [--author-id <github-id>] [--was <motion.json>]
 //   motionhub search [words ...]
 //   motionhub get <id> [--out <dir>]
 //   motionhub init <slug> [--github <login>]
@@ -12,7 +12,7 @@ import {readFileSync} from 'node:fs';
 import {main as check} from '../tools/check.mjs';
 import {main as hub} from '../tools/hub.mjs';
 
-const USAGE = `usage: motionhub check [dir ...] [--format-only] [--author <github-login>] [--was <motion.json>]
+const USAGE = `usage: motionhub check [dir ...] [--format-only] [--author <github-login>] [--author-id <github-id>] [--was <motion.json>]
        motionhub search [words ...]
        motionhub get <id> [--out <dir>]
        motionhub init <slug> [--github <login>]
@@ -29,7 +29,7 @@ share   a motion through the checks its pull request will run, as you (gh, or --
 
 const [command, ...args] = process.argv.slice(2);
 try {
-  if (command === 'check') process.exitCode = check(args);
+  if (command === 'check') process.exitCode = await check(args);
   else if (['search', 'get', 'init', 'share'].includes(command)) process.exitCode = await hub(command, args);
   else if (command === '--version' || command === '-v') console.log(JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version);
   else { console.log(USAGE); process.exitCode = command && command !== '--help' && command !== '-h' ? 2 : 0; }
