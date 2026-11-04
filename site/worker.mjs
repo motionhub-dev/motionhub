@@ -8,7 +8,7 @@
 
 import {likeCounts, people} from './people.mjs';
 import {avatar} from './avatars.mjs';
-import {submissions} from './submissions.mjs';
+import {submissions, sweep} from './submissions.mjs';
 
 const PACKAGE = /^\/m\/((?:@[a-z0-9-]+\/)?[a-z0-9-]+)\/([0-9A-Za-z.+-]+)\.tgz$/;
 // the video of a motion at a version (site/player/render.mjs), beside its package: the default player on its page
@@ -210,5 +210,6 @@ export default {
   },
   async scheduled(controller, env, ctx) {
     ctx.waitUntil(rollup(env));
+    ctx.waitUntil(sweep(env).catch(() => {}));
   },
 };

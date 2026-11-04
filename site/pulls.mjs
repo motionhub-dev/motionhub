@@ -5,8 +5,14 @@
 // this shows what anyone could see on github.com, gathered in one place. A pull request is the person's when GitHub's
 // numeric id for its author is theirs, so a renamed account still finds its own. Each answer is kept for a minute,
 // per person; GITHUB_TOKEN, a secret on the Worker, raises GitHub's rate limit when it is set and is never required.
+// A pull request motionhub's GitHub App opened for the person (sharing from motionhub.dev) is theirs too, with the
+// shares they opened and have not submitted yet (submissions.mjs), which are motionhub's and never kept.
 
-export const REPO = 'motionhub-dev/motions';
+import {REPO} from './repo.mjs';
+import {waiting} from './submissions.mjs';
+import {sharedFor} from './github-app.mjs';
+
+export {REPO};
 const API = `https://api.github.com/repos/${REPO}`;
 const SECONDS = 60;
 /** At most this many of a person's pull requests are looked into: each costs three requests to GitHub. */
@@ -57,14 +63,15 @@ export function standing(pr, run, comments) {
 
 async function gather(env, me) {
   const open = await github(env, '/pulls?state=open&per_page=100&sort=updated&direction=desc', {all: true});
-  const mine = open.filter((pr) => pr.user?.id === me.id).slice(0, MOST);
+  // theirs, and the ones motionhub's GitHub App opened for them when they shared from motionhub.dev (submissions.mjs)
+  const mine = open.filter((pr) => pr.user?.id === me.id || sharedFor(pr, me.id)).slice(0, MOST);
   return Promise.all(mine.map(async (pr) => {
     const [runs, files, comments] = await Promise.all([
       github(env, `/commits/${pr.head.sha}/check-runs?check_name=${CHECK}&per_page=1`),
       github(env, `/pulls/${pr.number}/files?per_page=100`),
       github(env, `/issues/${pr.number}/comments?per_page=100`, {all: true}),
     ]);
-    return {number: pr.number, title: pr.title, url: pr.html_url, updated: pr.updated_at, motions: motionsIn(files), ...standing(pr, runs.check_runs?.[0], comments)};
+    return {number: pr.number, title: pr.title, url: pr.html_url, updated: pr.updated_at, motions: motionsIn(files), shared: pr.user?.id !== me.id, ...standing(pr, runs.check_runs?.[0], comments)};
   }));
 }
 
@@ -73,15 +80,17 @@ export async function pulls(request, env, ctx, me) {
   if (!me) return json({error: 'sign in to see your pull requests'}, 401);
   const cache = globalThis.caches?.default;
   const key = new Request(new URL(`/api/me/pulls?person=${me.id}`, request.url));
+  // the shares waiting for them are motionhub's own, and asked for fresh
+  const shares = await waiting(env, me).catch(() => []);
   const hit = await cache?.match(key);
-  if (hit) return json(await hit.json());
+  if (hit) return json({...(await hit.json()), shares});
   try {
     const body = {pulls: await gather(env, me), all: `https://github.com/${REPO}/pulls?q=${encodeURIComponent(`is:pr is:open author:${me.login}`)}`};
     const keep = new Response(JSON.stringify(body), {headers: {'content-type': 'application/json', 'cache-control': `max-age=${SECONDS}`}});
     if (cache) ctx?.waitUntil?.(cache.put(key, keep));
-    return json(body);
+    return json({...body, shares});
   } catch {
     // GitHub could not be asked: the page says so and links to the same list on github.com
-    return json({pulls: null, all: `https://github.com/${REPO}/pulls?q=${encodeURIComponent(`is:pr is:open author:${me.login}`)}`}, 502);
+    return json({pulls: null, shares, all: `https://github.com/${REPO}/pulls?q=${encodeURIComponent(`is:pr is:open author:${me.login}`)}`}, 502);
   }
 }

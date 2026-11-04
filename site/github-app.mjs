@@ -5,7 +5,7 @@
 // GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY are secrets on the Worker. The key may be the PKCS#1 PEM GitHub gives
 // ("BEGIN RSA PRIVATE KEY") or PKCS#8. No dependencies: WebCrypto signs the app's JWT.
 
-import {REPO} from './pulls.mjs';
+import {REPO} from './repo.mjs';
 
 const API = 'https://api.github.com';
 const [OWNER] = REPO.split('/');
@@ -36,7 +36,7 @@ export async function appJwt(env, now = Date.now()) {
   return `${head}.${claims}.${b64url(signature)}`;
 }
 
-let cached = {token: '', until: 0};
+let cached = {token: '', until: 0, app: ''};
 
 /** An installation token for the catalogue's repository, kept until ten minutes before it expires. */
 async function installationToken(env, now = Date.now()) {
@@ -45,16 +45,16 @@ async function installationToken(env, now = Date.now()) {
   const headers = {authorization: `Bearer ${jwt}`, accept: 'application/vnd.github+json', 'user-agent': 'motionhub.dev', 'x-github-api-version': '2022-11-28'};
   const inst = await fetch(`${API}/repos/${REPO}/installation`, {headers});
   if (!inst.ok) throw new Error(`the GitHub App is not installed on ${REPO} (${inst.status})`);
-  const {id} = await inst.json();
+  const {id, app_slug: slug} = await inst.json();
   const res = await fetch(`${API}/app/installations/${id}/access_tokens`, {method: 'POST', headers, body: JSON.stringify({repositories: [REPO.split('/')[1]], permissions: {contents: 'write', pull_requests: 'write'}})});
   if (!res.ok) throw new Error(`GitHub gave no installation token (${res.status})`);
   const body = await res.json();
-  cached = {token: body.token, until: Date.parse(body.expires_at) - 10 * 60 * 1000};
+  cached = {token: body.token, until: Date.parse(body.expires_at) - 10 * 60 * 1000, app: slug ? `${slug}[bot]` : ''};
   return body.token;
 }
 
 /** Forgets the cached token: for tests, and after a 401. */
-export const forgetToken = () => { cached = {token: '', until: 0}; };
+export const forgetToken = () => { cached = {token: '', until: 0, app: ''}; };
 
 /** A call to GitHub's REST API as the app's installation: the JSON answer, or null for a 404 when `missing` is allowed. */
 async function api(env, method, path, body, {missing = false} = {}) {
@@ -153,4 +153,51 @@ export async function commitSubmission(env, {id, manifest, published, files, me,
   // a label helps the maintainers find it; the pull request is open without one
   await api(env, 'POST', `/repos/${REPO}/issues/${pr.number}/labels`, {labels: ['submission']}).catch(() => {});
   return {pr: pr.number, url: pr.html_url, branch, added};
+}
+
+/**
+ * Whether a pull request is one the app opened for the person `me` (an account id, and login): its branch is the
+ * app's for them (share/<scope>/<slug>/<id>, in this repository) and the app opened it. `app` is the app's account
+ * (<slug>[bot]); without it, any app's.
+ */
+export function sharedFor(pr, id, app = '') {
+  const ref = pr?.head?.ref;
+  return pr?.user?.type === 'Bot' && (!app || pr.user.login === app) && pr.head?.repo?.full_name === REPO && pr.base?.repo?.full_name === REPO &&
+    typeof ref === 'string' && new RegExp(`^share/[a-z0-9-]+/[a-z0-9-]+/${Number(id)}$`).test(ref);
+}
+
+/** Closes the pull request `number` the app opened for `me`, and deletes its branch: {closed, branch} or {error, status}. */
+export async function withdrawPull(env, number, me) {
+  const pr = await api(env, 'GET', `/repos/${REPO}/pulls/${number}`, undefined, {missing: true});
+  if (!pr || !sharedFor(pr, me.id, cached.app)) return {error: 'motionhub opened no such pull request for you', status: 404};
+  if (pr.state !== 'open') return {error: 'that pull request is closed already', status: 409};
+  await api(env, 'POST', `/repos/${REPO}/issues/${number}/comments`, {body: `@${me.login} withdrew it on motionhub.dev.`});
+  await api(env, 'PATCH', `/repos/${REPO}/pulls/${number}`, {state: 'closed'});
+  // the branch only held it; gone already, or refused, it is the daily sweep's to try again
+  await api(env, 'DELETE', `/repos/${REPO}/git/refs/heads/${pr.head.ref}`, undefined, {missing: true}).catch(() => {});
+  return {closed: number, branch: pr.head.ref};
+}
+
+/** At most this many branches are deleted in one sweep: each is a call to GitHub. */
+const SWEEP = 20;
+
+/**
+ * Deletes the branches of the app's pull requests that are closed (merged, closed by a maintainer, withdrawn), unless
+ * one is open on the same branch again. Returns the branches deleted.
+ */
+export async function sweepBranches(env) {
+  const refs = await api(env, 'GET', `/repos/${REPO}/git/matching-refs/heads/share/`);
+  const have = new Set(refs.map((r) => r.ref.replace(/^refs\/heads\//, '')));
+  if (!have.size) return [];
+  const pulls = async (state) => api(env, 'GET', `/repos/${REPO}/pulls?state=${state}&sort=updated&direction=desc&per_page=100`);
+  const open = new Set((await pulls('open')).map((pr) => pr.head?.ref));
+  const gone = [];
+  for (const pr of await pulls('closed')) {
+    const ref = pr.head?.ref;
+    if (gone.length >= SWEEP) break;
+    if (!have.has(ref) || open.has(ref) || gone.includes(ref) || pr.user?.type !== 'Bot' || pr.head?.repo?.full_name !== REPO || !/^share\//.test(ref)) continue;
+    await api(env, 'DELETE', `/repos/${REPO}/git/refs/heads/${ref}`, undefined, {missing: true});
+    gone.push(ref);
+  }
+  return gone;
 }

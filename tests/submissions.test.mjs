@@ -47,11 +47,12 @@ const pkg = (m = manifest(), extra = []) => tgz([
   ...extra,
 ]);
 
-let env, realFetch, github, store;
+let env, realFetch, github, store, uploaded;
 const ctx = {waitUntil() {}};
 beforeEach(() => {
   forgetToken();
   store = new Map();
+  uploaded = new Map();
   github = {calls: [], published: null, branch: null, open: null, users: {bo: {id: 8, type: 'User'}}};
   env = {
     DB: d1(),
@@ -60,6 +61,8 @@ beforeEach(() => {
     PACKAGES: {
       put: async (k, v) => { store.set(k, Buffer.from(v)); },
       get: async (k) => (store.has(k) ? {arrayBuffer: async () => store.get(k)} : null),
+      list: async ({prefix}) => ({objects: [...store.keys()].filter((k) => k.startsWith(prefix)).map((key) => ({key, uploaded: uploaded.get(key) ?? new Date()})), truncated: false}),
+      delete: async (keys) => { for (const k of [keys].flat()) store.delete(k); },
     },
     ASSETS: {fetch: async (r) => {
       const path = new URL(r.url).pathname;
@@ -79,13 +82,17 @@ beforeEach(() => {
       const v = createVerify('RSA-SHA256'); v.update(`${h}.${c}`);
       assert.ok(v.verify(publicKey, Buffer.from(s, 'base64url')), 'the app JWT is signed with the app\'s key');
       assert.equal(JSON.parse(Buffer.from(c, 'base64url')).iss, '1234');
-      return reply({id: 9});
+      return reply({id: 9, app_slug: 'motionhub'});
     }
     if (u === `${API}/app/installations/9/access_tokens`) return reply({token: 'inst', expires_at: new Date(Date.now() + 3600e3).toISOString()});
     assert.equal(init.headers.authorization, 'Bearer inst', 'the repository is written with the installation token');
     if (u === `${REPO}/git/ref/heads/main`) return reply({object: {sha: 'main0'}});
     if (u.startsWith(`${REPO}/git/ref/heads/share/`)) return github.branch ? reply({object: {sha: github.branch}}) : reply({}, 404);
     if (u.startsWith(`${REPO}/pulls?state=open`)) return reply(github.open ? [github.open] : []);
+    if (u.startsWith(`${REPO}/pulls?state=closed`)) return reply(github.closed ?? []);
+    if (u === `${REPO}/git/matching-refs/heads/share/`) return reply((github.refs ?? []).map((r) => ({ref: `refs/heads/${r}`})));
+    const one = /\/pulls\/(\d+)$/.exec(u);
+    if (one && method === 'GET') return github.pulls?.[one[1]] ? reply(github.pulls[one[1]]) : reply({}, 404);
     if (u.startsWith(`${REPO}/git/commits/`) && method === 'GET') return reply({tree: {sha: 'tree0'}});
     if (u === `${REPO}/git/trees/tree0?recursive=1`) return reply({truncated: false, tree: [{path: 'motions/@ana/ledger/old.txt', type: 'blob'}, {path: 'motions/@ana/ledgers/keep.txt', type: 'blob'}, {path: 'accounts/iamsuosi.json', type: 'blob'}]});
     if (u === `${REPO}/git/blobs`) return reply({sha: `blob${github.calls.length}`}, 201);
@@ -309,6 +316,70 @@ test('a submit the Worker never finished is taken again after a while; a label G
   const done = await submit(share.id, ana, {code: share.code, mine: true, dco: true});
   assert.equal(done.status, 200, await done.clone().text());
   assert.equal(env.DB.raw.prepare('SELECT status FROM submissions WHERE id = ?').get(share.id).status, 'submitted');
+});
+
+const botPull = (number, ref, over = {}) => ({number, state: 'open', user: {id: 9, login: 'motionhub[bot]', type: 'Bot'}, head: {ref, repo: {full_name: 'motionhub-dev/motions'}}, base: {repo: {full_name: 'motionhub-dev/motions'}}, ...over});
+
+test('a person withdraws a pull request motionhub opened for them, and only that', async () => {
+  const ana = await session(42, 'ana');
+  const withdraw = (n, cookie = ana, origin = SITE) => call('POST', `/api/me/pulls/${n}/withdraw`, {cookie, origin});
+  const share = await (await upload()).json();
+  await call('GET', `/api/submissions/${share.id}`, {cookie: ana});
+  assert.equal((await submit(share.id, ana, {code: share.code, mine: true, dco: true})).status, 200);
+  github.calls = [];
+  github.pulls = {
+    77: botPull(77, 'share/ana/ledger/42'),
+    78: botPull(78, 'share/bo/ledger/8'),
+    79: botPull(79, 'share/ana/ledger/42', {user: {id: 5, login: 'other[bot]', type: 'Bot'}}),
+    80: botPull(80, 'share/ana/ledger/42', {head: {ref: 'share/ana/ledger/42', repo: {full_name: 'eve/motions'}}}),
+    81: botPull(81, 'share/ana/ledger/42', {state: 'closed'}),
+  };
+  assert.equal((await withdraw(77, ana, 'https://evil.example')).status, 403, 'only from this site');
+  assert.equal((await withdraw(77, null)).status, 401);
+  for (const n of [78, 79, 80, 99]) assert.equal((await withdraw(n)).status, 404, `#${n} is not one motionhub opened for them`);
+  assert.equal((await withdraw(81)).status, 409);
+  assert.ok(!github.calls.some((c) => c.method !== 'GET'), 'nothing changed on GitHub');
+  const r = await withdraw(77);
+  assert.equal(r.status, 200, await r.clone().text());
+  assert.deepEqual(github.calls.filter((c) => c.method !== 'GET').map((c) => [c.method, c.path, c.body]), [
+    ['POST', '/repos/motionhub-dev/motions/issues/77/comments', {body: '@ana withdrew it on motionhub.dev.'}],
+    ['PATCH', '/repos/motionhub-dev/motions/pulls/77', {state: 'closed'}],
+    ['DELETE', '/repos/motionhub-dev/motions/git/refs/heads/share/ana/ledger/42', undefined],
+  ]);
+  assert.equal(env.DB.raw.prepare('SELECT status FROM submissions WHERE id = ?').get(share.id).status, 'withdrawn');
+});
+
+test('the daily sweep lets go of old packages, shares never submitted, and closed pull requests\' branches', async () => {
+  const ana = await session(42, 'ana');
+  const kept = await (await upload()).json();
+  await call('GET', `/api/submissions/${kept.id}`, {cookie: ana});
+  assert.equal((await submit(kept.id, ana, {code: kept.code, mine: true, dco: true})).status, 200);
+  const old = await (await upload()).json();
+  const fresh = await (await upload()).json();
+  const day = 86400;
+  env.DB.raw.prepare('UPDATE submissions SET expires_at = expires_at - ? WHERE id IN (?, ?)').run(2 * day, kept.id, old.id);
+  uploaded.set(`submissions/${kept.id}.tgz`, new Date(Date.now() - 2 * day * 1000));
+  uploaded.set(`submissions/${old.id}.tgz`, new Date(Date.now() - 2 * day * 1000));
+  github.refs = ['share/ana/ledger/42', 'share/ana/tide/42', 'share/bo/x/8'];
+  github.open = botPull(90, 'share/ana/tide/42');
+  github.closed = [botPull(77, 'share/ana/ledger/42', {state: 'closed'}), botPull(88, 'share/ana/tide/42', {state: 'closed'}), botPull(70, 'share/gone/x/1', {state: 'closed'}), {number: 60, user: {type: 'User'}, head: {ref: 'share/bo/x/8', repo: {full_name: 'motionhub-dev/motions'}}}];
+  const {sweep} = await import('../site/submissions.mjs');
+  github.calls = [];
+  assert.deepEqual(await sweep(env), {packages: 2, shares: 1, branches: ['share/ana/ledger/42']}, 'a branch open again, gone already, or not the app\'s stays');
+  assert.deepEqual([...store.keys()], [`submissions/${fresh.id}.tgz`]);
+  const rows = env.DB.raw.prepare('SELECT id, status, code FROM submissions ORDER BY created_at').all();
+  assert.deepEqual(rows.map((r) => [r.id, r.status, r.code]).sort(), [[kept.id, 'submitted', ''], [fresh.id, 'uploaded', fresh.code]].sort(), 'the record of a submission stays, without its code');
+  assert.deepEqual(github.calls.filter((c) => c.method === 'DELETE').map((c) => c.path), ['/repos/motionhub-dev/motions/git/refs/heads/share/ana/ledger/42']);
+});
+
+test('the shares a person opened and has not submitted wait on their page', async () => {
+  const ana = await session(42, 'ana');
+  const share = await (await upload()).json();
+  const unseen = await (await upload()).json();
+  await call('GET', `/api/submissions/${share.id}`, {cookie: ana});
+  const {waiting} = await import('../site/submissions.mjs');
+  assert.deepEqual((await waiting(env, {id: 42})).map((w) => [w.id, w.url]), [[share.id, `/share/${share.id}`]], `${unseen.id}, never opened, is no one's yet`);
+  assert.deepEqual(await waiting(env, {id: 8}), []);
 });
 
 test('an upload that is not a motion is refused, and nothing is taken before the app is set up', async () => {

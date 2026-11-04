@@ -13,10 +13,14 @@
 //   GET  /api/submissions/<id>              signed in: what the page shows, and whether this person may submit it
 //   GET  /api/submissions/<id>/files/<path> signed in: one of its files, to look at, never to run
 //   POST /api/submissions/<id>/submit       signed in, from this site: {code, mine, dco} → {pr, prUrl}
+//   POST /api/me/pulls/<n>/withdraw         signed in, from this site: closes a pull request the app opened for them
+//
+// Once a day (worker.mjs, scheduled) sweep() lets go of what is past its day: the packages, the shares never
+// submitted, and the branches of the app's pull requests that are closed.
 
 import {person, sameOrigin, sha256} from './people.mjs';
 import {PackageError, untgz} from './tar.mjs';
-import {BINARIES, commitSubmission, isText} from './github-app.mjs';
+import {BINARIES, commitSubmission, isText, sweepBranches, withdrawPull} from './github-app.mjs';
 
 const DAY = 86400;
 /** Seconds after which a submit that never finished (the Worker stopped mid-way) may be tried again. */
@@ -38,7 +42,7 @@ function makeCode() {
   const [w, n] = crypto.getRandomValues(new Uint32Array(2));
   return `${WORDS.at(w % WORDS.length).toUpperCase()}-${String(n % 100).padStart(2, '0')}`;
 }
-const sameCode = (a, b) => String(a ?? '').trim().toUpperCase().replace(/\s+/g, '-') === b;
+const sameCode = (a, b) => Boolean(b) && String(a ?? '').trim().toUpperCase().replace(/\s+/g, '-') === b;
 
 /** `a` against `b`, two semantic versions: negative, zero or positive (tools/check.mjs compareVersions, which the Worker cannot import). */
 export function compareVersions(a, b) {
@@ -258,10 +262,51 @@ async function submit(request, env, id, now) {
   return json({pr: done.pr, prUrl: done.url, added: done.added});
 }
 
+/** The shares this person opened and has not submitted yet, newest first: for their page (/you/). */
+export async function waiting(env, me, now = Date.now()) {
+  if (!env.DB) return [];
+  const {results} = await env.DB.prepare("SELECT id, motion, version, expires_at FROM submissions WHERE person = ? AND status = 'viewed' AND expires_at > ? ORDER BY created_at DESC LIMIT 10").bind(me.id, Math.floor(now / 1000)).all();
+  return results.map((r) => ({id: r.id, motion: r.motion, version: r.version, url: `/share/${r.id}`, expires: new Date(r.expires_at * 1000).toISOString()}));
+}
+
+async function withdraw(request, env, number, now) {
+  if (!sameOrigin(request)) return json({error: 'a pull request is withdrawn from motionhub.dev'}, 403);
+  if (!ready(env)) return json({error: 'motionhub cannot do that just now: close it on GitHub'}, 503);
+  const me = await person(request, env, now);
+  if (!me) return json({error: 'sign in with GitHub'}, 401);
+  let done;
+  try { done = await withdrawPull(env, number, me); } catch (e) { return json({error: `GitHub could not take it just now (${e.message}); try again, or close it on GitHub`}, 502); }
+  if (done.error) return json({error: done.error}, done.status);
+  await env.DB.prepare("UPDATE submissions SET status = 'withdrawn' WHERE pr = ? AND person = ?").bind(number, me.id).run();
+  // the page's list of pull requests is kept a minute (pulls.mjs): this one is gone from it now
+  await globalThis.caches?.default?.delete(new Request(new URL(`/api/me/pulls?person=${me.id}`, request.url))).catch(() => {});
+  return json({closed: number});
+}
+
+/** What is past its day, let go: packages kept over a day, shares never submitted, closed pull requests' branches. */
+export async function sweep(env, now = Date.now()) {
+  if (!env.DB || !env.PACKAGES) return {};
+  const at = Math.floor(now / 1000);
+  let packages = 0, cursor;
+  do {
+    const page = await env.PACKAGES.list({prefix: 'submissions/', cursor});
+    const old = page.objects.filter((o) => new Date(o.uploaded).getTime() < now - DAY * 1000).map((o) => o.key);
+    if (old.length) { await env.PACKAGES.delete(old); packages += old.length; }
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+  // a share submitted or withdrawn stays, as the record of who certified what for which pull request; its code goes
+  const rows = await env.DB.prepare("DELETE FROM submissions WHERE status NOT IN ('submitted', 'withdrawn') AND expires_at < ?").bind(at).run();
+  await env.DB.prepare("UPDATE submissions SET code = '' WHERE expires_at < ? AND code != ''").bind(at).run();
+  const branches = ready(env) ? await sweepBranches(env).catch(() => []) : [];
+  return {packages, shares: changes(rows), branches};
+}
+
 /** Handles the routes this file owns, or returns null. */
 export async function submissions(request, env, now = Date.now()) {
   const {pathname, searchParams} = new URL(request.url);
   const m = request.method;
+  const out = /^\/api\/me\/pulls\/([1-9]\d{0,8})\/withdraw$/.exec(pathname);
+  if (out) return m === 'POST' ? withdraw(request, env, Number(out[1]), now) : json({error: 'method not allowed'}, 405);
   if (pathname === '/api/submissions') return m === 'POST' ? upload(request, env, now) : json({error: 'method not allowed'}, 405);
   const one = /^\/api\/submissions\/([A-Za-z0-9_-]{22})(?:\/(submit|files\/(.+)))?$/.exec(pathname);
   if (!one) return pathname.startsWith('/api/submissions/') ? json({error: 'no such share'}, 404) : null;

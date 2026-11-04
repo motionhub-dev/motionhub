@@ -83,6 +83,10 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
 
     <section class="you-panel" id="panel-review" role="tabpanel" aria-labelledby="tab-review" hidden>
       <p class="note">Your open pull requests on github.com/motionhub-dev/motions, read from GitHub when this page opens. The work happens there.</p>
+      <section class="shares" id="shares" hidden>
+        <h2>Waiting for you to submit</h2>
+        <ul class="prs" id="shares-list"></ul>
+      </section>
       <ul class="prs" id="prs"></ul>
       <p class="note" id="prs-wait">Asking GitHub…</p>
       <p class="note" id="prs-empty" hidden>Nothing in review.</p>
@@ -151,7 +155,8 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
 
 <script>
   type Me = {person: {id: number; login: string; name: string | null; avatar: string | null} | null; likes?: string[]};
-  type Pull = {number: number; title: string; url: string; motions: string[]; checks: 'passed' | 'failed' | 'running' | 'none'; reviewed: boolean; next: 'change' | 'checks' | 'maintainer' | 'draft'};
+  type Pull = {number: number; title: string; url: string; motions: string[]; checks: 'passed' | 'failed' | 'running' | 'none'; reviewed: boolean; next: 'change' | 'checks' | 'maintainer' | 'draft'; shared?: boolean};
+  type Share = {id: string; motion: string; version: string; url: string; expires: string};
   const root = document.getElementById('you')!;
   const repo = root.dataset.repo!;
   const pages = JSON.parse(root.dataset.pages!) as {ids: Record<string, string>; logins: Record<string, string>};
@@ -232,10 +237,24 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
     const NEXT = {change: 'Needs your change', checks: 'Waiting for the checks', maintainer: 'Waiting for a maintainer', draft: 'Draft'} as const;
     fetch('/api/me/pulls', {credentials: 'same-origin'}).then(async (r) => ({ok: r.ok, body: await r.json()})).then(({ok, body}) => {
       $('prs-wait').hidden = true;
+      // shares opened on motionhub.dev and not submitted yet: motionhub's own, so shown even when GitHub is down
+      const shares = (body.shares ?? []) as Share[];
+      $('shares').hidden = shares.length === 0;
+      for (const s of shares) {
+        const li = document.createElement('li');
+        const head = document.createElement('div'); head.className = 'mmain';
+        const a = document.createElement('a'); a.className = 'mname'; a.href = s.url; a.textContent = `${s.motion} ${s.version}`;
+        const until = document.createElement('span'); until.className = 'mid';
+        until.textContent = `Link valid until ${new Date(s.expires).toLocaleString('en', {dateStyle: 'medium', timeStyle: 'short'})}`;
+        head.append(a, until);
+        const go = document.createElement('a'); go.className = 'btn'; go.href = s.url; go.textContent = 'Check and submit';
+        li.append(head, go);
+        $('shares-list').append(li);
+      }
       if (!ok || !body.pulls) { $('prs-down').hidden = false; $<HTMLAnchorElement>('prs-all').href = body.all ?? `${repo}/pulls`; return; }
       const pulls = body.pulls as Pull[];
-      count('review', pulls.length);
-      $('prs-empty').hidden = pulls.length > 0;
+      count('review', pulls.length + shares.length);
+      $('prs-empty').hidden = pulls.length + shares.length > 0;
       const list = $('prs');
       for (const pr of pulls) {
         const li = document.createElement('li');
@@ -253,6 +272,22 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
         }
         const open = document.createElement('a'); open.className = 'btn'; open.href = pr.url; open.textContent = 'Open on GitHub';
         li.append(head, steps, open);
+        // one motionhub opened for them: they may take it back here, with a second click to be sure
+        if (pr.shared) {
+          const back = document.createElement('button'); back.type = 'button'; back.className = 'btn'; back.textContent = 'Withdraw';
+          const said = document.createElement('p'); said.className = 'share-error'; said.setAttribute('role', 'alert'); said.hidden = true;
+          let sure = false;
+          back.addEventListener('click', async () => {
+            if (!sure) { sure = true; back.textContent = 'Withdraw: close it on GitHub?'; return; }
+            back.disabled = true; said.hidden = true;
+            const r = await fetch(`/api/me/pulls/${pr.number}/withdraw`, {method: 'POST', credentials: 'same-origin'}).catch(() => undefined);
+            const answer = r ? await r.json().catch(() => ({})) : {};
+            if (r?.ok) { li.remove(); count('review', $('prs').children.length + shares.length); $('prs-empty').hidden = $('prs').children.length + shares.length > 0; return; }
+            said.textContent = answer.error ?? 'motionhub.dev could not be reached. Try again.'; said.hidden = false;
+            back.disabled = false; sure = false; back.textContent = 'Withdraw';
+          });
+          li.append(back, said);
+        }
         list.append(li);
         // the motions it changes show it on their row
         for (const mid of pr.motions) {

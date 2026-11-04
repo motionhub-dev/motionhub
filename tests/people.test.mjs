@@ -150,9 +150,15 @@ test('your pull requests: only yours by account id, with their checks, review an
       {number: 41, title: 'Update Field Atlas 1.1.1', html_url: 'https://github.com/motionhub-dev/motions/pull/41', updated_at: '2026-11-03T20:00:00Z', draft: false, user: {id: 42, login: 'ana-renamed'}, head: {sha: 'aaa'}},
       {number: 42, title: 'Someone else', html_url: 'x', draft: false, user: {id: 7, login: 'Ana'}, head: {sha: 'bbb'}},
       {number: 43, title: 'Add Tide Table 1.0.0', html_url: 'y', updated_at: '2026-11-03T19:00:00Z', draft: false, user: {id: 42, login: 'Ana'}, head: {sha: 'ccc'}},
+      {number: 44, title: 'Add Ledger 1.0.0', html_url: 'z', updated_at: '2026-11-03T18:00:00Z', draft: false, user: {id: 9, login: 'motionhub[bot]', type: 'Bot'}, head: {sha: 'ddd', ref: 'share/ana/ledger/42', repo: {full_name: 'motionhub-dev/motions'}}, base: {repo: {full_name: 'motionhub-dev/motions'}}},
+      {number: 45, title: 'Someone else\'s share', html_url: 'w', draft: false, user: {id: 9, login: 'motionhub[bot]', type: 'Bot'}, head: {sha: 'eee', ref: 'share/bo/x/8', repo: {full_name: 'motionhub-dev/motions'}}, base: {repo: {full_name: 'motionhub-dev/motions'}}},
+      {number: 46, title: 'A fork\'s branch named like one', html_url: 'v', draft: false, user: {id: 10, login: 'other[bot]', type: 'Bot'}, head: {sha: 'fff', ref: 'share/ana/ledger/42', repo: {full_name: 'eve/motions'}}, base: {repo: {full_name: 'motionhub-dev/motions'}}},
     ],
     '/commits/aaa/check-runs?check_name=check&per_page=1': {check_runs: [{status: 'completed', conclusion: 'success'}]},
     '/commits/ccc/check-runs?check_name=check&per_page=1': {check_runs: [{status: 'completed', conclusion: 'failure'}]},
+    '/commits/ddd/check-runs?check_name=check&per_page=1': {check_runs: []},
+    '/pulls/44/files?per_page=100': [{filename: 'motions/@ana/ledger/motion.json'}],
+    '/issues/44/comments?per_page=100': [],
     '/pulls/41/files?per_page=100': [{filename: 'motions/@ana/field-atlas/motion.json'}, {filename: 'motions/@ana/field-atlas/react/reel.tsx'}],
     '/pulls/43/files?per_page=100': [{filename: 'motions/@ana/tide-table/motion.json'}, {filename: 'accounts/ana.json'}, {filename: 'motions/red-pencil/MOTION.md'}],
     '/issues/41/comments?per_page=100': [{user: {login: 'claude[bot]'}, body: '**Summary.** Fine.'}],
@@ -172,10 +178,11 @@ test('your pull requests: only yours by account id, with their checks, review an
   assert.equal(r.status, 200);
   const {pulls, all} = await r.json();
   assert.deepEqual(pulls, [
-    {number: 41, title: 'Update Field Atlas 1.1.1', url: 'https://github.com/motionhub-dev/motions/pull/41', updated: '2026-11-03T20:00:00Z', motions: ['@ana/field-atlas'], checks: 'passed', reviewed: true, next: 'maintainer'},
-    {number: 43, title: 'Add Tide Table 1.0.0', url: 'y', updated: '2026-11-03T19:00:00Z', motions: ['@ana/tide-table', 'red-pencil'], checks: 'failed', reviewed: false, next: 'change'},
-  ], 'a renamed login is still theirs, another account with their old login is not, and the reviewer\'s working note is no review');
-  assert.ok(!asked.some((p) => p.includes('/42')) && !asked.includes('/commits/bbb/check-runs?check_name=check&per_page=1'), 'someone else\'s pull request is not looked into');
+    {number: 41, title: 'Update Field Atlas 1.1.1', url: 'https://github.com/motionhub-dev/motions/pull/41', updated: '2026-11-03T20:00:00Z', motions: ['@ana/field-atlas'], checks: 'passed', reviewed: true, next: 'maintainer', shared: false},
+    {number: 43, title: 'Add Tide Table 1.0.0', url: 'y', updated: '2026-11-03T19:00:00Z', motions: ['@ana/tide-table', 'red-pencil'], checks: 'failed', reviewed: false, next: 'change', shared: false},
+    {number: 44, title: 'Add Ledger 1.0.0', url: 'z', updated: '2026-11-03T18:00:00Z', motions: ['@ana/ledger'], checks: 'none', reviewed: false, next: 'checks', shared: true},
+  ], 'a renamed login is still theirs, another account with their old login is not, the reviewer\'s working note is no review, and what motionhub opened for them on its own branch is theirs too');
+  assert.ok(!asked.some((p) => /\/(42|45|46)\b/.test(p)) && !asked.includes('/commits/bbb/check-runs?check_name=check&per_page=1'), 'someone else\'s pull request is not looked into');
   assert.match(all, /^https:\/\/github\.com\/motionhub-dev\/motions\/pulls\?q=/);
 
   github['/pulls?state=open&per_page=100&sort=updated&direction=desc'] = undefined;

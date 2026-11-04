@@ -1,6 +1,8 @@
 # The reviewer agent (CONTRIBUTING.md, "Review"; what it looks for: REVIEW.md). It reviews a pull request from a branch
 # of this repository when it is opened or marked ready, and any pull request, a fork's included, when someone with
-# write access comments /review on it. GitHub gives a fork's pull request no secrets, hence the comment.
+# write access comments /review on it. GitHub gives a fork's pull request no secrets, hence the comment. A pull request
+# an app opened (motionhub's, for someone who shared from motionhub.dev) is anyone's work, as a fork's is: it waits for
+# /review too, so the review is spent on what a maintainer chose to look at.
 #
 # A pull request's files are untrusted: they are checked out read-only under pr/, never run, and never where Claude
 # Code would load them as its own settings or instructions (those come from the base branch, in the working directory).
@@ -17,7 +19,8 @@ jobs:
   review:
     if: |
       (github.event_name == 'pull_request' && !github.event.pull_request.draft &&
-        github.event.pull_request.head.repo.full_name == github.repository) ||
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.event.pull_request.user.type != 'Bot') ||
       (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.issue.state == 'open' &&
         startsWith(github.event.comment.body, '/review') &&
         contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
