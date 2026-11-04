@@ -94,7 +94,7 @@ test('a callback signs the person in, keeps only the hash of the session and nev
   assert.deepEqual({...env.DB.raw.prepare('SELECT id, login, name FROM people').get()}, {id: 42, login: 'Ana', name: 'Ana Lee'});
   assert.ok(!JSON.stringify(env.DB.raw.prepare('SELECT * FROM people').all()).includes('gh-token'));
   const me = await (await get('/api/me', {cookie})).json();
-  assert.deepEqual(me, {person: {login: 'Ana', name: 'Ana Lee', avatar: 'https://avatars.githubusercontent.com/u/42'}, likes: []});
+  assert.deepEqual(me, {person: {id: 42, login: 'Ana', name: 'Ana Lee', avatar: 'https://avatars.githubusercontent.com/u/42'}, likes: []});
 });
 
 test('after signing in, only a path on this site', () => {
@@ -133,4 +133,49 @@ test('signing out ends the session; forgetting removes the person, their likes a
   const gone = await (await send('DELETE', '/api/me', {cookie: b.cookie, origin: SITE})).json();
   assert.deepEqual(gone, {ok: true, forgotten: true});
   for (const t of ['people', 'sessions', 'likes']) assert.equal(env.DB.raw.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get().n, 0, t);
+});
+
+test('your pull requests: only yours by account id, with their checks, review and motions, read from GitHub', async () => {
+  const {cookie} = await signIn();
+  assert.equal((await get('/api/me/pulls')).status, 401, 'signed out, there is no one to look for');
+  const API = 'https://api.github.com/repos/motionhub-dev/motions';
+  const asked = [];
+  const github = {
+    '/pulls?state=open&per_page=100&sort=updated&direction=desc': [
+      {number: 41, title: 'Update Field Atlas 1.1.1', html_url: 'https://github.com/motionhub-dev/motions/pull/41', updated_at: '2026-11-03T20:00:00Z', draft: false, user: {id: 42, login: 'ana-renamed'}, head: {sha: 'aaa'}},
+      {number: 42, title: 'Someone else', html_url: 'x', draft: false, user: {id: 7, login: 'Ana'}, head: {sha: 'bbb'}},
+      {number: 43, title: 'Add Tide Table 1.0.0', html_url: 'y', updated_at: '2026-11-03T19:00:00Z', draft: false, user: {id: 42, login: 'Ana'}, head: {sha: 'ccc'}},
+    ],
+    '/commits/aaa/check-runs?check_name=check&per_page=1': {check_runs: [{status: 'completed', conclusion: 'success'}]},
+    '/commits/ccc/check-runs?check_name=check&per_page=1': {check_runs: [{status: 'completed', conclusion: 'failure'}]},
+    '/pulls/41/files?per_page=100': [{filename: 'motions/@ana/field-atlas/motion.json'}, {filename: 'motions/@ana/field-atlas/react/reel.tsx'}],
+    '/pulls/43/files?per_page=100': [{filename: 'motions/@ana/tide-table/motion.json'}, {filename: 'accounts/ana.json'}],
+    '/issues/41/comments?per_page=100': [{user: {login: 'claude[bot]'}, body: '**Summary.** Fine.'}],
+    '/issues/43/comments?per_page=100': [{user: {login: 'claude[bot]'}, body: 'Claude Code is working…'}],
+  };
+  const signInFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    const u = String(url);
+    if (!u.startsWith(API)) return signInFetch(url, init);
+    asked.push(u.slice(API.length));
+    assert.equal(init.headers['user-agent'], 'motionhub.dev');
+    const body = github[u.slice(API.length)];
+    return body ? Response.json(body) : new Response('', {status: 404});
+  };
+  globalThis.caches = {default: {match: async () => undefined, put: async () => {}}};
+  const r = await get('/api/me/pulls', {cookie});
+  assert.equal(r.status, 200);
+  const {pulls, all} = await r.json();
+  assert.deepEqual(pulls, [
+    {number: 41, title: 'Update Field Atlas 1.1.1', url: 'https://github.com/motionhub-dev/motions/pull/41', updated: '2026-11-03T20:00:00Z', motions: ['@ana/field-atlas'], checks: 'passed', reviewed: true, next: 'maintainer'},
+    {number: 43, title: 'Add Tide Table 1.0.0', url: 'y', updated: '2026-11-03T19:00:00Z', motions: ['@ana/tide-table'], checks: 'failed', reviewed: false, next: 'change'},
+  ], 'a renamed login is still theirs, another account with their old login is not, and the reviewer\'s working note is no review');
+  assert.ok(!asked.some((p) => p.includes('/42')) && !asked.includes('/commits/bbb/check-runs?check_name=check&per_page=1'), 'someone else\'s pull request is not looked into');
+  assert.match(all, /^https:\/\/github\.com\/motionhub-dev\/motions\/pulls\?q=/);
+
+  github['/pulls?state=open&per_page=100&sort=updated&direction=desc'] = undefined;
+  const down = await get('/api/me/pulls', {cookie});
+  assert.equal(down.status, 502, 'GitHub unreachable');
+  assert.equal((await down.json()).pulls, null);
+  assert.equal((await send('POST', '/api/me/pulls', {cookie, origin: SITE})).status, 405);
 });

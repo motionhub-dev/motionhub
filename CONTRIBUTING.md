@@ -88,4 +88,10 @@ Only one of a motion's published authors may change it: the checks compare the p
 
 The checks compare accounts, not logins: the account's numeric id, recorded in `accounts/`, which GitHub never changes. So if you rename your GitHub account, you keep your motions and your scope. Change them from the new login, and publish new motions under the old scope or the new one. Add `accounts/<new-login>.json` the first time you credit the new login, which `share --pr` does for you. Whoever later takes your old login gets neither. A motion's id never changes with a rename: `@<old-login>/<slug>` is where it stays, and your creator page shows your login now.
 
+Signed in on motionhub.dev, [your page](https://motionhub.dev/you/) lists the motions you may change and your open pull requests, with what each is waiting for, and gives the prompt or commands for a new version.
+
 A change carries a higher `version` than the published one, since a published version never changes ([SPEC.md](SPEC.md) §9). The newest version replaces the previous one in its directory; published packages of earlier versions stay where they are ([HUB.md](HUB.md)).
+
+## Retiring a motion
+
+One of its authors asks, by an issue (your page opens it), and a maintainer takes its directory out. Its page and its place in the catalogue go; every published package stays at its URL, so films and projects that use it keep working. A motion that others name in `basedOn` stays until they stop naming it, since the checks refuse a `basedOn` that is not in the catalogue.

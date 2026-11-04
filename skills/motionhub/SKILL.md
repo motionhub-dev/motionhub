@@ -92,6 +92,13 @@ To publish a look the person made (only when they ask):
 4. Optionally the reusable components, in `react/parts/` as [CONTRIBUTING.md](https://github.com/motionhub-dev/motions/blob/main/CONTRIBUTING.md) describes: React components that import only `react` and `@motionhub/runtime` (in Remotion, `useTime()` and `useVideoConfig()` from it instead of Remotion's), take what changes as props, and hold nothing of this film's story.
 5. `npx @motionhub/cli share <slug>` runs the checks its pull request will run, as the person's GitHub account. Show them the result; with their yes, `npx @motionhub/cli share <slug> --pr` opens the pull request from their fork, recording each login the motion names in `accounts/` with its GitHub id if it is not there yet.
 
+To publish a new version of a motion the person published (only when they ask, as in "publish a new version of @<scope>/<slug> from this project"):
+
+1. Have the motion at hand: their copy in the project, or `npx @motionhub/cli get @<scope>/<slug>` into `./motion`.
+2. Make the change they want, from their project, holding to what `MOTION.md` says the look is; a new look is a new motion.
+3. Raise `version` in `motion.json` above the published one: the patch for a fix, the minor for something added (a component, a section), the major for a change films already made in it would not survive. A published version never changes.
+4. `npx @motionhub/cli share <dir>` runs the checks, then with their yes `npx @motionhub/cli share <dir> --pr`. Only one of the motion's authors can change it.
+
 To build on someone else's motion, publish yours under your own scope, name theirs in `motion.json`'s `basedOn` (`[{"id": "@iamsuosi/red-pencil", "version": "1.0.2"}]`) and say in `CREDITS.md` what you took and changed; only its authors change the original.
 
 ## 8. Check before you hand it over

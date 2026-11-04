@@ -1,9 +1,12 @@
-// Signing in with GitHub, and likes. The Worker (worker.mjs) routes /auth/*, /api/me and /api/likes/<id> here.
+// Signing in with GitHub, and likes. The Worker (worker.mjs) routes /auth/*, /api/me, /api/me/pulls (pulls.mjs) and
+// /api/likes/<id> here.
 //
 // Sign-in is GitHub's OAuth web flow with no scope: motionhub learns the account's public id, login, name and avatar,
 // and never keeps GitHub's token. A session is a random token in an HttpOnly cookie; the database (D1, binding DB)
 // keeps only its SHA-256. A second cookie, mh_in, readable by the page, says only that someone is signed in, so a
 // page asks /api/me only then. A like is one row (motion, person); /api/stats.json counts them.
+
+import {pulls} from './pulls.mjs';
 
 const SESSION = 'mh_session', SIGNED_IN = 'mh_in', STATE = 'mh_state';
 const DAYS_30 = 30 * 86400;
@@ -121,7 +124,8 @@ async function me(request, env) {
   const p = await person(request, env);
   if (!p) return json({person: null}, 200, {'set-cookie': cookie(SIGNED_IN, '', 0, {httpOnly: false})});
   const {results} = await env.DB.prepare('SELECT motion FROM likes WHERE person = ? ORDER BY motion').bind(p.id).all();
-  return json({person: {login: p.login, name: p.name, avatar: p.avatar}, likes: results.map((r) => r.motion)});
+  // id is GitHub's numeric id for the account: the page matches it with the motions' accounts (accounts/), which a rename does not change
+  return json({person: {id: p.id, login: p.login, name: p.name, avatar: p.avatar}, likes: results.map((r) => r.motion)});
 }
 
 /** The ids of the motions on the site, from the index the build wrote. */
@@ -150,7 +154,7 @@ export async function likeCounts(env) {
 }
 
 /** Handles the routes this file owns, or returns null. */
-export async function people(request, env) {
+export async function people(request, env, ctx) {
   const {pathname} = new URL(request.url);
   const m = request.method;
   if (pathname === '/auth/login' && m === 'GET') return login(request, env);
@@ -158,8 +162,9 @@ export async function people(request, env) {
   if (pathname === '/auth/logout' && m === 'POST') return sameOrigin(request) ? logout(request, env) : json({error: 'forbidden'}, 403);
   if (pathname === '/api/me' && m === 'GET') return me(request, env);
   if (pathname === '/api/me' && m === 'DELETE') return sameOrigin(request) ? forget(request, env) : json({error: 'forbidden'}, 403);
+  if (pathname === '/api/me/pulls' && m === 'GET') return pulls(request, env, ctx, await person(request, env));
   const l = /^\/api\/likes\/(.+)$/.exec(pathname);
   if (l && (m === 'POST' || m === 'DELETE')) return like(request, env, decodeURIComponent(l[1]));
-  if (pathname.startsWith('/auth/') || pathname === '/api/me' || l) return json({error: 'method not allowed'}, 405);
+  if (pathname.startsWith('/auth/') || pathname === '/api/me' || pathname === '/api/me/pulls' || l) return json({error: 'method not allowed'}, 405);
   return null;
 }

@@ -66,6 +66,10 @@ const {title, description, path, image = '/og-default.png', current, q = ''} = A
         <summary aria-label="Your account"><img alt="" width="28" height="28"></summary>
         <div class="menu-body">
           <p><b></b><small></small></p>
+          <a href="/you/">Your motions</a>
+          <a href="/you/#review">In review</a>
+          <a href="/you/#liked">Liked</a>
+          <div class="rule"></div>
           <button type="button" data-act="logout">Sign out</button>
           <button type="button" data-act="forget">Forget me: remove my likes and account</button>
         </div>
@@ -97,7 +101,7 @@ const {title, description, path, image = '/og-default.png', current, q = ''} = A
 <script>
   // Signed in or not. The page asks /api/me only when the mh_in cookie says someone is; window.motionhubMe is the
   // answer for the page's own scripts: {person, likes} or {person: null}.
-  type Me = {person: {login: string; name: string | null; avatar: string | null} | null; likes?: string[]};
+  type Me = {person: {id: number; login: string; name: string | null; avatar: string | null} | null; likes?: string[]};
   const signedIn = /(?:^|;\s*)mh_in=1/.test(document.cookie);
   const mePromise: Promise<Me> = signedIn ? fetch('/api/me', {credentials: 'same-origin'}).then((r) => r.json()).catch(() => ({person: null})) : Promise.resolve({person: null});
   (window as any).motionhubMe = mePromise;

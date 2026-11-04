@@ -1,0 +1,347 @@
+---
+// /you/: the signed-in person's own motionhub. Their motions (found by their GitHub account's id in accounts/, so a
+// rename keeps them), their open pull requests (/api/me/pulls) and the motions they liked (/api/me). It is one static
+// page for everyone: every motion is drawn hidden, and the page's script shows the ones that are this person's. Nothing
+// here changes a motion: a change is a pull request, and the page says how to open one.
+import Base from '../layouts/Base.astro';
+import Card from '../components/Card.astro';
+import Dropdown from '../components/Dropdown.astro';
+import {REPO, accounts, builtOnBy, creators, en, rows, skillInstall, skillShare} from '../lib/catalogue.mjs';
+
+/** Who may change a motion, as the page matches them: an account's id where it is recorded, else `login:<login>`. */
+const owners = (r) => r.authors.map((a) => (accounts.has(a.github.toLowerCase()) ? String(accounts.get(a.github.toLowerCase())) : `login:${a.github.toLowerCase()}`)).join(' ');
+/** A creator's page, by account id or by any login they published under. */
+const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'number').map((c) => [c.id, c.key])), logins: Object.fromEntries(creators.flatMap((c) => [...c.logins].map((l) => [l, c.key])))};
+---
+<Base title="You: motionhub" description="Your motions, your pull requests in review and the motions you liked, on motionhub." path="/you/">
+  <meta slot="head" name="robots" content="noindex">
+
+  <section class="you-out" id="you-out" hidden>
+    <h1>Your motionhub</h1>
+    <p>Sign in with GitHub to see the motions you made, your pull requests in review and the motions you liked.</p>
+    <a class="btn primary" href="/auth/login?next=/you/" rel="nofollow">Sign in with GitHub</a>
+  </section>
+
+  <div class="you" id="you" hidden data-pages={JSON.stringify(pages)} data-repo={REPO}>
+    <section class="profile">
+      <img id="you-avatar" alt="" width="80" height="80">
+      <div>
+        <h1 id="you-name"></h1>
+        <p class="handle"><span id="you-login"></span> · signed in with GitHub<span id="you-public" hidden> · <a href="/creators/">Your public page</a></span></p>
+      </div>
+      <dl class="tally" id="you-tally" hidden>
+        <div><dt>Motions</dt><dd data-t="motions">0</dd></div>
+        <div><dt>Downloads</dt><dd data-t="downloads">–</dd></div>
+        <div><dt>Likes</dt><dd data-t="likes">–</dd></div>
+        <div><dt>Built on by</dt><dd data-t="built">0</dd></div>
+      </dl>
+    </section>
+
+    <div class="tabs" role="tablist" aria-label="Yours">
+      <button type="button" role="tab" id="tab-motions" aria-controls="panel-motions" aria-selected="true" data-tab="motions">Your motions <span class="n" data-n="motions"></span></button>
+      <button type="button" role="tab" id="tab-review" aria-controls="panel-review" aria-selected="false" tabindex="-1" data-tab="review" hidden>In review <span class="n" data-n="review"></span></button>
+      <button type="button" role="tab" id="tab-liked" aria-controls="panel-liked" aria-selected="false" tabindex="-1" data-tab="liked">Liked <span class="n" data-n="liked"></span></button>
+    </div>
+
+    <section class="you-panel" id="panel-motions" role="tabpanel" aria-labelledby="tab-motions">
+      <div class="you-bar" id="you-bar" hidden>
+        <p>Every motion you are an author of, by your GitHub account. A change is a pull request: nothing is edited here.</p>
+        <div class="you-acts">
+          <Dropdown id="you-sort" label="Sort" options={[{value: 'name', text: 'Name'}, {value: 'downloads', text: 'Most downloaded'}, {value: 'likes', text: 'Most liked'}]} />
+          <button type="button" class="btn accent" data-copy-share><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span>Copy share prompt</span></button>
+        </div>
+      </div>
+
+      <ul class="mine" id="mine">
+        {rows.map((r) => (
+          <li class="mrow" hidden data-id={r.slug} data-owners={owners(r)} data-name={en(r.name)} data-version={r.version} data-poster={r.poster.replace(/\.jpg$/, '-480.webp')} data-built={builtOnBy(r.slug).map((b) => `${b.slug}|${en(b.name)}`).join(' ')}>
+            <img class="poster" src={r.poster.replace(/\.jpg$/, '-480.webp')} alt="" width="960" height="540" loading="lazy" decoding="async">
+            <div class="mmain">
+              <a class="mname" href={`/m/${r.slug}/`}>{en(r.name)}</a>
+              <span class="mid">{r.slug} · {r.version}</span>
+              <a class="pr-chip" hidden></a>
+            </div>
+            <div class="mnums">
+              <span><small>Downloads</small><b data-dl>–</b></span>
+              <span><small>Likes</small><b data-lk>–</b></span>
+            </div>
+            <div class="macts">
+              <button type="button" class="btn" data-new>New version</button>
+              <a class="btn icon" href={`${REPO}/tree/main/motions/${r.slug}`} aria-label={`${en(r.name)} on GitHub`} title="On GitHub"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.15-1.11-1.46-1.11-1.46-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.6 9.6 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2z"/></svg></a>
+              <button type="button" class="btn icon" data-retire aria-label={`Retire ${en(r.name)}`} title="Retire"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <button type="button" class="btn more-btn" id="you-more" hidden></button>
+
+      <section class="first" id="first" aria-labelledby="first-title" hidden>
+        <div>
+          <h2 id="first-title">Share the look of a film you made</h2>
+          <p>A motion is how a film looks and moves, not the film. Your agent takes the look from your project, checks it, and opens the pull request under your GitHub name.</p>
+          <div class="first-acts">
+            <button type="button" class="btn accent" data-copy-share><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span>Copy share prompt</span></button>
+            <a class="btn" href="/docs/contribute/">Read: Share a motion</a>
+          </div>
+        </div>
+        <ol class="steps">
+          <li>Once, for every agent on your computer: <code>{skillInstall}</code></li>
+          <li>In the project, paste the prompt. Your agent writes the motion and runs the checks.</li>
+          <li>Say yes to the pull request. It shows here under In review, and as yours once it is merged.</li>
+        </ol>
+      </section>
+    </section>
+
+    <section class="you-panel" id="panel-review" role="tabpanel" aria-labelledby="tab-review" hidden>
+      <p class="note">Your open pull requests on github.com/motionhub-dev/motions, read from GitHub when this page opens. The work happens there.</p>
+      <ul class="prs" id="prs"></ul>
+      <p class="note" id="prs-wait">Asking GitHub…</p>
+      <p class="note" id="prs-empty" hidden>Nothing in review.</p>
+      <p class="note" id="prs-down" hidden>GitHub could not be asked just now. <a id="prs-all" href={`${REPO}/pulls`}>Your pull requests on GitHub</a></p>
+    </section>
+
+    <section class="you-panel" id="panel-liked" role="tabpanel" aria-labelledby="tab-liked" hidden>
+      <p class="note">Motions you liked. Only you see this list; the counts are public.</p>
+      <div class="grid" id="liked">
+        {rows.map((r) => <Card row={r} small hidden data-liked={r.slug} />)}
+      </div>
+      <p class="note" id="liked-empty" hidden>Nothing liked yet. <a href="/">Find a motion you like</a></p>
+    </section>
+  </div>
+
+  <pre id="share-prompt" hidden>{skillShare}</pre>
+
+  <dialog class="dlg" id="nv" aria-labelledby="nv-title">
+    <form method="dialog" class="dlg-x"><button class="btn icon" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></form>
+    <div class="dlg-head">
+      <img id="nv-poster" alt="" width="960" height="540">
+      <div>
+        <h2 id="nv-title">New version of <span></span></h2>
+        <p class="mid" id="nv-id"></p>
+      </div>
+    </div>
+    <div class="tabs" role="tablist" aria-label="How">
+      <button type="button" role="tab" id="nv-tab-agent" aria-controls="nv-agent" aria-selected="true" data-way="agent">With your agent</button>
+      <button type="button" role="tab" id="nv-tab-cli" aria-controls="nv-cli" aria-selected="false" tabindex="-1" data-way="cli">Command line</button>
+    </div>
+    <div role="tabpanel" id="nv-agent" aria-labelledby="nv-tab-agent">
+      <p>In the project where you changed the look, ask your agent. It raises the version, runs the checks and opens the pull request for you to approve.</p>
+      <pre data-copy id="nv-prompt"></pre>
+      <p class="note">Needs the motionhub skill: <code>{skillInstall}</code></p>
+    </div>
+    <div role="tabpanel" id="nv-cli" aria-labelledby="nv-tab-cli" hidden>
+      <p>Take the published files into <code>./motion</code>, change them, raise <code>version</code> in <code>motion.json</code>, then share.</p>
+      <pre data-copy id="nv-cmd"></pre>
+      <p class="note">With gh signed in as you, it opens the pull request from your fork, signed off.</p>
+    </div>
+    <ol class="steps">
+      <li>The pull request runs the checks, then the reviewer agent leaves notes.</li>
+      <li>You follow it under In review on this page.</li>
+      <li>Once it is merged, the published version stays at its address for the films made in it, and the motion's page shows the new one.</li>
+    </ol>
+  </dialog>
+
+  <dialog class="dlg" id="rt" aria-labelledby="rt-title">
+    <h2 id="rt-title">Retire <span></span>?</h2>
+    <p>This asks for <code id="rt-id"></code> to be taken out of the catalogue: a request on GitHub that a maintainer carries out, as with any change.</p>
+    <ul class="marks">
+      <li><span aria-hidden="true">–</span>Its page and its place in search and on your page go away.</li>
+      <li><span aria-hidden="true">+</span>Every published version stays at its address, so films and projects that use it keep working.</li>
+      <li id="rt-free"><span aria-hidden="true">+</span>No other motion builds on it.</li>
+      <li id="rt-built" hidden><span aria-hidden="true">✕</span><span><b></b> build on it. They have to stop naming it in <code>basedOn</code>, or be retired first: until then the checks refuse taking it out.</span></li>
+    </ul>
+    <div class="dlg-acts">
+      <form method="dialog"><button class="btn">Keep it</button></form>
+      <a class="btn primary" id="rt-go" href={`${REPO}/issues/new`} target="_blank" rel="noopener">Open the request on GitHub</a>
+    </div>
+  </dialog>
+</Base>
+
+<script>
+  type Me = {person: {id: number; login: string; name: string | null; avatar: string | null} | null; likes?: string[]};
+  type Pull = {number: number; title: string; url: string; motions: string[]; checks: 'passed' | 'failed' | 'running' | 'none'; reviewed: boolean; next: 'change' | 'checks' | 'maintainer' | 'draft'};
+  const root = document.getElementById('you')!;
+  const repo = root.dataset.repo!;
+  const pages = JSON.parse(root.dataset.pages!) as {ids: Record<string, string>; logins: Record<string, string>};
+  const fmt = new Intl.NumberFormat('en');
+  const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+  const SHOWN = 10;
+
+  (window as any).motionhubMe.then((me: Me) => {
+    if (!me.person) { $('you-out').hidden = false; return; }
+    const p = me.person;
+    root.hidden = false;
+    const avatar = $<HTMLImageElement>('you-avatar');
+    if (p.avatar) avatar.src = `${p.avatar}${p.avatar.includes('?') ? '&' : '?'}s=160`;
+    $('you-name').textContent = p.name ?? p.login;
+    $('you-login').textContent = `@${p.login}`;
+
+    // the motions this account may change: by its id where a motion's login is recorded, else by login
+    const keys = new Set([String(p.id), `login:${p.login.toLowerCase()}`]);
+    const rowsAll = [...document.querySelectorAll<HTMLLIElement>('.mrow')];
+    const mine = rowsAll.filter((li) => li.dataset.owners!.split(' ').some((o) => keys.has(o)));
+    for (const li of rowsAll) if (!mine.includes(li)) li.remove();
+    const ids = new Set(mine.map((li) => li.dataset.id!));
+    const page = pages.ids[String(p.id)] ?? pages.logins[p.login.toLowerCase()];
+    if (page) { $('you-public').hidden = false; $('you-public').querySelector('a')!.href = `/creators/${page}/`; }
+    const count = (name: string, n: number) => { document.querySelector(`[data-n="${name}"]`)!.textContent = String(n); };
+    count('motions', mine.length);
+    if (mine.length) {
+      $('you-bar').hidden = false;
+      $('you-tally').hidden = false;
+      $('tab-review').hidden = false;
+      $('you-tally').querySelector('[data-t="motions"]')!.textContent = String(mine.length);
+      const built = new Set(mine.flatMap((li) => (li.dataset.built ? li.dataset.built.split(' ') : []).map((b) => b.split('|')[0])).filter((id) => !ids.has(id)));
+      $('you-tally').querySelector('[data-t="built"]')!.textContent = String(built.size);
+    } else $('first').hidden = false;
+    const showAll = () => { for (const li of mine) li.hidden = false; $('you-more').hidden = true; };
+    mine.forEach((li, i) => (li.hidden = i >= SHOWN));
+    if (mine.length > SHOWN) { $('you-more').hidden = false; $('you-more').textContent = `Show all ${mine.length} motions`; $('you-more').addEventListener('click', showAll); }
+
+    // liked: the cards of what this person liked
+    const liked = new Set(me.likes ?? []);
+    let nLiked = 0;
+    for (const card of document.querySelectorAll<HTMLElement>('[data-liked]')) {
+      if (liked.has(card.dataset.liked!)) { card.hidden = false; nLiked++; } else card.remove();
+    }
+    count('liked', nLiked);
+    $('liked-empty').hidden = nLiked > 0;
+
+    // downloads and likes, as on every other page
+    const stats: Record<string, {downloads?: {total: number}; likes?: number}> = {};
+    fetch('/api/stats.json').then((r) => (r.ok ? r.json() : Promise.reject())).then((s) => {
+      Object.assign(stats, s.motions ?? {});
+      let downloads = 0, likes = 0;
+      for (const li of mine) {
+        const m = stats[li.dataset.id!] ?? {};
+        downloads += m.downloads?.total ?? 0; likes += m.likes ?? 0;
+        li.querySelector('[data-dl]')!.textContent = fmt.format(m.downloads?.total ?? 0);
+        li.querySelector('[data-lk]')!.textContent = fmt.format(m.likes ?? 0);
+      }
+      $('you-tally').querySelector('[data-t="downloads"]')!.textContent = fmt.format(downloads);
+      $('you-tally').querySelector('[data-t="likes"]')!.textContent = fmt.format(likes);
+    }).catch(() => {});
+
+    // sorting
+    const sort = $<HTMLSelectElement>('you-sort');
+    sort.addEventListener('change', () => {
+      const by = sort.value;
+      const value = (li: HTMLLIElement) => (by === 'downloads' ? stats[li.dataset.id!]?.downloads?.total ?? 0 : stats[li.dataset.id!]?.likes ?? 0);
+      mine.sort((a, b) => (by === 'name' ? a.dataset.name!.localeCompare(b.dataset.name!) : value(b) - value(a) || a.dataset.name!.localeCompare(b.dataset.name!)));
+      const list = $('mine');
+      for (const li of mine) list.append(li);
+      if (!$('you-more').hidden) mine.forEach((li, i) => (li.hidden = i >= SHOWN));
+    });
+    sort.dispatchEvent(new Event('change'));
+
+    // pull requests: GitHub's, read through the Worker
+    const CHECKS = {passed: ['✓', 'Checks passed'], failed: ['✕', 'Checks failed'], running: ['…', 'Checks running'], none: ['…', 'Checks not started']} as const;
+    const NEXT = {change: 'Needs your change', checks: 'Waiting for the checks', maintainer: 'Waiting for a maintainer', draft: 'Draft'} as const;
+    fetch('/api/me/pulls', {credentials: 'same-origin'}).then(async (r) => ({ok: r.ok, body: await r.json()})).then(({ok, body}) => {
+      $('prs-wait').hidden = true;
+      if (!ok || !body.pulls) { $('prs-down').hidden = false; $<HTMLAnchorElement>('prs-all').href = body.all ?? `${repo}/pulls`; return; }
+      const pulls = body.pulls as Pull[];
+      count('review', pulls.length);
+      if (pulls.length) $('tab-review').hidden = false;
+      $('prs-empty').hidden = pulls.length > 0;
+      const list = $('prs');
+      for (const pr of pulls) {
+        const li = document.createElement('li');
+        const head = document.createElement('div'); head.className = 'mmain';
+        const a = document.createElement('a'); a.className = 'mname'; a.href = pr.url; a.textContent = pr.title;
+        const id = document.createElement('span'); id.className = 'mid'; id.textContent = [`#${pr.number}`, ...pr.motions].join(' · ');
+        head.append(a, id);
+        const steps = document.createElement('ol'); steps.className = 'state';
+        const [mark, checks] = CHECKS[pr.checks];
+        for (const [m, text] of [[mark, checks], [pr.reviewed ? '•' : '–', pr.reviewed ? 'Reviewer left notes' : 'Not reviewed yet'], ['', NEXT[pr.next]]]) {
+          const s = document.createElement('li');
+          if (m) { const b = document.createElement('span'); b.setAttribute('aria-hidden', 'true'); b.textContent = m; s.append(b); }
+          s.append(text);
+          steps.append(s);
+        }
+        const open = document.createElement('a'); open.className = 'btn'; open.href = pr.url; open.textContent = 'Open on GitHub';
+        li.append(head, steps, open);
+        list.append(li);
+        // the motions it changes show it on their row
+        for (const mid of pr.motions) {
+          const chip = document.querySelector<HTMLAnchorElement>(`.mrow[data-id="${CSS.escape(mid)}"] .pr-chip`);
+          if (!chip) continue;
+          chip.hidden = false; chip.href = pr.url;
+          chip.textContent = `${pr.next === 'change' ? '✕ Needs a change' : 'In review'} · #${pr.number}`;
+        }
+      }
+    }).catch(() => { $('prs-wait').hidden = true; $('prs-down').hidden = false; });
+
+    // tabs, one per address: /you/, /you/#review, /you/#liked
+    const tabs = [...document.querySelectorAll<HTMLButtonElement>('#you .tabs [data-tab]')];
+    const show = (name: string, focus = false) => {
+      const tab = tabs.find((t) => t.dataset.tab === name && !t.hidden) ?? tabs[0];
+      for (const t of tabs) {
+        const on = t === tab;
+        t.setAttribute('aria-selected', String(on));
+        t.tabIndex = on ? 0 : -1;
+        $(t.getAttribute('aria-controls')!).hidden = !on;
+      }
+      if (focus) tab.focus();
+    };
+    for (const t of tabs) t.addEventListener('click', () => { history.replaceState(null, '', t.dataset.tab === 'motions' ? '/you/' : `#${t.dataset.tab}`); show(t.dataset.tab!); });
+    document.querySelector('#you .tabs')!.addEventListener('keydown', (e) => {
+      const k = (e as KeyboardEvent).key;
+      if (k !== 'ArrowRight' && k !== 'ArrowLeft') return;
+      const on = tabs.filter((t) => !t.hidden);
+      const i = on.findIndex((t) => t.getAttribute('aria-selected') === 'true');
+      const next = on[(i + (k === 'ArrowRight' ? 1 : on.length - 1)) % on.length];
+      next.click(); next.focus();
+    });
+    const fromHash = () => { const h = location.hash.slice(1); if (h === 'review') $('tab-review').hidden = false; show(h || 'motions'); };
+    window.addEventListener('hashchange', fromHash);
+    fromHash();
+
+    // the share prompt, copied as plain text
+    for (const b of document.querySelectorAll<HTMLButtonElement>('[data-copy-share]')) {
+      const label = b.querySelector('span')!;
+      b.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText($('share-prompt').textContent!.trim()); label.textContent = 'Copied: paste it to your agent'; } catch { label.textContent = 'Select and copy'; }
+        setTimeout(() => (label.textContent = 'Copy share prompt'), 2000);
+      });
+    }
+
+    // a new version: the prompt for an agent, or the commands
+    const nv = $<HTMLDialogElement>('nv');
+    const ways = [...nv.querySelectorAll<HTMLButtonElement>('[data-way]')];
+    const way = (w: string) => { for (const b of ways) { const on = b.dataset.way === w; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; $(b.getAttribute('aria-controls')!).hidden = !on; } };
+    for (const b of ways) b.addEventListener('click', () => way(b.dataset.way!));
+    // retiring: a request on GitHub, unless other motions still build on it
+    const rt = $<HTMLDialogElement>('rt');
+    for (const li of mine) {
+      const id = li.dataset.id!, name = li.dataset.name!;
+      li.querySelector('[data-new]')!.addEventListener('click', () => {
+        nv.querySelector('#nv-title span')!.textContent = name;
+        $('nv-id').textContent = `${id} · published ${li.dataset.version}`;
+        $<HTMLImageElement>('nv-poster').src = li.dataset.poster!;
+        $('nv-prompt').textContent = `/motionhub publish a new version of ${id} from this project`;
+        $('nv-cmd').textContent = `npx @motionhub/cli get ${id}\nnpx @motionhub/cli share motion --pr`;
+        way('agent');
+        nv.showModal();
+      });
+      li.querySelector('[data-retire]')!.addEventListener('click', () => {
+        rt.querySelector('#rt-title span')!.textContent = name;
+        $('rt-id').textContent = id;
+        const built = li.dataset.built ? li.dataset.built.split(' ').map((b) => b.split('|')[1]) : [];
+        $('rt-free').hidden = built.length > 0;
+        $('rt-built').hidden = built.length === 0;
+        $('rt-built').querySelector('b')!.textContent = built.join(', ');
+        const go = $<HTMLAnchorElement>('rt-go');
+        if (built.length) { go.removeAttribute('href'); go.setAttribute('aria-disabled', 'true'); }
+        else {
+          go.removeAttribute('aria-disabled');
+          const body = `Please take \`${id}\` out of the catalogue. I am one of its authors.\n\nIts published versions stay at their addresses (HUB.md).`;
+          go.href = `${repo}/issues/new?title=${encodeURIComponent(`Retire ${id}`)}&body=${encodeURIComponent(body)}`;
+        }
+        rt.showModal();
+      });
+    }
+    // a click on the backdrop closes a dialog
+    for (const d of [nv, rt]) d.addEventListener('click', (e) => { if (e.target === d) d.close(); });
+  });
+</script>
