@@ -32,14 +32,20 @@ const engines = row.tools.flatMap(toolEngines);
     <div class="media">
       {reel ? (
         <>
-          <div class="stage" id="stage" data-src={`/play/${id}/?autoplay=1&sound=1`} data-title={`${name}, playing`}>
+          <div class="stage" id="stage" data-src={`/play/${id}/?autoplay=1&sound=1`} data-video={`/m/${id}/${row.version}.mp4`} data-title={`${name}, playing`}>
             <img class="poster" src={row.poster} srcset={posterSet(row.poster)} sizes="(max-width: 1040px) calc(100vw - 32px), 900px" alt={`A frame of a film in ${name}`} width="960" height="540" fetchpriority="high">
             <button type="button" class="stage-play" id="stage-play" aria-label={`Play ${name}'s reel, with sound`}>
               <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor"/></svg>
             </button>
             <div class="stage-load" id="stage-load" role="status" hidden><span class="spin" aria-hidden="true"></span><span>Loading the player</span></div>
           </div>
-          <p class="stage-note">Plays live in your browser, drawn by web code rather than a video, so it can use your computer's processor and graphics while it runs. The sound is on.</p>
+          <div class="stage-bar">
+            <div class="seg stage-mode" id="stage-mode" role="group" aria-label="How the reel plays" hidden>
+              <button type="button" data-mode="video" aria-pressed="true">Video</button>
+              <button type="button" data-mode="live" aria-pressed="false">Live</button>
+            </div>
+            <p class="stage-note" id="stage-note">Plays live in your browser, drawn by web code rather than a video, so it can use your computer's processor and graphics while it runs. The sound is on.</p>
+          </div>
         </>
       ) : <img class="poster" src={row.poster} srcset={posterSet(row.poster)} sizes="(max-width: 1040px) calc(100vw - 32px), 900px" alt={`A frame of a film in ${name}`} width="960" height="540" fetchpriority="high">}
     </div>
@@ -182,28 +188,103 @@ const engines = row.tools.flatMap(toolEngines);
     if (d.total > 0) for (const el of document.querySelectorAll<HTMLElement>('[data-stat]')) el.hidden = false;
   }).catch(() => {});
 
-  // the reel: a poster and a play button until the viewer asks for it, since a live reel takes the browser's processor and
-  // graphics; then the player's frame, under a loading mark that leaves when the player reports its first frame
+  // the reel: a poster and a play button until the viewer asks for it. It plays as a video (1080p, HUB.md "Reels") when its
+  // version has one, which any phone plays smoothly, or live, drawn in the browser by the motion's own code in a sandboxed
+  // frame, which can take a phone's processor and graphics: the viewer chooses, and the choice is remembered. A version not
+  // rendered yet plays live
   const stage = document.getElementById('stage');
   if (stage) {
     const play = document.getElementById('stage-play') as HTMLButtonElement, load = document.getElementById('stage-load')!;
-    play.addEventListener('click', () => {
-      play.hidden = true;
-      load.hidden = false;
+    const switcher = document.getElementById('stage-mode')!, note = document.getElementById('stage-note')!;
+    const NOTES = {
+      video: 'A 1080p video of the reel, with its sound. Live draws it in your browser from the motion\'s own code instead.',
+      live: note.textContent!,
+    };
+    const KEY = 'motionhub:reel';
+    type Mode = 'video' | 'live';
+    let wanted: Mode = 'video';
+    try { if (localStorage.getItem(KEY) === 'live') wanted = 'live'; } catch {}
+    let hasVideo = false, player: HTMLElement | undefined;
+    // whether this version has its video, asked before the viewer presses play
+    const asked = fetch(stage.dataset.video!, {method: 'HEAD'}).then((r) => r.ok, () => false).then((ok) => {
+      hasVideo = ok;
+      switcher.hidden = !ok;
+      show();
+      return ok;
+    });
+    const mode = (): Mode => (hasVideo ? wanted : 'live');
+    function show() {
+      for (const b of switcher.querySelectorAll<HTMLButtonElement>('button')) b.setAttribute('aria-pressed', String(b.dataset.mode === mode()));
+      note.textContent = NOTES[mode()];
+      play.setAttribute('aria-label', play.getAttribute('aria-label')!.replace(/ as a video| live/, '') + (mode() === 'video' ? ' as a video' : ' live'));
+    }
+
+    const ready = () => { stage.classList.add('playing'); load.hidden = true; player?.focus(); };
+    function stop() {
+      player?.remove();
+      player = undefined;
+      stage.classList.remove('playing');
+    }
+    function live() {
       const frame = document.createElement('iframe');
       frame.className = 'reel';
-      frame.title = stage.dataset.title!;
-      frame.src = stage.dataset.src!;
+      frame.title = stage!.dataset.title!;
+      frame.src = stage!.dataset.src!;
       // its code is the contributor's, so it runs with no origin of its own; it may play sound and go full screen
       frame.setAttribute('sandbox', 'allow-scripts');
       frame.allow = 'autoplay; fullscreen';
-      const ready = () => { stage.classList.add('playing'); load.hidden = true; frame.focus(); };
-      const onMessage = (e: MessageEvent) => { if (e.source === frame.contentWindow && e.data?.type === 'motionhub:ready') { removeEventListener('message', onMessage); ready(); } };
+      const onMessage = (e: MessageEvent) => { if (e.source === frame.contentWindow && e.data?.type === 'motionhub:ready') { removeEventListener('message', onMessage); if (player === frame) ready(); } };
       addEventListener('message', onMessage);
       // a player that never reports is shown anyway once it has loaded and had a moment
-      frame.addEventListener('load', () => setTimeout(ready, 4000));
-      stage.append(frame);
+      frame.addEventListener('load', () => setTimeout(() => { if (player === frame) ready(); }, 4000));
+      return frame;
+    }
+    function video() {
+      const v = document.createElement('video');
+      v.className = 'reel';
+      v.src = stage!.dataset.video!;
+      v.controls = true;
+      v.playsInline = true;
+      v.preload = 'auto';
+      v.setAttribute('aria-label', stage!.dataset.title!);
+      v.addEventListener('playing', () => { if (player === v) ready(); }, {once: true});
+      // a video that will not play here plays live instead
+      v.addEventListener('error', () => {
+        if (player !== v) return;
+        hasVideo = false;
+        switcher.hidden = true;
+        show();
+        start();
+      });
+      return v;
+    }
+    function start() {
+      stop();
+      play.hidden = true;
+      load.hidden = false;
+      player = mode() === 'video' ? video() : live();
+      stage!.append(player);
+      // pressed play: the sound may start; a browser that refuses it with sound plays it muted, with its controls to unmute
+      if (player instanceof HTMLVideoElement) {
+        const v = player;
+        v.play().catch(() => { if (player === v) { v.muted = true; v.play().catch(() => {}); } });
+      }
+    }
+    play.addEventListener('click', async () => {
+      // nearly always answered by now; a moment's wait keeps a video from starting live
+      await Promise.race([asked, new Promise((done) => setTimeout(done, 1500))]);
+      start();
     });
+    switcher.addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest('button');
+      if (!b || b.dataset.mode === wanted) return;
+      wanted = b.dataset.mode as Mode;
+      try { localStorage.setItem(KEY, wanted); } catch {}
+      show();
+      // switched while it plays: it goes on in the other way
+      if (player) start();
+    });
+    show();
   }
 
 </script>
