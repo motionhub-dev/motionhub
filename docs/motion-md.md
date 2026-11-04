@@ -71,11 +71,11 @@ npx @motionhub/cli tokens --out tokens.json
 A `MOTION.md` can lead a directory, the way a `SKILL.md` can bring scripts:
 
 ```
-clay-world/
+lab-notebook/
   MOTION.md     the look, in words
   tokens.json   the exact values, as W3C design tokens
   react/        its components, ready to use
-    parts/      slice.tsx, figure.tsx, world.tsx and more
+    parts/      sheet.tsx, bars.tsx, versus.tsx and more
   motion.json   its id, version, authors and licence
   poster.jpg    one frame of a film made in it
   CREDITS.md    every font and asset it needs
@@ -104,22 +104,22 @@ It describes a look and never a particular film. It has no story, script, scenes
 
 ## An example
 
-From [Clay World](https://motionhub.dev/m/@iamsuosi/clay-world/), a look on motionhub:
+From [Lab Notebook](https://motionhub.dev/m/@iamsuosi/lab-notebook/), a look on motionhub:
 
 ```md
-# Clay World
+# Lab Notebook
 
 ## Essence, and what it is not
 
-- Everything is a rounded, hand-pressed form of matte clay, slightly out of true, thumb-dented; no sharp edge, no gloss.
-- Things have weight: what falls stretches, squashes flat, throws up crumbs and jolts the camera.
+- One notebook page, squared, with a red margin rule and punched holes. Everything is drawn or written on it.
+- Three pens with fixed meanings: ink draws and writes, red marks the one result, pencil is working and asides.
 
 ## Colour roles
 
-- One saturated clay leads a frame. Never pure white or black, a gradient on a form, or a glow.
+- `grad`: the red pen. The one result of a scene (a boxed value, an exclamation), never more than one red thing at a time.
 ```
 
-The [whole file](https://motionhub.dev/m/@iamsuosi/clay-world/MOTION.md) goes on to its type, its motion and what to avoid.
+The [whole file](https://motionhub.dev/m/@iamsuosi/lab-notebook/MOTION.md) goes on to its type, its motion and what to avoid.
 
 ## Use one, or write your own
 

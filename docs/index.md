@@ -11,7 +11,7 @@ At its heart is [`MOTION.md`](motion-md.md), an open format that works like a `S
 Pick a motion, then paste this into any agent that can open a URL, with your topic and the motion's id:
 
 ```text
-Read https://motionhub.dev/llms.txt, then make a film about "<your topic>" in the motion @iamsuosi/clay-world
+Read https://motionhub.dev/llms.txt, then make a film about "<your topic>" in the motion @iamsuosi/lab-notebook
 ```
 
 That is all. To make it shorter, install the skill once, for every agent on your computer:
@@ -23,7 +23,7 @@ npx skills add motionhub-dev/motions -g
 then ask:
 
 ```text
-/motionhub make a film about <your topic> in @iamsuosi/clay-world
+/motionhub make a film about <your topic> in @iamsuosi/lab-notebook
 ```
 
 and, to publish a look of your own:

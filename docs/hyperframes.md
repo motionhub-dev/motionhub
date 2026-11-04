@@ -14,7 +14,7 @@ npx skills add motionhub-dev/motions -g
 The first installs HyperFrames' core skills, as [its README](https://github.com/heygen-com/hyperframes#readme) recommends for agents. Then, in a HyperFrames project or an empty folder, ask:
 
 ```text
-/motionhub make a HyperFrames film about <your topic> in @iamsuosi/clay-world
+/motionhub make a HyperFrames film about <your topic> in @iamsuosi/lab-notebook
 ```
 
 The motionhub skill fetches the motion into `./motion` and checks it against its SHA-256, reads `MOTION.md` and `tokens.json` whole, adds the [HyperFrames binding](../packages/hyperframes/README.md), and builds your story from the motion's components and tokens; HyperFrames' skills keep the composition to HyperFrames' own practice and render it.
@@ -22,7 +22,7 @@ The motionhub skill fetches the motion into `./motion` and checks it against its
 An agent without motionhub's skill can take the same request as a prompt that starts by reading it:
 
 ```text
-Read https://motionhub.dev/llms.txt, then make a HyperFrames film about "<your topic>" in the motion @iamsuosi/clay-world
+Read https://motionhub.dev/llms.txt, then make a HyperFrames film about "<your topic>" in the motion @iamsuosi/lab-notebook
 ```
 
 ## By hand

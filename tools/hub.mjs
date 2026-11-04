@@ -3,7 +3,7 @@
 // share one by pull request (HUB.md, CONTRIBUTING.md).
 //
 //   motionhub search [words ...]                one line per motion that has every word in its id, names, line, fit or tags
-//   motionhub get <id> [--out <dir>]            the newest version of `@iamsuosi/red-pencil`, into <dir>
+//   motionhub get <id> [--out <dir>]            the newest version of `@iamsuosi/lab-notebook`, into <dir>
 //                                               (default ./motion), which must not exist yet
 //   motionhub init <slug> [--github <login>]    ./<slug>/ with every required file but the poster, to fill in, scoped to
 //                                               the account gh is signed in as (or --github): its id is @<login>/<slug>

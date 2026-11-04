@@ -14,7 +14,7 @@ npx skills add motionhub-dev/motions -g
 Then, in a Remotion project or an empty folder, ask:
 
 ```text
-/motionhub make a Remotion film about <your topic> in @iamsuosi/clay-world
+/motionhub make a Remotion film about <your topic> in @iamsuosi/lab-notebook
 ```
 
 The motionhub skill fetches the motion into `./motion` and checks it against its SHA-256, reads `MOTION.md` and `tokens.json` whole, adds the [Remotion binding](../packages/remotion/README.md), and builds your story from the motion's components and tokens; Remotion's skills keep the project to Remotion's own practice. Preview and render it as any Remotion project:
@@ -27,7 +27,7 @@ npx remotion render
 An agent without motionhub's skill can take the same request as a prompt that starts by reading it:
 
 ```text
-Read https://motionhub.dev/llms.txt, then make a Remotion film about "<your topic>" in the motion @iamsuosi/clay-world
+Read https://motionhub.dev/llms.txt, then make a Remotion film about "<your topic>" in the motion @iamsuosi/lab-notebook
 ```
 
 ## By hand
