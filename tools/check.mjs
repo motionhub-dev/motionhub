@@ -24,15 +24,17 @@ import {join, basename, dirname, resolve, relative, extname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 /** The newest version of the format; every version before it is still read (SPEC.md §9). */
-export const SPEC = 'motion/0.3';
-export const SPECS = ['motion/0.1', 'motion/0.2', 'motion/0.3'];
+export const SPEC = 'motion/0.4';
+export const SPECS = ['motion/0.1', 'motion/0.2', 'motion/0.3', 'motion/0.4'];
 const SCOPE = /^[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,38}$/;
 const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const LANG = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{1,8})*$/;
 const GITHUB = /^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$/;
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
 const MEMBERS = new Set(['spec', 'slug', 'version', 'name', 'line', 'authors', 'license', 'lang', 'tags']);
-const MEMBERS_SINCE = {scope: 'motion/0.2', basedOn: 'motion/0.3'};
+const MEMBERS_SINCE = {scope: 'motion/0.2', basedOn: 'motion/0.3', fit: 'motion/0.4'};
+/** What sort of motion it is (SPEC.md §3, What it is for) */
+export const FIT_KINDS = ['general', 'topic', 'overlay'];
 const ID = /^(?:@[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,38}\/)?[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const FILES = ['motion.json', 'MOTION.md', 'tokens.json', 'poster.jpg', 'CREDITS.md'];
 const HEADINGS = [['essence'], ['colour', 'color'], ['type'], ['motion'], ['avoid']];
@@ -41,6 +43,8 @@ const POSTER_BYTES = 500 * 1024;
 
 // The hub's rules (CONTRIBUTING.md)
 const REEL_SECONDS = 30;
+/** What a component is for in a film (CONTRIBUTING.md, Tool directories): its `meta.purpose` */
+export const PURPOSES = ['title', 'open', 'close', 'data', 'compare', 'steps', 'term', 'link', 'quote', 'mark', 'transition', 'ground'];
 // a motion's sound (react/sound.json): the names @motionhub/runtime/sound draws (tests/sound.test.mjs holds the two together)
 export const SOUND_ROLES = ['land', 'move', 'draw', 'count', 'cut', 'out'];
 export const SOUND_VOICES = ['click', 'thump', 'tone', 'pluck', 'swish', 'scratch', 'chime', 'marimba', 'square', 'squares', 'swell', 'keys', 'noise'];
@@ -157,19 +161,28 @@ function checkManifest(m, add) {
       });
     }
   }
+  if (m.fit !== undefined) {
+    if (!m.fit || typeof m.fit !== 'object' || Array.isArray(m.fit)) add('manifest.fit', at, 'fit is {kind, for, not}');
+    else {
+      for (const key of Object.keys(m.fit)) if (!['kind', 'for', 'not'].includes(key)) add('manifest.fit', at, `fit has only "kind", "for" and "not", not "${key}"`);
+      if (!FIT_KINDS.includes(m.fit.kind)) add('manifest.fit', at, `fit.kind is one of ${FIT_KINDS.map((k) => `"${k}"`).join(', ')}`);
+      localized(m.fit.for, 'fit.for', 200, at, add, 'manifest.fit');
+      if (m.fit.not !== undefined) localized(m.fit.not, 'fit.not', 200, at, add, 'manifest.fit');
+    }
+  }
   if (m.tags !== undefined) {
     if (!Array.isArray(m.tags) || m.tags.length > 10) add('manifest.tags', at, 'tags is an array of at most 10 keywords');
     else m.tags.forEach((t) => { if (typeof t !== 'string' || !NAME.test(t)) add('manifest.tags', at, `tag "${t}" is a keyword of a-z, 0-9 and single hyphens`); });
   }
 }
 
-function localized(value, key, max, at, add) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return add(`manifest.${key}`, at, `${key} is an object of BCP 47 tags to text, with "en"`);
-  if (typeof value.en !== 'string' || !value.en.trim()) add(`manifest.${key}`, at, `${key}.en is required`);
+function localized(value, key, max, at, add, code = `manifest.${key}`) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return add(code, at, `${key} is an object of BCP 47 tags to text, with "en"`);
+  if (typeof value.en !== 'string' || !value.en.trim()) add(code, at, `${key}.en is required`);
   for (const [lang, text] of Object.entries(value)) {
-    if (!LANG.test(lang)) add(`manifest.${key}`, at, `${key} key "${lang}" is not a BCP 47 language tag`);
-    else if (typeof text !== 'string' || !text.trim()) add(`manifest.${key}`, at, `${key}.${lang} is text`);
-    else if ([...text].length > max) add(`manifest.${key}`, at, `${key}.${lang} is longer than ${max} characters`);
+    if (!LANG.test(lang)) add(code, at, `${key} key "${lang}" is not a BCP 47 language tag`);
+    else if (typeof text !== 'string' || !text.trim()) add(code, at, `${key}.${lang} is text`);
+    else if ([...text].length > max) add(code, at, `${key}.${lang} is longer than ${max} characters`);
   }
 }
 
@@ -356,6 +369,8 @@ function checkHub(dir, manifest, {author, authorId, accounts, was}, add) {
     const login = author ? author.toLowerCase() : '<your GitHub login>';
     if (manifest.scope === undefined) add('hub.scope', 'motion.json', `a motion on motionhub is published under its author's GitHub name: give it "scope": "${login}", for the id @${login}/${manifest.slug ?? '<slug>'}`);
     else if (author && !was && typeof manifest.scope === 'string' && !isAccount(manifest.scope, who)) add('hub.scope', 'motion.json', `the scope "${manifest.scope}" belongs to that GitHub account; publish yours as @${login}/${manifest.slug ?? '<slug>'}`);
+    // every motion says what it is for, so a person or an agent choosing one can tell (CONTRIBUTING.md, "What makes a good motion")
+    if (manifest.fit === undefined) add('hub.fit', 'motion.json', `say what the motion is for: "spec": "${SPEC}" and "fit": {"kind": "general" | "topic" | "overlay", "for": {"en": "…"}} (SPEC.md §3, What it is for)`);
   }
   // in this repository every login a motion names is recorded with its account's id, so that a login given up and
   // taken by someone else never brings the motion with it
@@ -420,6 +435,14 @@ function checkHub(dir, manifest, {author, authorId, accounts, was}, add) {
         for (const l of [].concat(spec)) if (!SOUND_VOICES.includes(l?.voice)) add('hub.sound', 'react/sound.json', `${role} has no voice "${l?.voice}": ${SOUND_VOICES.join(', ')}`);
       }
     }
+  }
+  // each component says what it is for in a film, in the words the site and agents sort components by
+  const parts = join(dir, 'react/parts');
+  if (existsSync(parts)) for (const n of readdirSync(parts).filter((f) => /\.(tsx|jsx)$/.test(f)).sort()) {
+    const src = readFileSync(join(parts, n), 'utf8');
+    if (!/export\s+const\s+meta\b/.test(src)) continue;
+    const purpose = /\bpurpose\s*:\s*['"]([^'"]*)['"]/.exec(src)?.[1];
+    if (!PURPOSES.includes(purpose)) add('hub.purpose', `react/parts/${n}`, `meta.purpose is one of ${PURPOSES.join(', ')}${purpose === undefined ? '' : `, not "${purpose}"`}`);
   }
   // a reel is what the motion's page plays live: a default export and how long it runs
   if (existsSync(join(dir, 'react/reel.tsx'))) {

@@ -1,8 +1,8 @@
 {
-  "spec": "motion/0.3",
+  "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "ink-scroll",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "name": {
     "en": "Ink Scroll",
     "zh-CN": "墨卷"
@@ -26,5 +26,16 @@
     "oriental",
     "layered",
     "light"
-  ]
+  ],
+  "fit": {
+    "kind": "topic",
+    "for": {
+      "en": "Chinese history and culture unrolled as a hand scroll: dynasties, journeys, lives, for Chinese narration.",
+      "zh-CN": "像长卷一样展开的中国历史与文化：朝代、旅程、人物生平，为中文旁白设计。"
+    },
+    "not": {
+      "en": "Modern data and technology; films in other languages than Chinese.",
+      "zh-CN": "现代数据与科技；非中文的影片。"
+    }
+  }
 }

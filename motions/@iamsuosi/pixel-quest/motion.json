@@ -1,8 +1,8 @@
 {
-  "spec": "motion/0.3",
+  "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "pixel-quest",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "name": {
     "en": "Pixel Quest",
     "zh-CN": "像素关卡"
@@ -26,5 +26,16 @@
     "retro",
     "playful",
     "dark"
-  ]
+  ],
+  "fit": {
+    "kind": "topic",
+    "for": {
+      "en": "Anything told as levels: how-to guides, onboarding, learning paths, first lessons.",
+      "zh-CN": "把步骤讲成关卡：操作指南、上手引导、学习路径、入门课。"
+    },
+    "not": {
+      "en": "Serious or sensitive subjects; data-heavy explainers.",
+      "zh-CN": "严肃或敏感的题材；数据密集的讲解。"
+    }
+  }
 }

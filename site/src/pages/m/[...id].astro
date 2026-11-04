@@ -5,7 +5,7 @@ import Engine from '../../components/Engine.astro';
 import Prompt from '../../components/Prompt.astro';
 import {existsSync} from 'node:fs';
 import {join} from 'node:path';
-import {REPO, ROOT, SITE, SPEC, TOPIC, aka, avatar, posterSet, builtOn, builtOnBy, byAuthor, colours, creator, creatorPath, en, faces, kb, markdown, read, rows, skillInstall, toolEngines, skillShare, translations} from '../../lib/catalogue.mjs';
+import {KINDS, REPO, ROOT, SITE, SPEC, TOPIC, aka, avatar, posterSet, builtOn, builtOnBy, byAuthor, colours, creator, creatorPath, en, faces, kb, markdown, read, rows, skillInstall, toolEngines, skillShare, translations} from '../../lib/catalogue.mjs';
 
 export function getStaticPaths() {
   return rows.map((row) => ({params: {id: row.slug}, props: {row}}));
@@ -119,6 +119,8 @@ const uses = [
       </div>
 
       <dl class="facts">
+        {row.fit && <><dt>Made for</dt><dd><a class="chip" href={`/?kind=${row.fit.kind}`} title={KINDS[row.fit.kind].note}>{KINDS[row.fit.kind].label}</a> {en(row.fit.for)}</dd></>}
+        {row.fit?.not && <><dt>Not for</dt><dd>{en(row.fit.not)}</dd></>}
         <dt data-stat hidden>Downloads</dt><dd data-stat hidden id="downloads" data-id={id}></dd>
         {on.length > 0 && <><dt>Built on</dt><dd>{on.map((b, i) => <>{i > 0 && ', '}<a href={`/m/${b.id}/`}>{en(b.row.name)}</a>{b.version && <span class="mono"> {b.version}</span>}</>)}</dd></>}
         {by.length > 0 && <><dt>Built on by</dt><dd>{by.map((r, i) => <>{i > 0 && ', '}<a href={`/m/${r.slug}/`}>{en(r.name)}</a></>)}</dd></>}

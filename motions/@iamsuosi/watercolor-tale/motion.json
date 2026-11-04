@@ -1,8 +1,8 @@
 {
-  "spec": "motion/0.3",
+  "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "watercolor-tale",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "name": {
     "en": "Watercolor Tale",
     "zh-CN": "水彩绘本"
@@ -25,5 +25,16 @@
     "watercolor",
     "playful",
     "light"
-  ]
+  ],
+  "fit": {
+    "kind": "general",
+    "for": {
+      "en": "Gentle stories told as a picture book: children, nature, the seasons, people and places.",
+      "zh-CN": "像绘本一样讲的温和故事：儿童、自然、季节变化、人文故事。"
+    },
+    "not": {
+      "en": "Data-heavy, technical or business subjects.",
+      "zh-CN": "数据密集、技术或商业题材。"
+    }
+  }
 }

@@ -5,13 +5,13 @@ description: Find a motion (a reusable look for narrated and explanatory video) 
 
 # Making a film in a motion
 
-A **motion** is a look for narrated and explanatory video, written down: how a film looks (ground, colour, type) and how it moves (how things arrive, change and leave). It holds no film: no story, script, scenes or timings. You bring the story; the motion decides how it looks and moves. The format is [SPEC.md](https://github.com/motionhub-dev/motions/blob/main/SPEC.md) (`motion/0.3`). A motion is named by its id, its creator's GitHub name and its slug: `@iamsuosi/red-pencil`. On motionhub every id has both.
+A **motion** is a look for narrated and explanatory video, written down: how a film looks (ground, colour, type) and how it moves (how things arrive, change and leave). It holds no film: no story, script, scenes or timings. You bring the story; the motion decides how it looks and moves. The format is [SPEC.md](https://github.com/motionhub-dev/motions/blob/main/SPEC.md) (`motion/0.4`). A motion is named by its id, its creator's GitHub name and its slug: `@iamsuosi/red-pencil`. On motionhub every id has both.
 
 A motion is a directory:
 
 | File | What you take from it |
 | --- | --- |
-| `motion.json` | Its scope and slug (together its id), version, name, one line, authors and licence; `lang` is the language of `MOTION.md` |
+| `motion.json` | Its scope and slug (together its id), version, name, one line, authors and licence; `lang` is the language of `MOTION.md`; `fit` is what it is for |
 | `MOTION.md` | The look in words. Five sections always: **Essence**, **Colour**, **Type**, **Motion**, **Avoid** |
 | `tokens.json` | The exact values, as W3C design tokens: `color`, `font`, and often `duration` and `cubicBezier` |
 | `poster.jpg` | One frame of a film made in it |
@@ -22,7 +22,7 @@ A motion is a directory:
 ## 1. Choose the motion
 
 - **The person named one** (a name, an id, or a `motionhub.dev/m/<id>` link): use it.
-- **Otherwise** search: `npx @motionhub/cli search <words>` (no words lists them all), or read the index, `https://motionhub.dev/api/motions.json`, whose rows have `slug` (the id), `name`, `line`, `tags`, `lang`, `poster` and `package`, with paths relative to `https://motionhub.dev`. Match the `line` and `tags` against the subject and the medium (a screen recording, a person's own footage, a dataset, a story), offer two or three with their posters, and let the person choose. Choose yourself only when they asked you to.
+- **Otherwise** search: `npx @motionhub/cli search <words>` (no words lists them all), or read the index, `https://motionhub.dev/api/motions.json`, whose rows have `slug` (the id), `name`, `line`, `fit`, `tags`, `lang`, `poster` and `package`, with paths relative to `https://motionhub.dev`. Match the subject and the medium (a screen recording, a person's own footage, a dataset, a story) against each motion's `fit`: `fit.for` says what it is for and `fit.not` what it handles badly. A `general` motion carries many subjects, a `topic` motion is made for one and is the better choice when the film is about it, and an `overlay` motion is drawn over footage the person brings, so offer one only when they have that footage. Offer two or three with their posters, and let the person choose. Choose yourself only when they asked you to.
 
 ## 2. Get it
 
@@ -87,7 +87,7 @@ Adapt your own copy freely for one film. A changed copy is no longer that versio
 To publish a look the person made (only when they ask):
 
 1. `npx @motionhub/cli init <slug>` writes `./<slug>/` with every required file to fill in, as the motion `@<their login>/<slug>`.
-2. Take the look from their project, never the film: the theme's colours and faces into `tokens.json` (with the durations and curves the project uses); `MOTION.md` in the five sections, saying what any film in this look shares and nothing of this film's story; `CREDITS.md` naming every face and asset with its licence.
+2. Take the look from their project, never the film: the theme's colours and faces into `tokens.json` (with the durations and curves the project uses); `MOTION.md` in the five sections, saying what any film in this look shares and nothing of this film's story; `CREDITS.md` naming every face and asset with its licence; `fit` in `motion.json`, honestly: `general` only if it would carry three unrelated subjects, otherwise `topic` with the subject it is made for, or `overlay` when it draws over their own footage.
 3. `poster.jpg`: one frame of their film, a JPEG 960 to 3840 pixels wide and at most 500 KB (Remotion: `npx remotion still <composition> poster.jpg --frame=<n> --image-format=jpeg`).
 4. Optionally the reusable components, in `react/parts/` as [CONTRIBUTING.md](https://github.com/motionhub-dev/motions/blob/main/CONTRIBUTING.md) describes: React components that import only `react` and `@motionhub/runtime` (in Remotion, `useTime()` and `useVideoConfig()` from it instead of Remotion's), take what changes as props, and hold nothing of this film's story.
 5. `npx @motionhub/cli share <slug>` runs the checks its pull request will run, as the person's GitHub account. Show them the result; with their yes, `npx @motionhub/cli share <slug> --pr` opens the pull request from their fork, recording each login the motion names in `accounts/` with its GitHub id if it is not there yet.

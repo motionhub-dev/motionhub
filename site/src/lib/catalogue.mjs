@@ -3,7 +3,7 @@
 import {existsSync, readFileSync, readdirSync} from 'node:fs';
 import {join, resolve} from 'node:path';
 import {SPEC, readAccounts} from '../../../tools/check.mjs';
-import {REPO, SITE, colours, en, faces, markdown, other} from '../../../tools/site.mjs';
+import {REPO, SITE, colours, creatorKeys, en, faces, markdown, other} from '../../../tools/site.mjs';
 
 export {REPO, SITE, SPEC, colours, en, faces, markdown, other};
 
@@ -59,6 +59,15 @@ export function chips(limit = 12) {
   return [...counts].filter(([, n]) => n > 1).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).slice(0, limit).map(([t]) => t);
 }
 
+/** What a motion's fit.kind means to a person browsing (SPEC.md §3, What it is for), in the order the gallery offers them */
+export const KINDS = {
+  general: {label: 'General', note: 'Carries many subjects'},
+  topic: {label: 'Topic', note: 'Made for one subject, deep in it'},
+  overlay: {label: 'Over your footage', note: 'Drawn over video you bring'},
+};
+/** The kinds the catalogue's motions have, in that order */
+export const kinds = Object.keys(KINDS).filter((k) => rows.some((r) => r.fit?.kind === k));
+
 /** Every tool directory any motion has, A to Z. */
 export const tools = [...new Set(rows.flatMap((r) => r.tools))].sort();
 
@@ -94,14 +103,15 @@ export const builtOnBy = (id) => rows.filter((r) => (r.basedOn ?? []).some((b) =
 /**
  * The creators: every GitHub account that is an author of a motion, one per account however many logins it has had,
  * with the name it is credited by in its newest motion, its motions A to Z and the motions of others built on them.
- * Most motions first. `key` is the first login it published under, in lowercase: its page's address, which a rename
- * does not move. `login` is its login now (or, when GitHub cannot be asked, one it published under), and `formerly` the others it
- * has published under.
+ * Most motions first. `key` is its page's address (creatorKeys in tools/site.mjs: a scope it publishes under, else a
+ * login, the same in every build); its other logins' pages send a visitor there. `login` is its login now (or, when
+ * GitHub cannot be asked, the key), and `formerly` the others it has published under.
  */
+const KEYS = creatorKeys(rows, accounts);
 export const creators = await (async () => {
   const map = new Map();
   for (const r of rows) for (const a of r.authors) {
-    const c = map.get(who(a.github)) ?? {key: a.github.toLowerCase(), id: accounts.get(a.github.toLowerCase()), login: a.github, logins: new Set(), name: a.name, motions: []};
+    const c = map.get(who(a.github)) ?? {key: KEYS.get(a.github.toLowerCase()), id: accounts.get(a.github.toLowerCase()), login: KEYS.get(a.github.toLowerCase()), logins: new Set(), name: a.name, motions: []};
     c.logins.add(a.github.toLowerCase());
     c.motions.push(r);
     map.set(who(a.github), c);

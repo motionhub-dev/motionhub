@@ -16,12 +16,15 @@ function jpeg(width, height) {
 
 const color = (hex) => ({colorSpace: 'srgb', components: [0.5, 0.5, 0.5], hex});
 // every motion on the hub has a scope (its author's GitHub login); UNSCOPED is the format's plainest motion
-const MANIFEST = {
+// every motion on the hub says what it is for (fit, since motion/0.4); BASE is a motion of an earlier version, without it
+const BASE = {
   spec: 'motion/0.2', scope: 'tester', slug: 'test-motion', version: '1.0.0',
   name: {en: 'Test Motion', 'zh-CN': '测试风格'}, line: {en: 'A plain motion for the checker\'s tests.'},
   authors: [{name: 'Tester', github: 'tester'}], license: {text: 'CC-BY-4.0'}, tags: ['light'],
 };
-const {scope: _scope, ...UNSCOPED} = {...MANIFEST, spec: 'motion/0.1'};
+const FIT = {kind: 'general', for: {en: 'Any plain explainer.', 'zh-CN': '任何朴素的讲解。'}, not: {en: 'Anything loud.'}};
+const MANIFEST = {...BASE, spec: 'motion/0.4', fit: FIT};
+const {scope: _scope, ...UNSCOPED} = {...BASE, spec: 'motion/0.1'};
 const TOKENS = {
   color: {$type: 'color', ground: {$value: color('#FFFFFF')}, ink: {$value: color('#000000')}, accent: {$value: '{color.ink}'}},
   font: {$type: 'fontFamily', sans: {$value: ['Inter', 'sans-serif']}},
@@ -79,7 +82,7 @@ test('in the catalogue the directory is the id; a project\'s copy may be named o
 
 test('the manifest\'s members, slug, version, localized strings and licence', () => {
   const bad = (manifest) => codes(motion({manifest: {...MANIFEST, ...manifest}}), {hub: false});
-  assert.ok(bad({spec: 'motion/0.4'}).includes('manifest.spec'));
+  assert.ok(bad({spec: 'motion/0.5'}).includes('manifest.spec'));
   assert.ok(bad({slug: 'Other'}).includes('manifest.slug'));
   assert.ok(bad({version: '1.0'}).includes('manifest.version'));
   assert.ok(bad({name: {'zh-CN': '只有中文'}}).includes('manifest.name'));
@@ -93,21 +96,22 @@ test('the manifest\'s members, slug, version, localized strings and licence', ()
 });
 
 test('a scope is a lowercase GitHub username, since motion/0.2, and a catalogue keeps a motion at motions/<id>/', () => {
-  const scoped = {...MANIFEST, spec: 'motion/0.2', scope: 'tester'};
+  const scoped = {...BASE, spec: 'motion/0.2', scope: 'tester'};
+  const listed = {...MANIFEST, scope: 'tester'};
   assert.deepEqual(codes(motion({manifest: scoped}), {hub: false}), []);
   assert.deepEqual(codes(motion({manifest: {...UNSCOPED, spec: 'motion/0.2'}}), {hub: false}), [], 'the format lets a 0.2 motion be unscoped');
   assert.ok(codes(motion({manifest: {...scoped, spec: 'motion/0.1'}}), {hub: false}).includes('manifest.member'), 'scope is not a 0.1 member');
   assert.ok(codes(motion({manifest: {...scoped, scope: 'Tester'}}), {hub: false}).includes('manifest.scope'));
   assert.ok(codes(motion({manifest: {...scoped, scope: '-x'}}), {hub: false}).includes('manifest.scope'));
-  assert.deepEqual(codes(motion({dir: 'motions/@tester/test-motion', manifest: scoped})), []);
-  assert.ok(codes(motion({dir: 'motions/@other/test-motion', manifest: scoped})).includes('hub.slug'));
+  assert.deepEqual(codes(motion({dir: 'motions/@tester/test-motion', manifest: listed})), []);
+  assert.ok(codes(motion({dir: 'motions/@other/test-motion', manifest: listed})).includes('hub.slug'));
   assert.ok(codes(motion({dir: 'motions/@tester/test-motion', manifest: UNSCOPED})).includes('hub.slug'), 'an unscoped motion is not kept under a scope');
-  assert.ok(codes(motion({dir: 'motions/test-motion', manifest: scoped})).includes('hub.slug'), 'a scoped motion is not kept at the top');
+  assert.ok(codes(motion({dir: 'motions/test-motion', manifest: listed})).includes('hub.slug'), 'a scoped motion is not kept at the top');
   assert.deepEqual(codes(motion({dir: 'project/motion', manifest: scoped}), {hub: false}), [], 'a copy in a project may be named otherwise');
 });
 
 test('basedOn names the motions this one builds on, since motion/0.3, and in the catalogue they are there', () => {
-  const based = {...MANIFEST, spec: 'motion/0.3', scope: 'tester', basedOn: [{id: 'red-pencil', version: '1.0.2'}, {id: '@ana/ledger'}]};
+  const based = {...MANIFEST, scope: 'tester', basedOn: [{id: 'red-pencil', version: '1.0.2'}, {id: '@ana/ledger'}]};
   const fmt = (m) => codes(motion({manifest: m}), {hub: false});
   assert.deepEqual(fmt(based), []);
   assert.ok(fmt({...based, spec: 'motion/0.2'}).includes('manifest.member'), 'basedOn is not a 0.2 member');
@@ -135,6 +139,29 @@ test('every motion on the hub has a scope, and only its owner publishes a new on
   assert.ok(codes(motion({manifest: other}), {author: 'bo'}).includes('hub.scope'), 'a co-author does not publish under another scope');
   assert.deepEqual(codes(motion(), {hub: true}), [], 'with no pull request author there is nothing to compare');
   assert.deepEqual(codes(motion({manifest: {...MANIFEST, version: '1.0.1'}}), {author: 'Tester', was: MANIFEST}), [], 'a change is the published authors\' (checkUpdate)');
+});
+
+test('fit says what a motion is for, since motion/0.4, and every motion on the hub has it', () => {
+  const fmt = (m) => codes(motion({manifest: m}), {hub: false});
+  assert.deepEqual(fmt(MANIFEST), []);
+  assert.deepEqual(fmt({...MANIFEST, fit: {kind: 'overlay', for: {en: 'Labels over your own footage.'}}}), [], 'not is optional');
+  assert.ok(fmt({...MANIFEST, spec: 'motion/0.3'}).includes('manifest.member'), 'fit is not a 0.3 member');
+  assert.ok(fmt({...MANIFEST, fit: 'general'}).includes('manifest.fit'));
+  assert.ok(fmt({...MANIFEST, fit: {...FIT, kind: 'niche'}}).includes('manifest.fit'));
+  assert.ok(fmt({...MANIFEST, fit: {kind: 'topic'}}).includes('manifest.fit'), 'for is required');
+  assert.ok(fmt({...MANIFEST, fit: {...FIT, for: {'zh-CN': '只有中文'}}}).includes('manifest.fit'), 'for has en');
+  assert.ok(fmt({...MANIFEST, fit: {...FIT, not: {en: 'x'.repeat(201)}}}).includes('manifest.fit'));
+  assert.ok(fmt({...MANIFEST, fit: {...FIT, needs: {en: 'footage'}}}).includes('manifest.fit'));
+  assert.ok(codes(motion({manifest: {...BASE, spec: 'motion/0.3'}})).includes('hub.fit'), 'the hub asks for it');
+  assert.deepEqual(fmt({...BASE, spec: 'motion/0.3'}), [], 'the format does not');
+});
+
+test('a component\'s meta names its purpose in the hub\'s words', () => {
+  const part = (src) => codes(motion({extra: {'react/parts/a.tsx': src}, manifest: {...MANIFEST, license: {text: 'CC-BY-4.0', code: 'MIT'}}}));
+  assert.deepEqual(part("export const meta = {name: {en: 'A'}, purpose: 'compare', line: 'x'};\nexport const A = () => null;\n"), []);
+  assert.ok(part("export const meta = {name: {en: 'A'}, purpose: 'comparison'};\n").includes('hub.purpose'));
+  assert.ok(part("export const meta = {name: {en: 'A'}};\n").includes('hub.purpose'));
+  assert.deepEqual(part('export const helper = 1;\n'), [], 'a file without meta is a helper');
 });
 
 test('code in a tool directory needs license.code', () => {
