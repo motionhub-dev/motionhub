@@ -8,7 +8,9 @@ import {createServer} from 'node:http';
 import {existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {getMotion, scaffold, search, share, unpack} from '../tools/hub.mjs';
+import {getMotion, motionTokens, projectMotion, scaffold, search, share, unpack} from '../tools/hub.mjs';
+import {SPEC, checkMotion} from '../tools/check.mjs';
+import {resolveTokens, tokenVariables} from '../packages/runtime/tokens.js';
 
 /** A package of a small motion named `slug`, `extra` run on its directory first, and its index row. */
 function pkg(slug, extra = () => {}) {
@@ -99,4 +101,47 @@ test('a new motion starts as every required file but the poster, and shares only
     assert.match(await share(dir, {github: 'ana'}, base), /after 1\.0\.0/);
     await assert.rejects(share(dir, {github: 'ana', pr: true}, base), /gh signed in|gh is signed in as/, 'a pull request is never opened for an account gh is not signed in as');
   } finally { server.close(); }
+});
+
+// a motion in one file: its tokens, for a binding or a theme
+const ONE_FILE = '---\nspec: motion/0.5\nname: A look\ntokens:\n  color:\n    floor: "#E8D5B7"\n    title: "{color.floor}"\n  font:\n    display: ["Fredoka", "sans-serif"]\n  duration:\n    enter: 0.6s\n  easing:\n    arrive: [0.22, 1, 0.36, 1]\n---\n\n# A look\n\n## Essence\nE.\n\n## Colour\nC.\n\n## Type\nT.\n\n## Motion\nM.\n\n## Avoid\nA.\n';
+const BIN = new URL('../bin/motionhub.mjs', import.meta.url).pathname;
+
+test('tokens writes a motion in one file\'s values as tokens.json, which the format and the runtime read', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'tokens-'));
+  writeFileSync(join(dir, 'MOTION.md'), ONE_FILE);
+  const tokens = JSON.parse(execFileSync(process.execPath, [BIN, 'tokens'], {cwd: dir, encoding: 'utf8'}));
+  assert.deepEqual(tokens, motionTokens(join(dir, 'MOTION.md')));
+  const values = resolveTokens(tokens);
+  assert.equal(values.color.floor, '#E8D5B7');
+  assert.equal(values.color.title, '#E8D5B7', 'an alias is resolved');
+  assert.match(tokenVariables(values)['--font-display'], /Fredoka/);
+  // the file it writes is one a motion in a directory could hold
+  execFileSync(process.execPath, [BIN, 'tokens', 'MOTION.md', '--out', 'tokens.json'], {cwd: dir});
+  assert.deepEqual(JSON.parse(readFileSync(join(dir, 'tokens.json'), 'utf8')), tokens);
+  assert.deepEqual(checkMotion(join(dir, 'MOTION.md'), {hub: false}), []);
+});
+
+test('tokens finds the project\'s motion, and refuses a file that is not a valid one', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'tokens-'));
+  assert.equal(projectMotion(dir), undefined);
+  mkdirSync(join(dir, 'motion'));
+  writeFileSync(join(dir, 'motion/MOTION.md'), ONE_FILE);
+  assert.equal(projectMotion(dir), join(dir, 'motion/MOTION.md'));
+  writeFileSync(join(dir, 'MOTION.md'), ONE_FILE.replace('"#E8D5B7"', '"beige"'));
+  assert.equal(projectMotion(dir), join(dir, 'MOTION.md'), 'the root comes first');
+  assert.throws(() => motionTokens(join(dir, 'MOTION.md')), /tokens\.value/);
+  const out = mkdtempSync(join(tmpdir(), 'tokens-'));
+  writeFileSync(join(out, 'MOTION.md'), ONE_FILE);
+  for (const args of [['--out'], ['--out', '--other']]) assert.throws(() => execFileSync(process.execPath, [BIN, 'tokens', ...args], {cwd: out, stdio: 'pipe'}), (e) => e.status === 2, args.join(' '));
+  assert.ok(!existsSync(join(out, '--other')));
+  const none = mkdtempSync(join(tmpdir(), 'tokens-'));
+  assert.throws(() => execFileSync(process.execPath, [BIN, 'tokens'], {cwd: none, stdio: 'pipe'}), (e) => e.status === 2);
+});
+
+test('the skill names the format\'s version, and looks for a project\'s motion where the format says', () => {
+  const skill = readFileSync(new URL('../skills/motionhub/SKILL.md', import.meta.url), 'utf8');
+  assert.ok(skill.includes(`\`${SPEC}\``));
+  assert.ok(skill.includes('`MOTION.md` at the project\'s root, or else `motion/MOTION.md`'));
+  assert.ok(skill.includes('Never invent a number'));
 });

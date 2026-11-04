@@ -30,10 +30,18 @@ npx @motionhub/cli init <slug> [--github <login>]
 
 A new motion `@<you>/<slug>` in `./<slug>/`, with every required file but the poster, to fill in. Your GitHub login comes from `gh`, or `--github`.
 
+## tokens
+
+```sh
+npx @motionhub/cli tokens [MOTION.md] [--out <file>]
+```
+
+The tokens of a [motion in one file](../SPEC.md#11-a-motion-in-one-file) as `tokens.json`, for a binding or a theme. It prints them, or writes them to `--out`, and refuses a file that is not a valid motion. With no file, it reads the project's: `./MOTION.md`, or else `./motion/MOTION.md`.
+
 ## check
 
 ```sh
-npx @motionhub/cli check [dir ...] [--format-only] [--author <github-login>] [--was <motion.json>]
+npx @motionhub/cli check [dir or MOTION.md ...] [--format-only] [--author <github-login>] [--was <motion.json>]
 ```
 
 A motion against the [specification](../SPEC.md) and motionhub's rules. With no directory it checks the current directory when it is a motion, and otherwise every motion under `./motions/`. `--format-only` leaves out the hub's rules, for a motion that is not headed for motionhub; `--author` and `--was` check it as a pull request by that account, changing that published `motion.json`.
