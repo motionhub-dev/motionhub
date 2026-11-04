@@ -73,7 +73,7 @@ const featured = [...tries, ...rows.filter((r) => !tries.includes(r))].slice(0, 
 
 <script>
   // the gallery's searches used to live here: an old address with one goes on to the gallery
-  if (/[?&](q|tag|tool|view|sort)=/.test(location.search)) location.replace(`/motions/${location.search}`);
+  if (/[?&](q|tag|kind|tool|view|sort)=/.test(location.search)) location.replace(`/motions/${location.search}`);
 
   // the try card: picking a look puts it in the prompt. Without the script the prompt names the first look.
   const target = document.querySelector<HTMLElement>('#prompt .target')!;

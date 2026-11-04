@@ -58,8 +58,6 @@ export const KINDS = {
   topic: {label: 'Topic', note: 'Made for one subject, deep in it'},
   overlay: {label: 'Over your footage', note: 'Drawn over video you bring'},
 };
-/** The kinds the catalogue's motions have, in that order */
-export const kinds = Object.keys(KINDS).filter((k) => rows.some((r) => r.fit?.kind === k));
 
 /**
  * The gallery's order (HUB.md, "The gallery's order"): the few motions FEATURED names first, in that order; then the rest by what they are for
@@ -100,8 +98,8 @@ export const ENGINE_LINKS = {
   HyperFrames: {site: 'https://hyperframes.heygen.com', repo: 'https://github.com/heygen-com/hyperframes', skills: 'https://github.com/heygen-com/hyperframes#readme', guide: '/docs/hyperframes/'},
 };
 
-/** What a search matches: the id, every name and line in every language, the tags, the engines and the authors. */
-export const searchText = (r) => [r.slug, ...Object.values(r.name), ...Object.values(r.line), ...r.tags, ...r.tools, ...r.tools.flatMap(toolEngines), ...r.authors.flatMap((a) => [a.name, a.github])].join(' ').toLowerCase();
+/** What a search matches: the id, every name, line and purpose in every language, the tags, the engines and the authors. */
+export const searchText = (r) => [r.slug, ...Object.values(r.name), ...Object.values(r.line), ...Object.values(r.fit?.for ?? {}), ...r.tags, ...r.tools, ...r.tools.flatMap(toolEngines), ...r.authors.flatMap((a) => [a.name, a.github])].join(' ').toLowerCase();
 
 const GROUNDS = ['light', 'dark'];
 const TYPES = {serif: 'Serif', 'sans-serif': 'Sans', monospace: 'Mono', cursive: 'Hand'};
@@ -126,6 +124,7 @@ export function motionFacets(r) {
   let fonts = [];
   try { fonts = faces(JSON.parse(read(r.slug, 'tokens.json'))); } catch {}
   return {
+    kind: r.fit ? [r.fit.kind] : [],
     tag: r.tags,
     colour: [...new Set(palette(r).map((c) => family(c.hex)).filter(Boolean))],
     type: [...new Set(fonts.flatMap((f) => f.faces).filter((f) => TYPES[f]))],
@@ -149,6 +148,7 @@ export function galleryFacets() {
   const authors = new Map(rows.flatMap((r) => r.authors.map((a) => [a.github, a.name])));
   const tags = options('tag', (v) => v).sort(byCount);
   const facets = [
+    {key: 'kind', label: 'Kind', options: Object.keys(KINDS).map((k) => options('kind', (v) => KINDS[v].label).find((o) => o.value === k)).filter(Boolean).map((o) => ({...o, note: KINDS[o.value].note}))},
     {key: 'tag', label: 'Ground', options: tags.filter((o) => GROUNDS.includes(o.value)).map((o) => ({...o, text: title(o.value)}))},
     {key: 'tag', label: 'Style', options: tags.filter((o) => !GROUNDS.includes(o.value))},
     {key: 'colour', label: 'Colour', options: options('colour', title, swatch).sort(byCount)},
@@ -164,6 +164,7 @@ export function galleryFacets() {
 export const TOPIC = '<your topic>';
 export const agentPrompt = (id, topic = TOPIC) => `Read ${SITE}/llms.txt, then make a film about "${topic}" in the motion ${id}`;
 export const skillInstall = 'npx skills add motionhub-dev/motions -g';
+export const skillShare = "/motionhub share this project's look as a motion";
 
 /** The motions a motion builds on that are in the catalogue, and the ones that build on it. */
 const byId = new Map(rows.map((r) => [r.slug, r]));

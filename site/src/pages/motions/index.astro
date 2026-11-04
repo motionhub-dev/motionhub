@@ -3,7 +3,7 @@ import Base from '../../layouts/Base.astro';
 import Card from '../../components/Card.astro';
 import Dropdown from '../../components/Dropdown.astro';
 import Facet from '../../components/Facet.astro';
-import {en, galleryFacets, motionFacets, rows, searchText, toolEngines} from '../../lib/catalogue.mjs';
+import {KINDS, en, galleryFacets, motionFacets, rows, searchText, toolEngines} from '../../lib/catalogue.mjs';
 
 const n = rows.length;
 const facets = galleryFacets();
@@ -11,7 +11,7 @@ const index = rows.map((r) => ({id: r.slug, text: searchText(r), facets: motionF
 // a long filter shows its most used values and keeps the rest a click away
 const SHOWN = 8;
 ---
-<Base title="Motions: motionhub" description={`Every look on motionhub: ${n} motions to search and filter by style, ground, colour and type.`} path="/motions/" current="motions" search={false}>
+<Base title="Motions: motionhub" description={`Every look on motionhub: ${n} motions to search and filter by kind, style, ground, colour and type.`} path="/motions/" current="motions" search={false}>
   <div class="lead">
     <h1>Motions</h1>
     <p>Pick one to see it play, and how to use it.</p>
@@ -24,7 +24,7 @@ const SHOWN = 8;
       <input id="q" name="q" type="search" placeholder="Search motions, looks, creators" autocomplete="off" spellcheck="false" aria-describedby="searchtips">
       <kbd aria-hidden="true">/</kbd>
     </div>
-    <p class="tips" id="searchtips">Use <code>"an exact phrase"</code>, <code>-exclude</code>, or a field: <code>tag:dark</code> <code>by:iamsuosi</code> <code>engine:remotion</code> <code>colour:blue</code> <code>type:serif</code></p>
+    <p class="tips" id="searchtips">Use <code>"an exact phrase"</code>, <code>-exclude</code>, or a field: <code>kind:topic</code> <code>tag:dark</code> <code>by:iamsuosi</code> <code>engine:remotion</code> <code>colour:blue</code> <code>type:serif</code></p>
   </form>
 
   <div class="browse">
@@ -64,12 +64,13 @@ const SHOWN = 8;
 
       <div class="table" id="list" hidden>
         <table>
-          <thead><tr><th colspan="2">Motion</th><th>Looks</th><th>Engines</th><th>By</th><th class="r">Likes</th><th class="r">Downloads</th><th class="r">Version</th></tr></thead>
+          <thead><tr><th colspan="2">Motion</th><th>Kind</th><th>Looks</th><th>Engines</th><th>By</th><th class="r">Likes</th><th class="r">Downloads</th><th class="r">Version</th></tr></thead>
           <tbody>
             {rows.map((r) => (
               <tr data-id={r.slug}>
                 <td class="p"><img src={r.poster.replace(/\.jpg$/, '-480.webp')} alt="" loading="lazy" decoding="async" width="96" height="54"></td>
                 <td class="n"><a href={`/m/${r.slug}/`}>{en(r.name)}</a><div>{en(r.line)}</div></td>
+                <td>{r.fit ? KINDS[r.fit.kind].label : '–'}</td>
                 <td>{r.tags.join(', ')}</td>
                 <td>{r.tools.length ? r.tools.flatMap(toolEngines).join(', ') : 'Any, from MOTION.md'}</td>
                 <td>{r.authors.map((a) => a.name).join(', ')}</td>
@@ -90,7 +91,7 @@ const SHOWN = 8;
 
 <script>
   // Searches and filters the gallery, and switches between the grid and the list. The page is complete without it. The
-  // state is kept in the address (?q=&tag=&colour=&type=&size=&engine=&by=&sort=&view=) so a search can be shared.
+  // state is kept in the address (?q=&kind=&tag=&colour=&type=&size=&engine=&by=&sort=&view=) so a search can be shared.
   import {countWith, meetsPicks, meetsQuery, parseQuery} from '../../lib/query.mjs';
 
   type Motion = {id: string; text: string; facets: Record<string, string[]>};
