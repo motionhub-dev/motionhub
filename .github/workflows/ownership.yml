@@ -1,0 +1,68 @@
+# Who may change what, judged by main. A pull_request workflow runs the pull request's own copy of itself, which the
+# pull request could rewrite to pass; this one runs on pull_request_target, so it is always main's copy, and it runs
+# main's checker. The pull request's files are checked out beside it as data: nothing of the pull request is installed
+# or run. It has no secrets and can only read.
+#
+# It judges: the accounts the pull request records (accounts/, against GitHub), the motions it adds or changes against
+# its author's account (and a change against the version on main), and a sign-off on each of its commits.
+name: ownership
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ownership-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  ownership:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GITHUB_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      PR: ${{ github.event.pull_request.number }}
+      AUTHOR: ${{ github.event.pull_request.user.login }}
+      AUTHOR_ID: ${{ github.event.pull_request.user.id }}
+    steps:
+      - name: Main, whose checker judges
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - name: The pull request's files, to read and never run
+        uses: actions/checkout@v5
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/head
+          path: pr
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: What the pull request changes, and its commits
+        run: |
+          gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[].filename' > "$RUNNER_TEMP/files"
+          gh api "repos/$REPO/pulls/$PR/commits" --paginate --jq '.[]' | jq -s . > "$RUNNER_TEMP/commits.json"
+      - name: The accounts it records, against what GitHub says
+        run: node tools/check.mjs --accounts-was accounts --accounts pr/accounts
+      - name: The motions it adds or changes, against its author and what is published
+        run: |
+          # a motion is motions/@<scope>/<slug>/
+          dirs=$(grep '^motions/' "$RUNNER_TEMP/files" | awk -F/ '{print ($2 ~ /^@/) ? $2"/"$3 : $2}' | sort -u)
+          status=0
+          for d in $dirs; do
+            [ -d "pr/motions/$d" ] || continue
+            if [ -f "motions/$d/motion.json" ]; then
+              node tools/check.mjs "pr/motions/$d" --author "$AUTHOR" --author-id "$AUTHOR_ID" --accounts pr/accounts --was "motions/$d/motion.json" || status=1
+            else
+              node tools/check.mjs "pr/motions/$d" --author "$AUTHOR" --author-id "$AUTHOR_ID" --accounts pr/accounts || status=1
+            fi
+          done
+          exit $status
+      - name: Every commit is signed off
+        run: node tools/check.mjs --signoff "$RUNNER_TEMP/commits.json"

@@ -456,3 +456,36 @@ test('a motion in a directory keeps its values in tokens.json alone', () => {
   assert.deepEqual(raised({}, PART(), (t) => `---\nname: A look\n---\n\n${t}`), []);
   assert.ok(raised({}, PART(), (t) => `---\na: &x y\n---\n\n${t}`).includes('doc.frontmatter'));
 });
+
+test('main\'s checker judges a pull request\'s files: its accounts by --accounts, its commits by --signoff', async () => {
+  const {main, unsigned} = await import('../tools/check.mjs');
+  const commit = (sha, message, parents = 1) => ({sha, commit: {message}, parents: Array.from({length: parents}, () => ({}))});
+  assert.deepEqual(unsigned([
+    commit('a', 'Add a motion\n\nSigned-off-by: Ana <ana@example.com>'),
+    commit('b', 'Fix a typo'),
+    commit('c', 'Merge main', 2),
+    commit('d', 'Mentions Signed-off-by: in passing'),
+  ]), ['b', 'd'], 'a sign-off is its own line; a merge commit is left out');
+
+  const dir = mkdtempSync(join(tmpdir(), 'ownership-'));
+  const pr = join(dir, 'pr');
+  cpSync(motion(), join(pr, 'motions', '@tester', 'test-motion'), {recursive: true});
+  mkdirSync(join(pr, 'accounts'), {recursive: true});
+  const log = console.log, lines = [];
+  console.log = (l) => lines.push(l);
+  try {
+    const run = (...args) => { lines.length = 0; return main([join(pr, 'motions', '@tester', 'test-motion'), '--author', 'tester', '--author-id', '7', ...args]); };
+    assert.equal(await run('--accounts', join(pr, 'accounts')), 1, 'judged by the pull request\'s accounts: tester is not recorded there');
+    assert.ok(lines.some((l) => l.includes('hub.account')));
+    writeFileSync(join(pr, 'accounts', 'tester.json'), JSON.stringify({login: 'tester', id: 7}));
+    assert.equal(await run('--accounts', join(pr, 'accounts')), 0, 'recorded with the opener\'s id');
+    writeFileSync(join(pr, 'accounts', 'tester.json'), JSON.stringify({login: 'tester', id: 99}));
+    assert.equal(await run('--accounts', join(pr, 'accounts')), 1, 'the scope belongs to another account');
+    assert.ok(lines.some((l) => l.includes('hub.scope')));
+    const commits = join(dir, 'commits.json');
+    writeFileSync(commits, JSON.stringify([commit('b', 'Fix a typo')]));
+    assert.equal(await main(['--signoff', commits]), 1);
+    writeFileSync(commits, JSON.stringify([commit('a', 'x\n\nSigned-off-by: T <t@example.com>')]));
+    assert.equal(await main(['--signoff', commits]), 0);
+  } finally { console.log = log; }
+});

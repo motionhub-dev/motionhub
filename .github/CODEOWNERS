@@ -1,0 +1,17 @@
+# What a change to needs the maintainers' review, with the ruleset's "require review from code owners": the rules, the
+# workflows that apply them, the tools and the site. A pull request that only adds or changes a motion needs none.
+/.github/        @iamsuosi
+/tools/          @iamsuosi
+/bin/            @iamsuosi
+/packages/       @iamsuosi
+/site/           @iamsuosi
+/tests/          @iamsuosi
+/brand/          @iamsuosi
+/accounts/       @iamsuosi
+/SPEC.md         @iamsuosi
+/CONTRIBUTING.md @iamsuosi
+/HUB.md          @iamsuosi
+/REVIEW.md       @iamsuosi
+/CLAUDE.md       @iamsuosi
+/package.json    @iamsuosi
+/wrangler.jsonc  @iamsuosi

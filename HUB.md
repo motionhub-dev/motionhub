@@ -20,6 +20,9 @@ How this repository is published at [motionhub.dev](https://motionhub.dev): the 
 | `tools/site.mjs` | What the pages share with the build, with no dependencies: the Markdown a motion's documents use, its colours and faces, and `_headers`, `robots.txt` and `sitemap.xml` |
 | `site/player/` | The reel player and its build: one page and one script per motion with a reel, under `/play/<id>/` |
 | `site/worker.mjs`, `wrangler.jsonc` | The Cloudflare Worker: it serves the build as static assets and the packages and reels' videos from the R2 bucket `motionhub` |
+| `.github/workflows/check.yml` | On every pull request and push to main: the tools' tests, every motion against the rules, the hub's and the site's builds, every reel played. It runs the pull request's own code, with no secrets |
+| `.github/workflows/ownership.yml` | On every pull request, who may change what: the accounts it records, the motions it adds or changes against its author's account, and a sign-off on every commit. It runs on `pull_request_target`, so it is always main's copy running main's checker, and it reads the pull request's files as data, never running them |
+| `.github/CODEOWNERS` | What needs a maintainer's review besides the motions: the rules, the workflows, the tools and the site |
 | `.github/workflows/deploy.yml` | Builds, publishes each new package to R2 and deploys, on every push to the main branch and every six hours. It refuses to replace a published package |
 | `.github/workflows/render.yml` | After each deploy, renders the video of each motion whose version has none yet (`site/player/missing.mjs`, `site/player/render.mjs`), one job per motion, and puts it in R2. It never replaces a published video |
 | `skills/motionhub/SKILL.md` | The generic skill: how any agent chooses a motion, fetches it and makes a film in it. `/llms.txt` is the same text, followed by the index of the docs |

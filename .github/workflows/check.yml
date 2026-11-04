@@ -1,7 +1,6 @@
-# Every pull request and every push to main: the tools' own tests, every motion against SPEC.md and CONTRIBUTING.md, the hub's and the site's builds, every reel played,
-# the accounts a pull request records (accounts/, against GitHub), the motions it adds or changes against its author's
-# account (and a change against the version on main), and a sign-off on each of its commits. It runs the pull request's
-# own code, so it has no secrets and can only read; who may change what is judged by main's checker.
+# Every pull request and every push to main: the tools' own tests, every motion against SPEC.md and CONTRIBUTING.md, the
+# hub's and the site's builds, every reel played. It runs the pull request's own code, so it has no secrets and can only
+# read. Who may change what (accounts, authors, sign-off) is judged apart, by main's own workflow: ownership.yml.
 name: check
 
 on:
@@ -45,54 +44,3 @@ jobs:
       - name: Every reel plays
         working-directory: site
         run: npm run smoke
-      # Who may publish or change a motion is decided by main's checker, not the pull request's own copy, which it could
-      # rewrite to let itself through. Until main has the account rules, the pull request's checker stands in.
-      - name: The checker on main
-        if: github.event_name == 'pull_request'
-        env:
-          BASE: ${{ github.event.pull_request.base.sha }}
-        run: |
-          if git show "$BASE:tools/check.mjs" > "$RUNNER_TEMP/check.mjs" 2>/dev/null && grep -q -- '--accounts-was' "$RUNNER_TEMP/check.mjs"; then
-            echo "CHECKER=$RUNNER_TEMP/check.mjs" >> "$GITHUB_ENV"
-          else
-            echo "CHECKER=tools/check.mjs" >> "$GITHUB_ENV"
-          fi
-      - name: The accounts this pull request records, against what GitHub says
-        if: github.event_name == 'pull_request'
-        env:
-          BASE: ${{ github.event.pull_request.base.sha }}
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          mkdir -p "$RUNNER_TEMP/was" && (git archive "$BASE" accounts 2>/dev/null | tar -x -C "$RUNNER_TEMP/was" || true)
-          mkdir -p "$RUNNER_TEMP/was/accounts"
-          node "$CHECKER" --accounts-was "$RUNNER_TEMP/was/accounts"
-      - name: The motions this pull request adds or changes, against its author and what is published
-        if: github.event_name == 'pull_request'
-        env:
-          BASE: ${{ github.event.pull_request.base.sha }}
-          AUTHOR: ${{ github.event.pull_request.user.login }}
-          AUTHOR_ID: ${{ github.event.pull_request.user.id }}
-        run: |
-          # a motion is motions/@<scope>/<slug>/
-          dirs=$(git diff --name-only "$BASE"...HEAD -- motions | awk -F/ '{print ($2 ~ /^@/) ? $2"/"$3 : $2}' | sort -u)
-          status=0
-          for d in $dirs; do
-            [ -d "motions/$d" ] || continue
-            if git cat-file -e "$BASE:motions/$d/motion.json" 2>/dev/null; then
-              git show "$BASE:motions/$d/motion.json" > "$RUNNER_TEMP/was.json"
-              node "$CHECKER" "motions/$d" --author "$AUTHOR" --author-id "$AUTHOR_ID" --was "$RUNNER_TEMP/was.json" || status=1
-            else
-              node "$CHECKER" "motions/$d" --author "$AUTHOR" --author-id "$AUTHOR_ID" || status=1
-            fi
-          done
-          exit $status
-      - name: Every commit is signed off
-        if: github.event_name == 'pull_request'
-        env:
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          missing=$(git log --no-merges --format='%H %s%n%b%n--end--' "$BASE".."$HEAD_SHA" | awk '/^[0-9a-f]{40} /{c=$1; s=0} /^Signed-off-by: /{s=1} /^--end--$/{if(!s) print c}')
-          if [ -n "$missing" ]; then
-            echo "These commits have no Signed-off-by line (git commit -s):"; echo "$missing"; exit 1
-          fi

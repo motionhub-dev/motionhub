@@ -2,8 +2,9 @@
 // The motion checker: the rules of SPEC.md (code `format.*` and the rest without a `hub.` prefix) and the hub's
 // acceptance rules of CONTRIBUTING.md (`hub.*`), with no dependencies.
 //
-//   node tools/check.mjs [dir or MOTION.md ...] [--format-only] [--author <github-login>] [--author-id <github-id>] [--was <motion.json>]
-//   node tools/check.mjs --accounts-was <dir>
+//   node tools/check.mjs [dir or MOTION.md ...] [--format-only] [--author <github-login>] [--author-id <github-id>] [--was <motion.json>] [--accounts <dir>]
+//   node tools/check.mjs --accounts-was <dir> [--accounts <dir>]
+//   node tools/check.mjs --signoff <commits.json>
 //   npx @motionhub/cli check ...                  the same, from the published package (bin/motionhub.mjs)
 //
 // With no directory it checks the current directory when it is a motion, else every motion under ./motions/ (a scoped
@@ -17,7 +18,9 @@
 // login a motion names (its scope and its authors) is recorded once with its account's numeric id, which never
 // changes, in accounts/<login>.json. Who owns a scope or a motion is decided by that id. `--accounts-was` names the
 // accounts/ directory before the pull request: a record is only ever added, never changed or removed, and an added one
-// must name the id GitHub gives that login now. Exit status 1 when any issue is found.
+// must name the id GitHub gives that login now. `--accounts` names the accounts to judge by when they are not ./accounts/:
+// main's checker reading a pull request's files (.github/workflows/ownership.yml). `--signoff` names a pull request's
+// commits as GitHub lists them, each of which must be signed off. Exit status 1 when any issue is found.
 
 import {readFileSync, readdirSync, statSync, existsSync} from 'node:fs';
 import {join, basename, dirname, resolve, relative, extname} from 'node:path';
@@ -668,20 +671,35 @@ export async function checkAccounts(dir, {was, lookup} = {}) {
 }
 
 /** The command line: `args` as after `node tools/check.mjs`. Resolves to the exit status. */
+/**
+ * The commits a pull request's list (GitHub's REST API, /pulls/<n>/commits) holds that carry no Signed-off-by line, by
+ * sha. A merge commit carries none of its own and is left out.
+ */
+export function unsigned(commits) {
+  return (Array.isArray(commits) ? commits : []).filter((c) => (c?.parents?.length ?? 1) <= 1 && !/^Signed-off-by: \S/m.test(c?.commit?.message ?? '')).map((c) => c?.sha);
+}
+
 export async function main(args) {
   const hub = !args.includes('--format-only');
   const value = (flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : undefined; };
   const author = value('--author'), authorId = value('--author-id'), wasPath = value('--was'), accountsWas = value('--accounts-was');
-  // this repository's accounts, when it is run at its root; a motion checked anywhere else has none to look up
-  const accountsDir = existsSync(resolve('motions')) && existsSync(resolve('accounts')) ? resolve('accounts') : undefined;
+  if (value('--signoff') !== undefined) {
+    const missing = unsigned(JSON.parse(readFileSync(value('--signoff'), 'utf8')));
+    if (missing.length) console.log(`These commits have no Signed-off-by line (git commit -s):\n${missing.join('\n')}`);
+    else console.log('every commit is signed off');
+    return missing.length ? 1 : 0;
+  }
+  // the accounts: --accounts names them (a pull request's, read by main's checker); else this repository's, when it is
+  // run at its root; a motion checked anywhere else has none to look up
+  const accountsDir = value('--accounts') !== undefined ? resolve(value('--accounts')) : existsSync(resolve('motions')) && existsSync(resolve('accounts')) ? resolve('accounts') : undefined;
   if (accountsWas !== undefined) {
-    const issues = await checkAccounts(resolve('accounts'), {was: resolve(accountsWas), lookup: (login) => githubId(login)});
+    const issues = await checkAccounts(accountsDir ?? resolve('accounts'), {was: resolve(accountsWas), lookup: (login) => githubId(login)});
     for (const i of issues) console.log(`accounts/${i.at}  ${i.code}  ${i.message}`);
     console.log(`accounts, ${issues.length} issue(s)`);
     return issues.length ? 1 : 0;
   }
   const was = wasPath ? JSON.parse(readFileSync(wasPath, 'utf8')) : undefined;
-  let dirs = args.filter((a, i) => !a.startsWith('--') && !['--author', '--author-id', '--was'].includes(args[i - 1]));
+  let dirs = args.filter((a, i) => !a.startsWith('--') && !['--author', '--author-id', '--was', '--accounts', '--accounts-was', '--signoff'].includes(args[i - 1]));
   let count = 0;
   if (!dirs.length) {
     const root = resolve('motions');
