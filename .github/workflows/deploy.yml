@@ -29,6 +29,12 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
+      # the faces the reels' players copy in, fetched from Google Fonts once and kept between runs
+      - uses: actions/cache@v4
+        with:
+          path: site/.cache/fonts
+          key: fonts-${{ hashFiles('motions/**/tokens.json') }}
+          restore-keys: fonts-
       - name: Build
         working-directory: site
         env:

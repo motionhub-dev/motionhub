@@ -6,7 +6,8 @@
   "scripts": {
     "build": "node ../tools/build.mjs ../dist && node thumbs.mjs && node player/build.mjs && astro build && node merge.mjs",
     "dev": "node ../tools/build.mjs .cache/dev-public && node thumbs.mjs .cache/dev-public && MOTIONHUB_DEV=1 astro dev",
-    "preview": "npm run build && npx --yes wrangler@4.154.0 dev"
+    "preview": "npm run build && npx --yes wrangler@4.154.0 dev",
+    "smoke": "node player/smoke.mjs"
   },
   "dependencies": {
     "@fontsource/inter": "5.3.0",
@@ -18,5 +19,8 @@
     "react-dom": "19.1.1",
     "sharp": "0.35.5",
     "three": "0.187.0"
+  },
+  "devDependencies": {
+    "playwright-core": "1.64.1"
   }
 }
