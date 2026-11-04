@@ -96,7 +96,7 @@ To publish a look the person made (only when they ask):
 4. Optionally the reusable components, in `react/parts/` as [CONTRIBUTING.md](https://github.com/motionhub-dev/motions/blob/main/CONTRIBUTING.md) describes: React components that import only `react` and `@motionhub/runtime` (in Remotion, `useTime()` and `useVideoConfig()` from it instead of Remotion's), take what changes as props, and hold nothing of this film's story.
 5. `npx @motionhub/cli share <slug>` runs the checks its pull request will run, as the person's GitHub account. Show them the result; with their yes, `npx @motionhub/cli share <slug> --pr` opens the pull request from their fork, recording each login the motion names in `accounts/` with its GitHub id if it is not there yet.
 
-A motion in one file publishes the same way: `init` writes the directory, its `tokens` go into `tokens.json` (`npx @motionhub/cli tokens --out <slug>/tokens.json`), and its body into `<slug>/MOTION.md`, without the front matter's `tokens`.
+A motion in one file publishes the same way, from step 1. Then `npx @motionhub/cli tokens --out <slug>/tokens.json` writes its values, its `name` and `lang` go into `motion.json`, and its body goes into `<slug>/MOTION.md` without the front matter. The rest of `motion.json`, `CREDITS.md` and `poster.jpg` are filled in as below.
 
 To publish a new version of a motion the person published (only when they ask, as in "publish a new version of @<scope>/<slug> from this project"):
 

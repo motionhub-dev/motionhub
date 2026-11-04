@@ -131,6 +131,10 @@ test('tokens finds the project\'s motion, and refuses a file that is not a valid
   writeFileSync(join(dir, 'MOTION.md'), ONE_FILE.replace('"#E8D5B7"', '"beige"'));
   assert.equal(projectMotion(dir), join(dir, 'MOTION.md'), 'the root comes first');
   assert.throws(() => motionTokens(join(dir, 'MOTION.md')), /tokens\.value/);
+  const out = mkdtempSync(join(tmpdir(), 'tokens-'));
+  writeFileSync(join(out, 'MOTION.md'), ONE_FILE);
+  for (const args of [['--out'], ['--out', '--other']]) assert.throws(() => execFileSync(process.execPath, [BIN, 'tokens', ...args], {cwd: out, stdio: 'pipe'}), (e) => e.status === 2, args.join(' '));
+  assert.ok(!existsSync(join(out, '--other')));
   const none = mkdtempSync(join(tmpdir(), 'tokens-'));
   assert.throws(() => execFileSync(process.execPath, [BIN, 'tokens'], {cwd: none, stdio: 'pipe'}), (e) => e.status === 2);
 });
