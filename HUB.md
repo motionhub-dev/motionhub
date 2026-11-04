@@ -42,7 +42,7 @@ A static site, rebuilt from the main branch whenever it changes and every six ho
 | `/m/<id>/<version>.tgz` | The whole motion at that version, its paths under `<id>/`, with its SHA-256 in the index. The same files always give the same bytes |
 | `/play/<id>/` | The motion's reel, playing live: its `react/reel.tsx`, its components, React and `@motionhub/runtime` in one script, with its faces. Served under a policy that lets it load nothing from anywhere else |
 | `/llms.txt` | For agents: what a motion is, how to choose one from the index and how to use it, then every docs page's Markdown twin |
-| `/docs/<page>/`, `/docs/<page>.md`, `/llms-full.txt` | The docs: the repository's own documents (`SPEC.md`, `CONTRIBUTING.md`, this file, the skill, the packages' READMEs, `brand/BRAND.md`) and the guides in `docs/`, each as a page and as Markdown, and all of them in one file. The list is `tools/docs.mjs` |
+| `/docs/<page>/`, `/docs/<page>.md`, `/llms-full.txt` | The docs: the repository's own documents (`SPEC.md`, `CONTRIBUTING.md`, the packages' READMEs, `brand/BRAND.md`) and the guides in `docs/`, each as a page and as Markdown, and all of them in one file. The list is `tools/docs.mjs` |
 
 A tool needs the index to search and one package to use a motion; it never downloads the repository. Every published package stays at its URL: the build knows only the newest versions, so the deploy adds packages and never replaces or removes one.
 

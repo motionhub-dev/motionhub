@@ -10,7 +10,7 @@
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "404-page",
-    "run_worker_first": ["/m/*", "/play/*", "/api/stats.json", "/api/me", "/api/me/pulls", "/api/likes/*", "/auth/*", "/avatar/*"]
+    "run_worker_first": ["/m/*", "/play/*", "/api/stats.json", "/api/me", "/api/me/pulls", "/api/likes/*", "/auth/*", "/avatar/*", "/docs/hub*", "/docs/skill*"]
   },
   "r2_buckets": [{"binding": "PACKAGES", "bucket_name": "motionhub"}],
   "analytics_engine_datasets": [{"binding": "EVENTS", "dataset": "motionhub_events"}],

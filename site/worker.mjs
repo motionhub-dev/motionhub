@@ -14,6 +14,10 @@ const PAGE = /^\/m\/((?:@[a-z0-9-]+\/)?[a-z0-9-]+)\/$/;
 const DATASET = 'events.analyticsEngine.motionhub_events';
 const TOTALS = 'stats/totals.json';
 const DAY = 86400000;
+/** Docs pages that are no longer on the site (tools/docs.mjs), at the documents they were, on GitHub. */
+const BLOB = 'https://github.com/motionhub-dev/motions/blob/main/';
+const LEFT_THE_DOCS = {hub: 'HUB.md', skill: 'skills/motionhub/SKILL.md'};
+const LEFT_PAGE = /^\/docs\/(hub|skill)(?:\/|\.md)?$/;
 /** Clients that are not people: crawlers and link previews. A command line or an agent fetching a package is counted. */
 const ROBOT = /bot|crawl|spider|slurp|preview|facebookexternalhit|embedly|headless|lighthouse|monitor/i;
 
@@ -119,6 +123,8 @@ export default {
     // below read the id, so they see one spelling
     let pathname = url.pathname;
     try { pathname = decodeURIComponent(pathname); } catch {}
+    const left = LEFT_PAGE.exec(pathname);
+    if (left) return Response.redirect(BLOB + LEFT_THE_DOCS[left[1]], 301);
     if (pathname === '/api/stats.json') return statsResponse(request, env, ctx);
     const face = /^\/avatar\/([^/]+)$/.exec(pathname);
     if (face && (request.method === 'GET' || request.method === 'HEAD')) return avatar(request, env, ctx, face[1]);
