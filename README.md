@@ -40,6 +40,8 @@ An open format and a public catalogue: how a film looks and how it moves, writte
 
 ## What a motion is
 
+Every motion is written around a [`MOTION.md`](docs/motion-md.md), an open format that works like a `SKILL.md`: it leads a directory, says how a film looks and moves, and brings ready-made components for your agent to use first.
+
 A motion holds a look and no film: its ground, colour and type, and how things arrive, change and leave. There is no story, script, scene or timing in it. You bring the story; the motion keeps the look, in whichever engine you use.
 
 ## Quick start

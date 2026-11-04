@@ -2,6 +2,8 @@
 
 A **motion** is a reusable look for narrated and explanatory video: how a film looks (ground, colour, type) and how it moves (how things arrive, change and leave), written down so that a person or an agent can make a new film in it with any engine. It holds no film: no story, script, scenes or timings. You bring the story; the motion keeps the look.
 
+At its heart is [`MOTION.md`](motion-md.md), an open format that works like a `SKILL.md`: it leads a directory, says how a film looks and moves, and brings ready-made components for your agent to use first.
+
 [motionhub.dev](https://motionhub.dev) is the open catalogue of motions, and the format they are written in is open too. A motion works in any engine: its components run in Remotion and HyperFrames, and its words and tokens in anything else.
 
 ## Start in a minute

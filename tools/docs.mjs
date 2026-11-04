@@ -10,6 +10,7 @@ import {REPO, SITE} from './site.mjs';
 export const DOCS = [
   {group: 'Get started', pages: [
     {slug: 'index', file: 'docs/index.md', label: 'Overview'},
+    {slug: 'motion-md', file: 'docs/motion-md.md', label: 'What is MOTION.md'},
     {slug: 'use', file: 'docs/use.md', label: 'Use a motion'},
     {slug: 'cli', file: 'docs/cli.md', label: 'Command line'},
   ]},
