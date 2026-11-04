@@ -129,6 +129,9 @@ async function player(id) {
     define: {'process.env.NODE_ENV': '"production"'},
     alias: {'@motionhub/runtime': RUNTIME},
     plugins: [{name: 'motionhub', setup(b) {
+      // one React and one three.js, site/'s, whoever imports them: a second copy (packages/runtime's own, once its tests have
+      // installed it) would give the reel hooks from a React that is not rendering it
+      b.onResolve({filter: /^(react|react-dom|three)(\/.*)?$/}, (args) => (args.pluginData === 'site' ? undefined : b.resolve(args.path, {kind: args.kind, resolveDir: SITE, pluginData: 'site'})));
       b.onResolve({filter: /^motionhub:reel$/}, () => ({path: join(dir, 'react/reel.tsx')}));
       b.onResolve({filter: /^motionhub:tokens$/}, () => ({path: 'tokens', namespace: 'motionhub'}));
       // the motion's sound (react/sound.json), or none
