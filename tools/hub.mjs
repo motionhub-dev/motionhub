@@ -106,6 +106,7 @@ export async function main(command, args, base = HUB) {
   const value = (flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : undefined; };
   const slug = args.find((a, i) => !a.startsWith('--') && !['--out', '--github'].includes(args[i - 1]));
   if (command === 'tokens') {
+    if (args.includes('--out') && (!value('--out') || value('--out').startsWith('--'))) { console.error('usage: motionhub tokens [MOTION.md] [--out <file>]: --out needs a path'); return 2; }
     const file = slug ?? projectMotion();
     if (!file) { console.error('no MOTION.md here or in ./motion: usage: motionhub tokens [MOTION.md] [--out <file>]'); return 2; }
     const json = `${JSON.stringify(motionTokens(file), null, 2)}\n`;
