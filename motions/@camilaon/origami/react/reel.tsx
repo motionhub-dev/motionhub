@@ -75,6 +75,10 @@ export default function Reel() {
   return (
     <div style={{position: 'absolute', inset: 0, background: 'var(--color-table)', fontFamily: 'var(--font-sans)'}}>
       <FoldStage model={paperPlane} at={at} mark={mark} az={az} el={el} zoom={zoom} shift={shift} />
+      <Box x={96} y={72}>
+        <div style={{fontSize: 72, fontWeight: 700, color: 'var(--color-ink)', lineHeight: 1.1}}>{paperPlane.name}</div>
+        <div style={{fontSize: 30, color: 'var(--color-pencil)', marginTop: 10}}>One A4 sheet, six folds.</div>
+      </Box>
       <Box x={1380} y={250} opacity={railOut}><StepRail model={paperPlane} at={at} step={beat ? beat.step : t >= FOLDED ? paperPlane.steps.length + 1 : 1} size={30} /></Box>
       <Box x={1330} y={170} opacity={pattern}>
         <CreasePattern model={paperPlane} width={420} draw={interpolate(t, [WALK + 1.0, WALK + 3.4], [0, 1], clamp)} />

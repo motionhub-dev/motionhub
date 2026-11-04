@@ -99,15 +99,7 @@ Optional, from `react/sound.json`: a dry scratch as a fold line is marked (`draw
 
 ## Rendering
 
-`FoldStage` draws with three.js (WebGL). Render with `--gl=angle`, or `--gl=swangle` on a machine without a GPU, and install `three`. Without a bake, each render tab and each still solves the model before its first frame: under a second for the dart, ten seconds or more for a model with many layers.
-
-Work in this order, and deliver early:
-
-1. Write the model from a diagram you already know; do not spend the time searching for one.
-2. Bake it: a three-line `src/bake.ts` (see `bake.ts`), run with `node --experimental-strip-types src/bake.ts`. It lists each step's creases (a step with none has a wrong `line` or `moving`) and writes `src/model.baked.json`. Bake again after every change to the model.
-3. Write the film with `baked`, render it whole at `--scale=0.25`, and look at a few of its frames.
-4. Fix what is wrong, then render it full size. That is the deliverable: have it before polishing. Budget for it: without a GPU a full-size render takes about four times its quarter-scale preview (a 34 s film: about 2 minutes at `--scale=0.25`, 9 minutes full size, on two CPU cores).
-5. Polish after, if there is time. Three or four single stills are enough to check a step; a preview of the whole film teaches more than twenty stills.
+`FoldStage` draws with three.js (WebGL): install `three`, and render with `--gl=angle`, or `--gl=swangle` on a machine without a GPU. Each render tab solves the model before its first frame: under a second for the dart, ten seconds or more for a model with many layers. A baked model skips that: `bakeModels` (`bake.ts`, in Node) lists each step's creases, so a step that folds nothing shows at once, and writes the solve to a JSON file for `FoldStage`'s `baked`. Bake again whenever the model changes. Without a GPU a full-size render takes about four times as long as one at `--scale=0.25`: look at the whole film at that scale before rendering it full size.
 
 ## Freedom in each work
 

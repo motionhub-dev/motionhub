@@ -30,10 +30,10 @@
   "fit": {
     "kind": "topic",
     "for": {
-      "en": "Anything made or explained by folding one sheet: origami models step by step, a procedure told as folds, a model opened back to its crease pattern."
+      "en": "Anything made or explained by folding one sheet, one model to a film: origami models step by step, a procedure told as folds, a model opened back to its crease pattern."
     },
     "not": {
-      "en": "Data-heavy explainers, people or footage, scenes that need many separate objects: everything on screen is one folded sheet."
+      "en": "Data-heavy explainers, people or footage, scenes that need many separate objects: everything on screen is one folded sheet. Models finished by opening a pocket (a cup, a boat) stay flat."
     }
   }
 }

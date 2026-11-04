@@ -14,9 +14,11 @@ Origami is an original motion. Its folding engine (`react/parts/fold.ts`) is wri
 
 ## Fonts
 
-- IBM Plex Sans: SIL Open Font License 1.1
-- Noto Sans SC: SIL Open Font License 1.1
+- IBM Plex Sans: SIL Open Font License 1.1, https://fonts.google.com/specimen/IBM+Plex+Sans
+- Noto Sans SC: SIL Open Font License 1.1, https://fonts.google.com/noto/specimen/Noto+Sans+SC
+
+The motion ships no font files: films load the faces from their sources (Remotion: `MotionFonts`).
 
 ## Code
 
-- three.js (MIT), imported by the fold stage, including its `examples/jsm/lines` for wide lines.
+- three.js, MIT License, https://github.com/mrdoob/three.js: imported by the fold stage (`three` and `three/examples/jsm/lines`, for wide lines). Made and tested with three r181 to r187; install it beside the motion.
