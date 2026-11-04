@@ -271,7 +271,8 @@ const since = (spec, version) => SPECS.includes(spec) && SPECS.indexOf(spec) >= 
  * A MOTION.md's front matter (SPEC.md §11) and its body, or null when it has none. Front matter is a small part of YAML,
  * which this reads with no dependency: anything else in it throws, with what is wrong.
  */
-export function parseFrontMatter(text) {
+export function parseFrontMatter(raw) {
+  const text = raw.replace(/^\uFEFF/, '');
   const m = /^---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/.exec(text);
   if (!m) return null;
   const data = {};
@@ -365,20 +366,51 @@ function checkDocFrontMatter(path, add) {
 const componentFiles = (dir) => (existsSync(join(dir, 'react/parts')) ? readdirSync(join(dir, 'react/parts')).filter((f) => /\.(tsx|jsx)$/.test(f)).sort() : []);
 const IMPORTABLE = /^(?:\.{1,2}\/|react(?:\/|$)|@motionhub\/runtime(?:\/|$)|three(?:\/|$))/;
 
+/** The `{...}` literal at the start of `text`, however deep it nests and whatever its strings hold; null when there is none. */
+function metaLiteral(text) {
+  const open = text.indexOf('{');
+  if (open < 0 || /[;(]/.test(text.slice(0, open))) return null;
+  let depth = 0, quote = null;
+  for (let i = open; i < text.length; i++) {
+    const c = text[i];
+    if (quote) { if (c === '\\') i++; else if (c === quote) quote = null; continue; }
+    if (c === '"' || c === "'" || c === '`') quote = c;
+    else if (c === '{' || c === '[') depth++;
+    else if (c === '}' || c === ']') { depth--; if (depth === 0) return text.slice(open, i + 1); }
+  }
+  return null;
+}
+
+/** A literal with its strings emptied and everything nested inside it left out, so only its own members remain. */
+function topLevel(literal) {
+  let depth = 0, quote = null, out = '';
+  for (let i = 0; i < literal.length; i++) {
+    const c = literal[i];
+    if (quote) { if (c === '\\') i++; else if (c === quote) { quote = null; if (depth === 1) out += c; } continue; }
+    if (c === '"' || c === "'" || c === '`') { quote = c; if (depth === 1) out += c; continue; }
+    if (c === '{' || c === '[') { depth++; continue; }
+    if (c === '}' || c === ']') { depth--; continue; }
+    if (depth === 1) out += c;
+  }
+  return out;
+}
+
 /** The components of a motion held to SPEC.md §12: what each imports, and the `meta` beside it. */
 function checkComponents(dir, parts, add) {
   for (const n of parts) {
     const at = `react/parts/${n}`;
     const src = readFileSync(join(dir, at), 'utf8');
-    for (const m of src.matchAll(/(?:^|\n)\s*(?:import|export)\b[^;'"]*?\bfrom\s+['"]([^'"]+)['"]|(?:^|\n)\s*import\s+['"]([^'"]+)['"]/g)) {
+    for (const m of src.matchAll(/(?:^|[\n;}])\s*(?:import|export)\b[^;'"]*?\bfrom\s+['"]([^'"]+)['"]|(?:^|[\n;}])\s*import\s+['"]([^'"]+)['"]/g)) {
       const target = m[1] ?? m[2];
       if (!IMPORTABLE.test(target)) add('react.import', at, `imports "${target}": a component imports only react, @motionhub/runtime, three and files by a relative path`);
     }
     const start = /export\s+const\s+meta\b/.exec(src);
     if (!start) { add('react.meta', at, 'a component exports a literal meta'); continue; }
-    const meta = src.slice(start.index);
-    for (const key of ['name', 'purpose', 'line', 'fits', 'params', 'preview']) if (!new RegExp(`\\b${key}\\s*:`).test(meta)) add('react.meta', at, `meta has no ${key}`);
-    const purpose = /\bpurpose\s*:\s*['"]([^'"]*)['"]/.exec(meta)?.[1];
+    const meta = metaLiteral(src.slice(start.index));
+    if (meta === null) { add('react.meta', at, 'a component exports a literal meta'); continue; }
+    const top = topLevel(meta);
+    for (const key of ['name', 'purpose', 'line', 'fits', 'params', 'preview']) if (!new RegExp(`(?:^|[{,\\s])['"]?${key}['"]?\\s*:`).test(top)) add('react.meta', at, `meta has no ${key}`);
+    const purpose = /(?:^|[{,\s])['"]?purpose['"]?\s*:\s*['"]([^'"]*)['"]/.exec(meta)?.[1];
     if (purpose !== undefined && !PURPOSES.includes(purpose)) add('react.meta', at, `meta.purpose is one of ${PURPOSES.join(', ')}, not "${purpose}"`);
   }
 }

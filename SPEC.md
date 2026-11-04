@@ -227,7 +227,7 @@ Its body follows §5. Its front matter has these members, and may also have `x-<
 
 Front matter is a small part of YAML, so a tool needs no YAML library to read it: `key: value` lines, maps nested by two spaces, strings plain or in double quotes, lists on one line as JSON, and whole-line comments. Nothing else is allowed. A colour is always quoted, since `#` would start a comment.
 
-A motion in a directory (§2) may have front matter in its `MOTION.md`, but never `tokens`: its values are in `tokens.json`, so they have one source.
+A motion in a directory (§2) may have front matter in its `MOTION.md`, but never `tokens`: its values are in `tokens.json`, so they have one source. Its `motion.json` says its version and its name.
 
 A tool looking for a project's motion reads `MOTION.md` at the project's root, and otherwise `motion/MOTION.md`. A project may hold other design files too; this format says nothing about them.
 

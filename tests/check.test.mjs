@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {cpSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {PURPOSES, SPEC, checkMotion, checkAccounts, expandTokens, parseFrontMatter, readAccounts, compareVersions, spdx, jpegSize} from '../tools/check.mjs';
+import {PURPOSES, SPEC, listMotions, checkMotion, checkAccounts, expandTokens, parseFrontMatter, readAccounts, compareVersions, spdx, jpegSize} from '../tools/check.mjs';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
@@ -364,6 +364,7 @@ test('front matter is a small part of YAML, and anything else in it is refused',
   assert.deepEqual(parseFrontMatter('---\n# a note\na: b\nc:\n  d: "#FFF"\n  e: [1, "f"]\ng: h # why\n---\nbody').data, {a: 'b', c: {d: '#FFF', e: [1, 'f']}, g: 'h'});
   assert.equal(parseFrontMatter('---\na: b\n---\nbody').body, 'body');
   assert.equal(parseFrontMatter('# no front matter\n'), null);
+  assert.deepEqual(parseFrontMatter('\uFEFF---\na: b\n---\n').data, {a: 'b'}, 'a byte-order mark is not front matter');
   for (const text of ['a: &x y', 'a: *x', 'a: |', 'a: >', 'a: {b: c}', "a: 'b'", 'a: #FFF', '- a', 'a: [b]', 'a: b\na: c', ' a: b', '\ta: b', 'a:\n    b: c'])
     assert.throws(() => parseFrontMatter(`---\n${text}\n---\n`), undefined, text);
 });
@@ -414,11 +415,33 @@ test('a motion/0.5 directory is held to the rules for components; an earlier one
   assert.ok(raised({}, PART("import x from 'lodash';")).includes('react.import'));
   assert.ok(raised({}, PART("import 'left-pad';")).includes('react.import'));
   assert.ok(raised({}, PART("export {y} from 'lodash';")).includes('react.import'));
+  assert.ok(raised({}, `import React from 'react'; import x from 'lodash';\n${PART()}`).includes('react.import'), 'a second import on one line');
+  assert.ok(raised({}, `const a = 1; export {b} from 'lodash';\n${PART()}`).includes('react.import'));
   assert.ok(raised({}, PART('', '')).includes('react.meta'));
+  const below = "export const meta = {name: 'T', purpose: 'title', line: 'l'};\nconst other = {fits: 1, params: {}, preview: 2};";
+  assert.ok(raised({}, PART('', below)).includes('react.meta'), 'a key below the literal is not in it');
+  const nested = "export const meta = {name: 'T', purpose: 'title', line: 'l', fits: 'f', params: {preview: {type: 'string', doc: 'd'}}};";
+  assert.ok(raised({}, PART('', nested)).includes('react.meta'), 'a key inside params is not one of its own');
+  assert.ok(raised({}, PART('', "export const meta = {name: 'T}', purpose: 'title', line: 'a: {b', fits: 'f', params: {}, preview: 'p'};")).length === 0, 'braces in a string are text');
+  assert.ok(raised({}, PART('', 'export const meta = makeMeta();')).includes('react.meta'), 'it is a literal');
   assert.ok(raised({}, PART('', "export const meta = {name: 'Title', purpose: 'title'};")).includes('react.meta'));
   assert.ok(raised({}, PART('', "export const meta = {name: 'T', purpose: 'nope', line: 'l', fits: 'f', params: {}, preview: 'p'};")).includes('react.meta'));
   assert.ok(raised({}, PART(), (t) => t.replace(/^## Components.*$/m, '## Parts')).includes('doc.heading'));
   assert.deepEqual(raised({spec: 'motion/0.4'}, PART("import x from 'lodash';"), (t) => t.replace(/^## Components.*$/m, '## Parts')), [], 'a published version keeps its meaning');
+});
+
+test('every motion in the catalogue holds when raised to motion/0.5', () => {
+  const root = fileURLToPath(new URL('../motions', import.meta.url));
+  const dirs = listMotions(root);
+  assert.ok(dirs.length > 0);
+  for (const d of dirs) {
+    const dir = mkdtempSync(join(tmpdir(), 'motion-raised-'));
+    cpSync(join(root, d), dir, {recursive: true});
+    const manifest = JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8'));
+    writeFileSync(join(dir, 'motion.json'), JSON.stringify({...manifest, spec: 'motion/0.5'}));
+    assert.deepEqual(checkMotion(dir, {hub: false}), [], d);
+    rmSync(dir, {recursive: true});
+  }
 });
 
 test('a motion in a directory keeps its values in tokens.json alone', () => {
