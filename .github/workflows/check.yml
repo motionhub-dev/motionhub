@@ -1,4 +1,4 @@
-# Every pull request and every push to main: the tools' own tests, every motion against SPEC.md and CONTRIBUTING.md, the hub's and the site's builds,
+# Every pull request and every push to main: the tools' own tests, every motion against SPEC.md and CONTRIBUTING.md, the hub's and the site's builds, every reel played,
 # the accounts a pull request records (accounts/, against GitHub), the motions it adds or changes against its author's
 # account (and a change against the version on main), and a sign-off on each of its commits. It runs the pull request's
 # own code, so it has no secrets and can only read; who may change what is judged by main's checker.
@@ -31,9 +31,20 @@ jobs:
         run: node tools/check.mjs
       - name: The hub builds
         run: node tools/build.mjs
+      # the faces the reels' players copy in, fetched from Google Fonts once and kept between runs
+      - uses: actions/cache@v4
+        with:
+          path: site/.cache/fonts
+          key: fonts-${{ hashFiles('motions/**/tokens.json') }}
+          restore-keys: fonts-
       - name: The site builds
         working-directory: site
         run: npm ci --no-audit --no-fund && npm run build
+      # every reel opened in Chrome under the policy the site serves it with: a change to the runtime, the player or a
+      # motion that breaks a reel stops here (site/player/smoke.mjs)
+      - name: Every reel plays
+        working-directory: site
+        run: npm run smoke
       # Who may publish or change a motion is decided by main's checker, not the pull request's own copy, which it could
       # rewrite to let itself through. Until main has the account rules, the pull request's checker stands in.
       - name: The checker on main
