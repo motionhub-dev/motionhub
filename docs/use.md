@@ -28,6 +28,10 @@ Leave out `-g` to install it in the current project only. Then call it by name:
 
 An agent without slash commands takes the same request in words: "Make a film about … in the motion @iamsuosi/red-pencil".
 
+## A look of your own, in one file
+
+A look you only need in your own project can be [one `MOTION.md`](motion-md.md#start-with-one-file) at its root. An agent with the skill finds it, and uses it unless you name another.
+
 ## Share a look of your own
 
 Made a film whose look others should have? With the skill installed, ask your agent from that project:
