@@ -4,11 +4,11 @@ import Card from '../components/Card.astro';
 import Dropdown from '../components/Dropdown.astro';
 import Engine from '../components/Engine.astro';
 import Prompt from '../components/Prompt.astro';
-import {ENGINE_LINKS, chips, en, rows, toolEngines, toolLabel, tools} from '../lib/catalogue.mjs';
+import {ENGINE_LINKS, KINDS, chips, en, kinds, rows, toolEngines, toolLabel, tools} from '../lib/catalogue.mjs';
 
 // what a search matches: the id, every name and line in every language, the tags, the engines and the authors
-const text = (r) => [r.slug, ...Object.values(r.name), ...Object.values(r.line), ...r.tags, ...r.tools, ...r.tools.flatMap(toolEngines), ...r.authors.flatMap((a) => [a.name, a.github])].join(' ').toLowerCase();
-const filter = (r) => ({'data-id': r.slug, 'data-text': text(r), 'data-tags': r.tags.join(' '), 'data-tools': r.tools.join(' ')});
+const text = (r) => [r.slug, ...Object.values(r.name), ...Object.values(r.line), ...Object.values(r.fit?.for ?? {}), ...r.tags, ...r.tools, ...r.tools.flatMap(toolEngines), ...r.authors.flatMap((a) => [a.name, a.github])].join(' ').toLowerCase();
+const filter = (r) => ({'data-id': r.slug, 'data-text': text(r), 'data-tags': r.tags.join(' '), 'data-tools': r.tools.join(' '), 'data-kind': r.fit?.kind ?? ''});
 const n = rows.length;
 
 // the looks the try card offers, far apart from each other; any that is gone is left out
@@ -70,6 +70,7 @@ const engines = [...new Set(rows.flatMap((r) => r.tools.flatMap(toolEngines)))];
       <button type="button" class="chip" data-tag="" aria-pressed="true">All</button>
       {chips().map((t) => <button type="button" class="chip" data-tag={t} aria-pressed="false">{t}</button>)}
     </div>
+    {kinds.length > 1 && <Dropdown id="kind" label="Kind" options={[{value: '', text: 'Any kind'}, ...kinds.map((k) => ({value: k, text: KINDS[k].label}))]} />}
     {tools.length > 0 && <Dropdown id="tool" label="Engine" options={[{value: '', text: 'Any engine'}, ...tools.map((t) => ({value: t, text: toolLabel(t)}))]} />}
     <Dropdown id="sort" label="Sort" fieldId="sortfield" hidden options={[{value: '', text: 'A to Z'}, {value: 'last30', text: 'Most downloaded, 30 days'}, {value: 'total', text: 'Most downloaded, all time'}, {value: 'likes', text: 'Most liked'}]} />
     <div class="seg" role="group" aria-label="View">
@@ -86,12 +87,13 @@ const engines = [...new Set(rows.flatMap((r) => r.tools.flatMap(toolEngines)))];
 
   <div class="table" id="list" hidden>
     <table>
-      <thead><tr><th colspan="2">Motion</th><th>Looks</th><th>Engines</th><th>By</th><th class="r">Likes</th><th class="r" id="dlhead">Downloads</th><th class="r">Version</th></tr></thead>
+      <thead><tr><th colspan="2">Motion</th><th>Kind</th><th>Looks</th><th>Engines</th><th>By</th><th class="r">Likes</th><th class="r" id="dlhead">Downloads</th><th class="r">Version</th></tr></thead>
       <tbody>
         {rows.map((r) => (
           <tr {...filter(r)}>
             <td class="p"><img src={r.poster.replace(/\.jpg$/, '-480.webp')} alt="" loading="lazy" decoding="async" width="96" height="54"></td>
             <td class="n"><a href={`/m/${r.slug}/`}>{en(r.name)}</a><div>{en(r.line)}</div></td>
+            <td>{r.fit ? KINDS[r.fit.kind].label : '–'}</td>
             <td>{r.tags.join(', ')}</td>
             <td>{r.tools.length ? r.tools.flatMap(toolEngines).join(', ') : 'Any, from MOTION.md'}</td>
             <td>{r.authors.map((a) => a.name).join(', ')}</td>
@@ -109,9 +111,9 @@ const engines = [...new Set(rows.flatMap((r) => r.tools.flatMap(toolEngines)))];
 
 <script>
   // Filters the gallery by the search, a look and a tool, and switches between the grid and the list. The page is
-  // complete without it. The state is kept in the address (?q=&tag=&tool=&view=) so a filtered gallery can be shared.
+  // complete without it. The state is kept in the address (?q=&tag=&kind=&tool=&view=) so a filtered gallery can be shared.
   const $ = <T extends Element>(s: string) => document.querySelector<T>(s);
-  const q = $<HTMLInputElement>('#q')!, tool = $<HTMLSelectElement>('#tool');
+  const q = $<HTMLInputElement>('#q')!, tool = $<HTMLSelectElement>('#tool'), kind = $<HTMLSelectElement>('#kind');
   const chips = [...document.querySelectorAll<HTMLButtonElement>('.chip[data-tag]')];
   const views = [...document.querySelectorAll<HTMLButtonElement>('[data-view]')];
   const items = [...document.querySelectorAll<HTMLElement>('[data-text]')];
@@ -123,6 +125,7 @@ const engines = [...new Set(rows.flatMap((r) => r.tools.flatMap(toolEngines)))];
   let view = params.get('view') ?? (() => { try { return localStorage.getItem('motionhub.view'); } catch { return null; } })() ?? 'grid';
   q.value = params.get('q') ?? q.value;
   if (tool) tool.value = params.get('tool') ?? '';
+  if (kind) kind.value = params.get('kind') ?? '';
   if (!chips.some((c) => c.dataset.tag === tag)) tag = '';
 
   // the downloads each motion shows: in all, or in the last 30 days while sorted by them
@@ -147,10 +150,10 @@ const engines = [...new Set(rows.flatMap((r) => r.tools.flatMap(toolEngines)))];
 
   function apply() {
     const words = q.value.toLowerCase().split(/\s+/).filter(Boolean);
-    const t = tool?.value ?? '';
+    const t = tool?.value ?? '', k = kind?.value ?? '';
     let n = 0;
     for (const el of items) {
-      const show = (!tag || el.dataset.tags!.split(' ').includes(tag)) && (!t || el.dataset.tools!.split(' ').includes(t)) && words.every((w) => el.dataset.text!.includes(w));
+      const show = (!tag || el.dataset.tags!.split(' ').includes(tag)) && (!k || el.dataset.kind === k) && (!t || el.dataset.tools!.split(' ').includes(t)) && words.every((w) => el.dataset.text!.includes(w));
       el.hidden = !show;
       if (show && el.tagName === 'A') n++;
     }
@@ -168,6 +171,7 @@ const engines = [...new Set(rows.flatMap((r) => r.tools.flatMap(toolEngines)))];
     grid.hidden = view !== 'grid';
     list.hidden = view !== 'list';
     const parts = [`${n} ${n === 1 ? 'motion' : 'motions'}`];
+    if (k) parts.push(({general: 'that carry many subjects', topic: 'made for one subject', overlay: 'drawn over your footage'} as Record<string, string>)[k] ?? k);
     if (tag) parts.push(`tagged ${tag}`);
     if (t) parts.push(tool!.selectedOptions[0].text.replace(/^Components/, 'with components').replace(/^Pieces/, 'with pieces'));
     if (words.length) parts.push(`matching “${q.value.trim()}”`);
@@ -176,6 +180,7 @@ const engines = [...new Set(rows.flatMap((r) => r.tools.flatMap(toolEngines)))];
     const next = new URLSearchParams();
     if (q.value.trim()) next.set('q', q.value.trim());
     if (tag) next.set('tag', tag);
+    if (k) next.set('kind', k);
     if (t) next.set('tool', t);
     if (view !== 'grid') next.set('view', view);
     if (by) next.set('sort', by);
@@ -186,6 +191,7 @@ const engines = [...new Set(rows.flatMap((r) => r.tools.flatMap(toolEngines)))];
   q.form!.addEventListener('submit', (e) => e.preventDefault());
   q.addEventListener('input', apply);
   tool?.addEventListener('change', apply);
+  kind?.addEventListener('change', apply);
   sort.addEventListener('change', apply);
   for (const c of chips) c.addEventListener('click', () => { tag = c.dataset.tag!; apply(); });
   for (const v of views) v.addEventListener('click', () => { view = v.dataset.view!; try { localStorage.setItem('motionhub.view', view); } catch {} apply(); });

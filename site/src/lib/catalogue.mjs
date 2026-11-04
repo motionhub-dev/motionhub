@@ -37,6 +37,15 @@ export function chips(limit = 12) {
   return [...counts].filter(([, n]) => n > 1).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).slice(0, limit).map(([t]) => t);
 }
 
+/** What a motion's fit.kind means to a person browsing (SPEC.md §3, What it is for), in the order the gallery offers them */
+export const KINDS = {
+  general: {label: 'General', note: 'Carries many subjects'},
+  topic: {label: 'Topic', note: 'Made for one subject, deep in it'},
+  overlay: {label: 'Over your footage', note: 'Drawn over video you bring'},
+};
+/** The kinds the catalogue's motions have, in that order */
+export const kinds = Object.keys(KINDS).filter((k) => rows.some((r) => r.fit?.kind === k));
+
 /** Every tool directory any motion has, A to Z. */
 export const tools = [...new Set(rows.flatMap((r) => r.tools))].sort();
 

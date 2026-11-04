@@ -1,8 +1,8 @@
 {
-  "spec": "motion/0.3",
+  "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "plumb-line",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "name": {
     "en": "Plumb Line",
     "zh-CN": "铅垂线"
@@ -25,5 +25,16 @@
     "paper-cut",
     "layered",
     "light"
-  ]
+  ],
+  "fit": {
+    "kind": "topic",
+    "for": {
+      "en": "Vertical scale along one axis, at true proportion: ocean depths, the atmosphere, the Earth's interior, the heights of buildings.",
+      "zh-CN": "按真实比例沿一条垂直轴展开的尺度：海洋深度、大气层、地球内部、建筑高度。"
+    },
+    "not": {
+      "en": "Journeys across the land; subjects with no scale.",
+      "zh-CN": "横向的旅程；没有尺度的题材。"
+    }
+  }
 }

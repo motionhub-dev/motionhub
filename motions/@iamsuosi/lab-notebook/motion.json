@@ -1,8 +1,8 @@
 {
-  "spec": "motion/0.3",
+  "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "lab-notebook",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "name": {
     "en": "Lab Notebook",
     "zh-CN": "实验手记"
@@ -25,5 +25,16 @@
     "hand-drawn",
     "line-art",
     "light"
-  ]
+  ],
+  "fit": {
+    "kind": "general",
+    "for": {
+      "en": "How things work, worked out by hand: physics, chemistry, maths and engineering principles drawn as they are explained.",
+      "zh-CN": "理科原理与推导：物理、化学、数学、工程原理，边讲边画。"
+    },
+    "not": {
+      "en": "Brand films and stories with no mechanism to draw.",
+      "zh-CN": "品牌片，以及没有机制可画的故事。"
+    }
+  }
 }

@@ -2,7 +2,7 @@
 // against the SHA-256 the index gives, unpacked with no link and no path outside the motion), start a new motion, and
 // share one by pull request (HUB.md, CONTRIBUTING.md).
 //
-//   motionhub search [words ...]                one line per motion that has every word in its id, names, line or tags
+//   motionhub search [words ...]                one line per motion that has every word in its id, names, line, fit or tags
 //   motionhub get <id> [--out <dir>]            the newest version of `@iamsuosi/red-pencil`, into <dir>
 //                                               (default ./motion), which must not exist yet
 //   motionhub init <slug> [--github <login>]    ./<slug>/ with every required file but the poster, to fill in, scoped to
@@ -41,7 +41,7 @@ export async function index(base = HUB) {
 export function search(rows, words) {
   const wanted = words.map((w) => w.toLowerCase()).filter(Boolean);
   return rows.filter((m) => {
-    const text = [m.slug, ...Object.values(m.name), ...Object.values(m.line), ...m.tags].join(' ').toLowerCase();
+    const text = [m.slug, ...Object.values(m.name), ...Object.values(m.line), ...Object.values(m.fit?.for ?? {}), m.fit?.kind ?? '', ...m.tags].join(' ').toLowerCase();
     return wanted.every((w) => text.includes(w));
   });
 }
@@ -87,7 +87,7 @@ export async function getMotion(id, out, base = HUB) {
 export async function main(command, args, base = HUB) {
   if (command === 'search') {
     const rows = search(await index(base), args.filter((a) => !a.startsWith('--')));
-    for (const m of rows) console.log(`${m.slug}  ${m.version}  ${m.line.en ?? Object.values(m.line)[0]}  (looks: ${m.tags.join(', ')}; by ${m.authors.map((a) => a.github).join(', ')}; ${m.license.text}${m.tools.length ? `; for ${m.tools.join(', ')}` : ''})`);
+    for (const m of rows) console.log(`${m.slug}  ${m.version}  ${m.line.en ?? Object.values(m.line)[0]}  (${m.fit ? `${m.fit.kind}: ${m.fit.for.en ?? Object.values(m.fit.for)[0]}; ` : ''}looks: ${m.tags.join(', ')}; by ${m.authors.map((a) => a.github).join(', ')}; ${m.license.text}${m.tools.length ? `; for ${m.tools.join(', ')}` : ''})`);
     console.log(rows.length ? `${rows.length} motion(s); get one with: motionhub get <id>` : 'No motion has every one of those words');
     return 0;
   }
@@ -135,7 +135,8 @@ export function scaffold(slug, author) {
   const color = (hex) => ({colorSpace: 'srgb', components: [1, 3, 5].map((i) => Math.round((parseInt(hex.slice(i, i + 2), 16) / 255) * 10000) / 10000), hex});
   return new Map([
     ['motion.json', JSON.stringify({spec: SPEC, scope: (author?.login || 'your-github-login').toLowerCase(), slug, version: '1.0.0', name: {en: title}, line: {en: `One sentence: what ${title} looks like and what it is for.`},
-      authors: [{name: author?.name || author?.login || 'Your name', github: author?.login || 'your-github-login'}], license: {text: 'CC-BY-4.0', code: 'MIT'}, tags: []}, null, 2) + '\n'],
+      authors: [{name: author?.name || author?.login || 'Your name', github: author?.login || 'your-github-login'}], license: {text: 'CC-BY-4.0', code: 'MIT'}, tags: [],
+      fit: {kind: 'general', for: {en: `The subjects and kinds of film ${title} is for; "general" if it carries many, "topic" if it is made for one, "overlay" if it is drawn over the maker's own footage.`}, not: {en: 'What it handles badly.'}}}, null, 2) + '\n'],
     ['MOTION.md', `# ${title}\n\nWhat a film in this motion feels like, in a sentence or two. Describe the look and the motion, never a particular film.\n\n## Essence\n\nThe few traits that make a frame read as ${title} at a glance, and what it is easily confused with.\n\n## Colour\n\nWhat each colour token is for, and what is never coloured.\n\n## Type\n\nThe faces and their roles, sizes, and how words sit in the frame.\n\n## Motion\n\nHow things arrive, change and leave; the easing and the durations in seconds; how motion follows the narration or music; what never moves.\n\n## Avoid\n\nThe mistakes this look invites, and what to do instead.\n`],
     ['tokens.json', JSON.stringify({
       color: {$type: 'color', ground: {$value: color('#FBFAF5'), $description: 'the ground'}, ink: {$value: color('#1B2A47'), $description: 'every line and word'}, accent: {$value: color('#CF4F33'), $description: 'the one thing that matters'}},
