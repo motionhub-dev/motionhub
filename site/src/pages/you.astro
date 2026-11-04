@@ -251,7 +251,9 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
         li.append(head, go);
         $('shares-list').append(li);
       }
-      if (!ok || !body.pulls) { $('prs-down').hidden = false; $<HTMLAnchorElement>('prs-all').href = body.all ?? `${repo}/pulls`; return; }
+      count('review', shares.length);
+      $('prs-empty').hidden = shares.length > 0;
+      if (!ok || !body.pulls) { $('prs-empty').hidden = true; $('prs-down').hidden = false; $<HTMLAnchorElement>('prs-all').href = body.all ?? `${repo}/pulls`; return; }
       const pulls = body.pulls as Pull[];
       count('review', pulls.length + shares.length);
       $('prs-empty').hidden = pulls.length + shares.length > 0;
@@ -282,7 +284,13 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
             back.disabled = true; said.hidden = true;
             const r = await fetch(`/api/me/pulls/${pr.number}/withdraw`, {method: 'POST', credentials: 'same-origin'}).catch(() => undefined);
             const answer = r ? await r.json().catch(() => ({})) : {};
-            if (r?.ok) { li.remove(); count('review', $('prs').children.length + shares.length); $('prs-empty').hidden = $('prs').children.length + shares.length > 0; return; }
+            if (r?.ok) {
+              li.remove();
+              count('review', $('prs').children.length + shares.length);
+              $('prs-empty').hidden = $('prs').children.length + shares.length > 0;
+              for (const chip of document.querySelectorAll<HTMLAnchorElement>('.pr-chip')) if (chip.href === pr.url) chip.hidden = true;
+              return;
+            }
             said.textContent = answer.error ?? 'motionhub.dev could not be reached. Try again.'; said.hidden = false;
             back.disabled = false; sure = false; back.textContent = 'Withdraw';
           });

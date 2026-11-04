@@ -174,6 +174,9 @@ test('your pull requests: only yours by account id, with their checks, review an
     return body ? Response.json(body) : new Response('', {status: 404});
   };
   globalThis.caches = {default: {match: async () => undefined, put: async () => {}}};
+  // motionhub's record of the pull requests its app opened for Ana: #44 is; #46, from a fork, is not
+  const ins = env.DB.raw.prepare("INSERT INTO submissions (id, poll_hash, code, motion, version, sha256, bytes, status, person, pr, dco_at, created_at, expires_at) VALUES (?, '', '', '@ana/ledger', '1.0.0', '', 0, 'submitted', 42, ?, 0, 0, 0)");
+  ins.run('s44', 44); ins.run('s46', 46);
   const r = await get('/api/me/pulls', {cookie});
   assert.equal(r.status, 200);
   const {pulls, all} = await r.json();

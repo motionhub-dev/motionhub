@@ -90,7 +90,7 @@ beforeEach(() => {
     if (u.startsWith(`${REPO}/git/ref/heads/share/`)) return github.branch ? reply({object: {sha: github.branch}}) : reply({}, 404);
     if (u.startsWith(`${REPO}/pulls?state=open`)) return reply(github.open ? [github.open] : []);
     if (u.startsWith(`${REPO}/pulls?state=closed`)) return reply(github.closed ?? []);
-    if (u === `${REPO}/git/matching-refs/heads/share/`) return reply((github.refs ?? []).map((r) => ({ref: `refs/heads/${r}`})));
+    if (u === `${REPO}/git/matching-refs/heads/share/`) return reply(Object.entries(github.refs ?? {}).map(([r, sha]) => ({ref: `refs/heads/${r}`, object: {sha}})));
     const one = /\/pulls\/(\d+)$/.exec(u);
     if (one && method === 'GET') return github.pulls?.[one[1]] ? reply(github.pulls[one[1]]) : reply({}, 404);
     if (u.startsWith(`${REPO}/git/commits/`) && method === 'GET') return reply({tree: {sha: 'tree0'}});
@@ -336,17 +336,22 @@ test('a person withdraws a pull request motionhub opened for them, and only that
   };
   assert.equal((await withdraw(77, ana, 'https://evil.example')).status, 403, 'only from this site');
   assert.equal((await withdraw(77, null)).status, 401);
-  for (const n of [78, 79, 80, 99]) assert.equal((await withdraw(n)).status, 404, `#${n} is not one motionhub opened for them`);
+  assert.equal((await withdraw(99)).status, 404, 'not in motionhub\'s record');
+  assert.equal(github.calls.length, 0, 'nor is GitHub asked about it');
+  // in the record, but GitHub says it is not the app's branch for them, not the app, or not this repository's
+  for (const n of [78, 79, 80, 81]) env.DB.raw.prepare("INSERT INTO submissions (id, poll_hash, code, motion, version, sha256, bytes, status, person, pr, dco_at, created_at, expires_at) VALUES (?, '', '', '@ana/ledger', '1.0.0', '', 0, 'submitted', 42, ?, 0, 0, 0)").run(`s${n}`, n);
+  for (const n of [78, 79, 80]) assert.equal((await withdraw(n)).status, 404, `#${n} is not one motionhub opened for them`);
   assert.equal((await withdraw(81)).status, 409);
   assert.ok(!github.calls.some((c) => c.method !== 'GET'), 'nothing changed on GitHub');
   const r = await withdraw(77);
   assert.equal(r.status, 200, await r.clone().text());
   assert.deepEqual(github.calls.filter((c) => c.method !== 'GET').map((c) => [c.method, c.path, c.body]), [
-    ['POST', '/repos/motionhub-dev/motions/issues/77/comments', {body: '@ana withdrew it on motionhub.dev.'}],
     ['PATCH', '/repos/motionhub-dev/motions/pulls/77', {state: 'closed'}],
+    ['POST', '/repos/motionhub-dev/motions/issues/77/comments', {body: '@ana withdrew it on motionhub.dev.'}],
     ['DELETE', '/repos/motionhub-dev/motions/git/refs/heads/share/ana/ledger/42', undefined],
   ]);
   assert.equal(env.DB.raw.prepare('SELECT status FROM submissions WHERE id = ?').get(share.id).status, 'withdrawn');
+  assert.match((await (await submit(share.id, ana, {code: share.code, mine: true, dco: true})).json()).error, /withdrawn/);
 });
 
 test('the daily sweep lets go of old packages, shares never submitted, and closed pull requests\' branches', async () => {
@@ -360,15 +365,23 @@ test('the daily sweep lets go of old packages, shares never submitted, and close
   env.DB.raw.prepare('UPDATE submissions SET expires_at = expires_at - ? WHERE id IN (?, ?)').run(2 * day, kept.id, old.id);
   uploaded.set(`submissions/${kept.id}.tgz`, new Date(Date.now() - 2 * day * 1000));
   uploaded.set(`submissions/${old.id}.tgz`, new Date(Date.now() - 2 * day * 1000));
-  github.refs = ['share/ana/ledger/42', 'share/ana/tide/42', 'share/bo/x/8'];
-  github.open = botPull(90, 'share/ana/tide/42');
-  github.closed = [botPull(77, 'share/ana/ledger/42', {state: 'closed'}), botPull(88, 'share/ana/tide/42', {state: 'closed'}), botPull(70, 'share/gone/x/1', {state: 'closed'}), {number: 60, user: {type: 'User'}, head: {ref: 'share/bo/x/8', repo: {full_name: 'motionhub-dev/motions'}}}];
+  github.refs = {'share/ana/ledger/42': 'c77', 'share/ana/tide/42': 'c90', 'share/bo/x/8': 'c60', 'share/eve/y/5': 'c50'};
+  const closed = (n, ref, sha, over = {}) => botPull(n, ref, {state: 'closed', ...over, head: {ref, sha, repo: {full_name: 'motionhub-dev/motions'}, ...over.head}});
+  github.closed = [
+    closed(77, 'share/ana/ledger/42', 'c77'),
+    closed(88, 'share/ana/tide/42', 'c88'), // the branch moved on: a new share's commit
+    closed(70, 'share/gone/x/1', 'c70'), // gone already
+    closed(60, 'share/bo/x/8', 'c60', {user: {id: 3, login: 'bo', type: 'User'}}), // not the app's
+    closed(50, 'share/eve/y/5', 'c50', {user: {id: 5, login: 'other[bot]', type: 'Bot'}}), // another app's
+  ];
+  // stopped while GitHub was asked: its DCO stays on record
+  env.DB.raw.prepare("INSERT INTO submissions (id, poll_hash, code, motion, version, sha256, bytes, status, person, dco_at, created_at, expires_at) VALUES ('stuck', '', 'X-00', '@ana/ledger', '1.0.0', '', 0, 'submitting', 42, 1, 0, 1)").run();
   const {sweep} = await import('../site/submissions.mjs');
   github.calls = [];
-  assert.deepEqual(await sweep(env), {packages: 2, shares: 1, branches: ['share/ana/ledger/42']}, 'a branch open again, gone already, or not the app\'s stays');
+  assert.deepEqual(await sweep(env), {packages: 2, shares: 1, branches: ['share/ana/ledger/42']}, 'a branch moved on, gone already, or not the app\'s stays');
   assert.deepEqual([...store.keys()], [`submissions/${fresh.id}.tgz`]);
   const rows = env.DB.raw.prepare('SELECT id, status, code FROM submissions ORDER BY created_at').all();
-  assert.deepEqual(rows.map((r) => [r.id, r.status, r.code]).sort(), [[kept.id, 'submitted', ''], [fresh.id, 'uploaded', fresh.code]].sort(), 'the record of a submission stays, without its code');
+  assert.deepEqual(rows.map((r) => [r.id, r.status, r.code]).sort(), [[kept.id, 'submitted', ''], [fresh.id, 'uploaded', fresh.code], ['stuck', 'submitting', '']].sort(), 'the record of a submission stays, without its code');
   assert.deepEqual(github.calls.filter((c) => c.method === 'DELETE').map((c) => c.path), ['/repos/motionhub-dev/motions/git/refs/heads/share/ana/ledger/42']);
 });
 

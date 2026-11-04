@@ -9,7 +9,7 @@
 // shares they opened and have not submitted yet (submissions.mjs), which are motionhub's and never kept.
 
 import {REPO} from './repo.mjs';
-import {waiting} from './submissions.mjs';
+import {sharedPulls, waiting} from './submissions.mjs';
 import {sharedFor} from './github-app.mjs';
 
 export {REPO};
@@ -63,8 +63,11 @@ export function standing(pr, run, comments) {
 
 async function gather(env, me) {
   const open = await github(env, '/pulls?state=open&per_page=100&sort=updated&direction=desc', {all: true});
-  // theirs, and the ones motionhub's GitHub App opened for them when they shared from motionhub.dev (submissions.mjs)
-  const mine = open.filter((pr) => pr.user?.id === me.id || sharedFor(pr, me.id)).slice(0, MOST);
+  // theirs, and the ones motionhub's GitHub App opened for them when they shared from motionhub.dev: on its branch for
+  // them, opened by an app, and in motionhub's own record of what it opened for them (submissions.mjs)
+  const shared = await sharedPulls(env, me).catch(() => new Set());
+  const ours = (pr) => shared.has(pr.number) && pr.user?.type === 'Bot' && sharedFor(pr, me.id, pr.user.login);
+  const mine = open.filter((pr) => pr.user?.id === me.id || ours(pr)).slice(0, MOST);
   return Promise.all(mine.map(async (pr) => {
     const [runs, files, comments] = await Promise.all([
       github(env, `/commits/${pr.head.sha}/check-runs?check_name=${CHECK}&per_page=1`),

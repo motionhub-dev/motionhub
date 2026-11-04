@@ -224,6 +224,7 @@ async function submit(request, env, id, now) {
   const r = await row(env, id);
   if (!r || expired(r, now)) return json({error: 'this share link has expired: share the motion again'}, 404);
   if (r.status === 'submitted') return json({error: 'this share is submitted already', pr: r.pr, prUrl: prUrl(r)}, 409);
+  if (r.status === 'withdrawn') return json({error: 'its pull request was withdrawn: share the motion again to submit it'}, 409);
   const sent = await request.json().catch(() => ({}));
   if (sent.mine !== true || sent.dco !== true) return json({error: 'confirm that you started this share and certify the DCO'}, 400);
   // a try is counted before the code is compared, in one step, so many tries at once never get past the limit; a
@@ -248,7 +249,9 @@ async function submit(request, env, id, now) {
     AND (SELECT COUNT(*) FROM submissions WHERE person = ?1 AND dco_at > ?2 - ${DAY} AND id != ?3) < ${PER_DAY}`).bind(me.id, at, id).run();
   if (!changes(claim)) {
     const now = await row(env, id);
-    return now?.status === 'submitting' ? json({error: 'this share is being submitted already'}, 409) : json({error: `at most ${PER_DAY} shares a day: try again tomorrow`}, 429);
+    if (now?.status === 'submitting') return json({error: 'this share is being submitted already'}, 409);
+    if (now?.status === 'withdrawn') return json({error: 'its pull request was withdrawn: share the motion again to submit it'}, 409);
+    return json({error: `at most ${PER_DAY} shares a day: try again tomorrow`}, 429);
   }
   let done;
   try {
@@ -269,11 +272,22 @@ export async function waiting(env, me, now = Date.now()) {
   return results.map((r) => ({id: r.id, motion: r.motion, version: r.version, url: `/share/${r.id}`, expires: new Date(r.expires_at * 1000).toISOString()}));
 }
 
+/** The pull requests the app opened for this person, by number: motionhub's own record of them. */
+export async function sharedPulls(env, me) {
+  if (!env.DB) return new Set();
+  const {results} = await env.DB.prepare("SELECT DISTINCT pr FROM submissions WHERE person = ? AND status = 'submitted' AND pr IS NOT NULL").bind(me.id).all();
+  return new Set(results.map((r) => r.pr));
+}
+
 async function withdraw(request, env, number, now) {
   if (!sameOrigin(request)) return json({error: 'a pull request is withdrawn from motionhub.dev'}, 403);
   if (!ready(env)) return json({error: 'motionhub cannot do that just now: close it on GitHub'}, 503);
   const me = await person(request, env, now);
   if (!me) return json({error: 'sign in with GitHub'}, 401);
+  // motionhub's own record first: GitHub is asked only about a pull request it opened for this person
+  const mine = await env.DB.prepare("SELECT 1 FROM submissions WHERE pr = ? AND person = ? AND status = 'submitted' LIMIT 1").bind(number, me.id).first();
+  if (!mine) return json({error: 'motionhub opened no such pull request for you'}, 404);
+  if (env.SUBMIT_LIMIT && !(await env.SUBMIT_LIMIT.limit({key: `withdraw:${me.id}`})).success) return json({error: 'too many at once: try again in a minute'}, 429);
   let done;
   try { done = await withdrawPull(env, number, me); } catch (e) { return json({error: `GitHub could not take it just now (${e.message}); try again, or close it on GitHub`}, 502); }
   if (done.error) return json({error: done.error}, done.status);
@@ -287,18 +301,25 @@ async function withdraw(request, env, number, now) {
 export async function sweep(env, now = Date.now()) {
   if (!env.DB || !env.PACKAGES) return {};
   const at = Math.floor(now / 1000);
-  let packages = 0, cursor;
-  do {
-    const page = await env.PACKAGES.list({prefix: 'submissions/', cursor});
-    const old = page.objects.filter((o) => new Date(o.uploaded).getTime() < now - DAY * 1000).map((o) => o.key);
-    if (old.length) { await env.PACKAGES.delete(old); packages += old.length; }
-    cursor = page.truncated ? page.cursor : undefined;
-  } while (cursor);
-  // a share submitted or withdrawn stays, as the record of who certified what for which pull request; its code goes
-  const rows = await env.DB.prepare("DELETE FROM submissions WHERE status NOT IN ('submitted', 'withdrawn') AND expires_at < ?").bind(at).run();
-  await env.DB.prepare("UPDATE submissions SET code = '' WHERE expires_at < ? AND code != ''").bind(at).run();
-  const branches = ready(env) ? await sweepBranches(env).catch(() => []) : [];
-  return {packages, shares: changes(rows), branches};
+  // each part on its own: one that fails leaves the others to do theirs, and tomorrow's sweep tries it again
+  let packages = 0, shares = 0, branches = [];
+  try {
+    let cursor;
+    do {
+      const page = await env.PACKAGES.list({prefix: 'submissions/', cursor});
+      const old = page.objects.filter((o) => new Date(o.uploaded).getTime() < now - DAY * 1000).map((o) => o.key);
+      if (old.length) { await env.PACKAGES.delete(old); packages += old.length; }
+      cursor = page.truncated ? page.cursor : undefined;
+    } while (cursor);
+  } catch {}
+  try {
+    // a share someone certified the DCO for stays (submitted, withdrawn, or stopped while GitHub was asked), as the
+    // record of who certified what; its code goes
+    shares = changes(await env.DB.prepare("DELETE FROM submissions WHERE status NOT IN ('submitted', 'withdrawn') AND dco_at IS NULL AND expires_at < ?").bind(at).run());
+    await env.DB.prepare("UPDATE submissions SET code = '' WHERE expires_at < ? AND code != ''").bind(at).run();
+  } catch {}
+  if (ready(env)) branches = await sweepBranches(env).catch(() => []);
+  return {packages, shares, branches};
 }
 
 /** Handles the routes this file owns, or returns null. */
