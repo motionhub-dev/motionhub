@@ -6,7 +6,7 @@
 //
 //   node player/smoke.mjs [id …]   from site/, after npm run build; ids test only those. CHROME names the browser, else
 //                                  the system's Chrome
-import {blank, differ, launch, look, reels, serve} from './chrome.mjs';
+import {blank, differ, launch, look, reels, serve, watch} from './chrome.mjs';
 
 /** When in a reel to look, as fractions of its length */
 const MOMENTS = [0.12, 0.37, 0.62, 0.87];
@@ -15,12 +15,7 @@ async function test(browser, base, id) {
   const page = await browser.newPage({viewport: {width: 960, height: 540}});
   // a reel thick with blur draws slowly in software: slow is not broken here, but stuck is
   page.setDefaultTimeout(120_000);
-  const problems = [];
-  page.on('pageerror', (e) => problems.push(`throws: ${e.message}`));
-  // the browser's own request for a favicon is not the reel's
-  page.on('console', (m) => { if (m.type() === 'error' && !m.location().url?.endsWith('/favicon.ico')) problems.push(`logs an error: ${m.text()}`); });
-  page.on('requestfailed', (r) => problems.push(`a request fails: ${r.url().replace(base, '')} (${r.failure()?.errorText})`));
-  page.on('response', (r) => { if (r.status() >= 400) problems.push(`a request fails: ${r.url().replace(base, '')} (HTTP ${r.status()})`); });
+  const problems = watch(page, base);
   try {
     // asked to play, as the motion's page asks: a reel in 3D does not wait for a tap
     await page.goto(`${base}/play/${id}/?autoplay=1`, {waitUntil: 'load', timeout: 60_000});

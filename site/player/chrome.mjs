@@ -61,6 +61,17 @@ export function launch({exact = false} = {}) {
     ...(exact ? ['--num-raster-threads=1', '--disable-gpu-rasterization'] : [])]});
 }
 
+/** Collects what goes wrong on `page`, one sentence each: it throws, logs an error, or a request fails or is refused */
+export function watch(page, base) {
+  const problems = [];
+  page.on('pageerror', (e) => problems.push(`throws: ${e.message}`));
+  // the browser's own request for a favicon is not the reel's
+  page.on('console', (m) => { if (m.type() === 'error' && !m.location().url?.endsWith('/favicon.ico')) problems.push(`logs an error: ${m.text()}`); });
+  page.on('requestfailed', (r) => problems.push(`a request fails: ${r.url().replace(base, '')} (${r.failure()?.errorText})`));
+  page.on('response', (r) => { if (r.status() >= 400 && !r.url().endsWith('/favicon.ico')) problems.push(`a request fails: ${r.url().replace(base, '')} (HTTP ${r.status()})`); });
+  return problems;
+}
+
 /** A small grey picture of a screenshot, and how much it varies: a frame with nothing drawn barely does */
 export async function look(png) {
   const img = sharp(png);

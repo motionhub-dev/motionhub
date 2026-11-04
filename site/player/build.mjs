@@ -65,7 +65,7 @@ async function faces(families, dir, motion) {
   return {css, missing};
 }
 
-const page = (name, id, heavy) => `<!doctype html>
+const page = (name, id, version, heavy) => `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -109,7 +109,7 @@ button:focus-visible, .scrub:focus-visible { outline: 2px solid #fff; outline-of
 </style>
 </head>
 <body>
-<div id="player" data-motion="${id}"${heavy ? ' data-heavy="1"' : ''}></div>
+<div id="player" data-motion="${id}" data-version="${version}"${heavy ? ' data-heavy="1"' : ''}></div>
 <script src="reel.js"></script>
 </body>
 </html>
@@ -118,7 +118,7 @@ button:focus-visible, .scrub:focus-visible { outline: 2px solid #fff; outline-of
 async function player(id) {
   const dir = join(ROOT, 'motions', id), out = join(OUT, id);
   const tokens = resolveTokens(JSON.parse(readFileSync(join(dir, 'tokens.json'), 'utf8')));
-  const name = JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8')).name?.en ?? id;
+  const manifest = JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8')), name = manifest.name?.en ?? id;
   mkdirSync(out, {recursive: true});
   const {css, missing} = await faces(familiesOf(tokens), out, dir);
   writeFileSync(join(out, 'reel.css'), [...css, ':root {', ...Object.entries(tokenVariables(tokens)).map(([k, v]) => `  ${k}: ${v};`), '}', ''].join('\n'));
@@ -144,7 +144,7 @@ async function player(id) {
   });
   // a reel that bundles three.js draws in 3D: the player holds it on a weak device until it is tapped
   const heavy = Object.keys(metafile.inputs).some((f) => /node_modules\/three\//.test(f));
-  writeFileSync(join(out, 'index.html'), page(name, id, heavy));
+  writeFileSync(join(out, 'index.html'), page(name, id, manifest.version, heavy));
   return missing;
 }
 
