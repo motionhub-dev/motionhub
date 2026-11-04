@@ -55,7 +55,7 @@ const uses = [
 ];
 ---
 <Base title={`${name}: a motion on motionhub`} description={en(row.line)} path={`/m/${id}/`} image={row.poster}>
-  <p class="crumb"><a href="/">Motions</a> / {id}</p>
+  <p class="crumb"><a href="/motions/">Motions</a> / {id}</p>
 
   <section class="head">
     <div class="media">
@@ -128,7 +128,7 @@ const uses = [
         <dt>Version</dt><dd class="mono">{row.version}</dd>
         <dt>Format</dt><dd><span class="mono">{row.spec}</span>{row.spec !== SPEC && <span class="muted" title={`The format version this motion is written to. Every later version of the spec reads it; the newest is ${SPEC}.`}>· read by {SPEC}</span>}</dd>
         <dt>Licence</dt><dd>{row.license.text} for the look{row.license.code && ` · ${row.license.code} for the code`}</dd>
-        {row.tags.length > 0 && <><dt>Looks</dt><dd>{row.tags.map((t) => <a class="chip" href={`/?tag=${encodeURIComponent(t)}`}>{t}</a>)}</dd></>}
+        {row.tags.length > 0 && <><dt>Looks</dt><dd>{row.tags.map((t) => <a class="chip" href={`/motions/?tag=${encodeURIComponent(t)}`}>{t}</a>)}</dd></>}
         <dt>Package</dt><dd>{kb(row.package.bytes)}, <code class="hash" title={`SHA-256 ${row.package.sha256}`}>sha256:{row.package.sha256.slice(0, 12)}</code></dd>
       </dl>
     </div>

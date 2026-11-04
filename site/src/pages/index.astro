@@ -1,17 +1,9 @@
 ---
 import Base from '../layouts/Base.astro';
 import Card from '../components/Card.astro';
-import Dropdown from '../components/Dropdown.astro';
 import Engine from '../components/Engine.astro';
 import Prompt from '../components/Prompt.astro';
-import {ENGINE_LINKS, KINDS, chips, en, kinds, recommended, rows, toolEngines, toolLabel, tools} from '../lib/catalogue.mjs';
-
-// what a search matches: the id, every name and line in every language, the tags, the engines and the authors
-const text = (r) => [r.slug, ...Object.values(r.name), ...Object.values(r.line), ...Object.values(r.fit?.for ?? {}), ...r.tags, ...r.tools, ...r.tools.flatMap(toolEngines), ...r.authors.flatMap((a) => [a.name, a.github])].join(' ').toLowerCase();
-// each motion's place A to Z (the index's order), for the A to Z sort; the page itself is in the gallery's recommended order
-const az = new Map(rows.map((r, i) => [r.slug, i]));
-const filter = (r) => ({'data-id': r.slug, 'data-az': String(az.get(r.slug)), 'data-text': text(r), 'data-tags': r.tags.join(' '), 'data-tools': r.tools.join(' '), 'data-kind': r.fit?.kind ?? ''});
-const n = rows.length;
+import {ENGINE_LINKS, en, rows, toolEngines} from '../lib/catalogue.mjs';
 
 // the looks the try card offers, far apart from each other; any that is gone is left out
 const TRY = ['@iamsuosi/clay-world', '@iamsuosi/ink-scroll', '@iamsuosi/drafting-table', '@iamsuosi/field-atlas', '@iamsuosi/lab-notebook'];
@@ -19,8 +11,10 @@ const tries = TRY.map((id) => rows.find((r) => r.slug === id)).filter(Boolean);
 if (tries.length === 0) tries.push(...rows.slice(0, 5));
 const first = tries[0];
 const engines = [...new Set(rows.flatMap((r) => r.tools.flatMap(toolEngines)))];
+// the home page shows a taste of the gallery: the looks above first, then the rest
+const featured = [...tries, ...rows.filter((r) => !tries.includes(r))].slice(0, 10);
 ---
-<Base title="motionhub: open looks for AI-made video" description="Open looks for AI-made video: a visual style written down. Hand one to your agent with your story and get a film in that look, in Remotion, HyperFrames or any code-video engine." path="/" current="motions">
+<Base title="motionhub: open looks for AI-made video" description="Open looks for AI-made video: a visual style written down. Hand one to your agent with your story and get a film in that look, in Remotion, HyperFrames or any code-video engine." path="/">
   <section class="intro" aria-labelledby="intro-title">
     <div class="pitch">
       <h1 id="intro-title">Open looks for AI‑made video.</h1>
@@ -62,153 +56,20 @@ const engines = [...new Set(rows.flatMap((r) => r.tools.flatMap(toolEngines)))];
     </div>
   </section>
 
-  <div class="lead">
+  <div class="lead wall">
     <h2>Motions</h2>
-    <p>Pick one to see it play, and how to use it.</p>
+    <a href="/motions/">Browse all {rows.length} <span aria-hidden="true">→</span></a>
   </div>
 
-  <div class="bar">
-    <div class="chips" role="group" aria-label="Looks">
-      <button type="button" class="chip" data-tag="" aria-pressed="true">All</button>
-      {chips().map((t) => <button type="button" class="chip" data-tag={t} aria-pressed="false">{t}</button>)}
-    </div>
-    {kinds.length > 1 && <Dropdown id="kind" label="Kind" options={[{value: '', text: 'Any kind'}, ...kinds.map((k) => ({value: k, text: KINDS[k].label}))]} />}
-    {tools.length > 0 && <Dropdown id="tool" label="Engine" options={[{value: '', text: 'Any engine'}, ...tools.map((t) => ({value: t, text: toolLabel(t)}))]} />}
-    <Dropdown id="sort" label="Sort" fieldId="sortfield" options={[{value: '', text: 'Recommended'}, {value: 'az', text: 'A to Z'}, {value: 'last30', text: 'Most downloaded, 30 days'}, {value: 'total', text: 'Most downloaded, all time'}, {value: 'likes', text: 'Most liked'}]} />
-    <div class="seg" role="group" aria-label="View">
-      <button type="button" data-view="grid" aria-pressed="true" aria-label="Grid"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
-      <button type="button" data-view="list" aria-pressed="false" aria-label="List"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
-    </div>
+  <div class="grid">
+    {featured.map((r, i) => <Card row={r} eager={i < 5} />)}
   </div>
-
-  <p class="count" id="count" aria-live="polite">{n} {n === 1 ? 'motion' : 'motions'}, recommended first</p>
-
-  <div class="grid" id="grid">
-    {recommended.map((r, i) => <Card row={r} eager={i < 5} {...filter(r)} />)}
-  </div>
-
-  <div class="table" id="list" hidden>
-    <table>
-      <thead><tr><th colspan="2">Motion</th><th>Kind</th><th>Looks</th><th>Engines</th><th>By</th><th class="r">Likes</th><th class="r" id="dlhead">Downloads</th><th class="r">Version</th></tr></thead>
-      <tbody>
-        {recommended.map((r) => (
-          <tr {...filter(r)}>
-            <td class="p"><img src={r.poster.replace(/\.jpg$/, '-480.webp')} alt="" loading="lazy" decoding="async" width="96" height="54"></td>
-            <td class="n"><a href={`/m/${r.slug}/`}>{en(r.name)}</a><div>{en(r.line)}</div></td>
-            <td>{r.fit ? KINDS[r.fit.kind].label : '–'}</td>
-            <td>{r.tags.join(', ')}</td>
-            <td>{r.tools.length ? r.tools.flatMap(toolEngines).join(', ') : 'Any, from MOTION.md'}</td>
-            <td>{r.authors.map((a) => a.name).join(', ')}</td>
-            <td class="r" data-lk={r.slug}>–</td>
-            <td class="r" data-dl={r.slug}>–</td>
-            <td class="r mono">{r.version}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-
-  <p class="empty" id="empty" hidden>No motion matches. <a href="/docs/contribute/">Make the first one.</a></p>
 </Base>
 
 <script>
-  // Filters the gallery by the search, a look and a tool, and switches between the grid and the list. The page is
-  // complete without it. The state is kept in the address (?q=&tag=&kind=&tool=&view=) so a filtered gallery can be shared.
+  // the gallery's searches used to live here: an old address with one goes on to the gallery
   const $ = <T extends Element>(s: string) => document.querySelector<T>(s);
-  const q = $<HTMLInputElement>('#q')!, tool = $<HTMLSelectElement>('#tool'), kind = $<HTMLSelectElement>('#kind');
-  const chips = [...document.querySelectorAll<HTMLButtonElement>('.chip[data-tag]')];
-  const views = [...document.querySelectorAll<HTMLButtonElement>('[data-view]')];
-  const items = [...document.querySelectorAll<HTMLElement>('[data-text]')];
-  const grid = $<HTMLElement>('#grid')!, list = $<HTMLElement>('#list')!;
-  const params = new URLSearchParams(location.search);
-  const sort = $<HTMLSelectElement>('#sort')!;
-  let counts: Record<string, {downloads: {total: number; last30: number}; likes?: number}> = {};
-  let tag = params.get('tag') ?? '';
-  let view = params.get('view') ?? (() => { try { return localStorage.getItem('motionhub.view'); } catch { return null; } })() ?? 'grid';
-  q.value = params.get('q') ?? q.value;
-  if (tool) tool.value = params.get('tool') ?? '';
-  if (kind) kind.value = params.get('kind') ?? '';
-  if (!chips.some((c) => c.dataset.tag === tag)) tag = '';
-
-  // the downloads each motion shows: in all, or in the last 30 days while sorted by them
-  const ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 4v12M6 11l6 6 6-6M5 20h14"/></svg>';
-  const fmt = new Intl.NumberFormat('en', {notation: 'compact'});
-  function paint(which: 'total' | 'last30') {
-    for (const el of document.querySelectorAll<HTMLElement>('[data-dl]')) {
-      const d = counts[el.dataset.dl!]?.downloads;
-      if (!d) { if (el.tagName === 'TD') el.textContent = Object.keys(counts).length ? '0' : '–'; continue; }
-      const n = d[which];
-      if (el.tagName === 'TD') el.textContent = fmt.format(n);
-      else { el.innerHTML = ICON + fmt.format(n); el.hidden = n === 0; }
-      el.title = `${d.total} downloads, ${d.last30} in the last 30 days`;
-    }
-    const HEART = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-7-4.4-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6C19 16.6 12 21 12 21z"/></svg>';
-    for (const el of document.querySelectorAll<HTMLElement>('[data-lk]')) {
-      const n = counts[el.dataset.lk!]?.likes ?? 0;
-      if (el.tagName === 'TD') el.textContent = Object.keys(counts).length ? fmt.format(n) : '–';
-      else { el.innerHTML = HEART + fmt.format(n); el.hidden = n === 0; el.title = `${n} ${n === 1 ? 'like' : 'likes'}`; }
-    }
-  }
-
-  function apply() {
-    const words = q.value.toLowerCase().split(/\s+/).filter(Boolean);
-    const t = tool?.value ?? '', k = kind?.value ?? '';
-    let n = 0;
-    for (const el of items) {
-      const show = (!tag || el.dataset.tags!.split(' ').includes(tag)) && (!k || el.dataset.kind === k) && (!t || el.dataset.tools!.split(' ').includes(t)) && words.every((w) => el.dataset.text!.includes(w));
-      el.hidden = !show;
-      if (show && el.tagName === 'A') n++;
-    }
-    // order: recommended (the page's own order), A to Z, or by downloads or likes with the recommended order among equals
-    const by = sort.value as '' | 'az' | 'total' | 'last30' | 'likes';
-    const score = (id: string) => (by === 'likes' ? counts[id]?.likes ?? 0 : by === 'total' || by === 'last30' ? counts[id]?.downloads[by] ?? 0 : 0);
-    const place = (el: HTMLElement) => Number(by === 'az' ? el.dataset.az : el.dataset.order);
-    for (const box of [grid, list.querySelector('tbody')!]) {
-      const kids = [...box.children] as HTMLElement[];
-      kids.sort((a, b) => score(b.dataset.id!) - score(a.dataset.id!) || place(a) - place(b));
-      box.append(...kids);
-    }
-    paint(by === 'last30' ? 'last30' : 'total');
-    for (const c of chips) c.setAttribute('aria-pressed', String(c.dataset.tag === tag));
-    for (const v of views) v.setAttribute('aria-pressed', String(v.dataset.view === view));
-    grid.hidden = view !== 'grid';
-    list.hidden = view !== 'list';
-    const parts = [`${n} ${n === 1 ? 'motion' : 'motions'}`];
-    if (k) parts.push(({general: 'that carry many subjects', topic: 'made for one subject', overlay: 'drawn over your footage'} as Record<string, string>)[k] ?? k);
-    if (tag) parts.push(`tagged ${tag}`);
-    if (t) parts.push(tool!.selectedOptions[0].text.replace(/^Components/, 'with components').replace(/^Pieces/, 'with pieces'));
-    if (words.length) parts.push(`matching “${q.value.trim()}”`);
-    $('#count')!.textContent = parts.join(' ') + ', ' + (by === 'likes' ? 'most liked first' : by === 'az' ? 'A to Z' : by ? `most downloaded${by === 'last30' ? ' in 30 days' : ''} first` : 'recommended first');
-    $<HTMLElement>('#empty')!.hidden = n > 0;
-    const next = new URLSearchParams();
-    if (q.value.trim()) next.set('q', q.value.trim());
-    if (tag) next.set('tag', tag);
-    if (k) next.set('kind', k);
-    if (t) next.set('tool', t);
-    if (view !== 'grid') next.set('view', view);
-    if (by) next.set('sort', by);
-    const s = next.toString();
-    history.replaceState(null, '', s ? `?${s}` : location.pathname);
-  }
-
-  q.form!.addEventListener('submit', (e) => e.preventDefault());
-  q.addEventListener('input', apply);
-  tool?.addEventListener('change', apply);
-  kind?.addEventListener('change', apply);
-  sort.addEventListener('change', apply);
-  for (const c of chips) c.addEventListener('click', () => { tag = c.dataset.tag!; apply(); });
-  for (const v of views) v.addEventListener('click', () => { view = v.dataset.view!; try { localStorage.setItem('motionhub.view', view); } catch {} apply(); });
-  for (const [i, el] of items.entries()) el.dataset.order = String(i % (items.length / 2));
-  if (params.get('sort') === 'az') sort.value = 'az';
-  apply();
-
-  // the public counts, when they load: downloads on each motion, and sorting by them
-  fetch('/api/stats.json').then((r) => (r.ok ? r.json() : Promise.reject())).then((s) => {
-    counts = s.motions ?? {};
-    const want = params.get('sort');
-    if (want === 'total' || want === 'last30' || want === 'likes') sort.value = want;
-    apply();
-  }).catch(() => {});
+  if (/[?&](q|tag|tool|view|sort)=/.test(location.search)) location.replace(`/motions/${location.search}`);
 
   // the try card: picking a look puts it in the prompt. Without the script the prompt names the first look.
   const target = document.querySelector<HTMLElement>('#prompt .target')!;

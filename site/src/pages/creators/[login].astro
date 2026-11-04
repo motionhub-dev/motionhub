@@ -18,7 +18,7 @@ const tags = [...c.motions.flatMap((r) => r.tags).reduce((m, t) => m.set(t, (m.g
     <div>
       <h1>{c.name}</h1>
       <p class="handle"><a href={`https://github.com/${c.login}`}>@{c.login} on GitHub</a>{c.formerly.length > 0 && <>; also published as {c.formerly.map((l, i) => <>{i > 0 && ', '}@{l}</>)}</>}</p>
-      {tags.length > 0 && <p class="tags">Makes {tags.map((t, i) => <>{i > 0 && ', '}<a href={`/?tag=${encodeURIComponent(t)}`}>{t}</a></>)}</p>}
+      {tags.length > 0 && <p class="tags">Makes {tags.map((t, i) => <>{i > 0 && ', '}<a href={`/motions/?tag=${encodeURIComponent(t)}`}>{t}</a></>)}</p>}
     </div>
     <dl class="tally" data-ids={c.motions.map((r) => r.slug).join(' ')}>
       <div><dt>Motions</dt><dd>{n}</dd></div>

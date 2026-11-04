@@ -10,7 +10,7 @@ const viewBox = /viewBox="([^"]+)"/.exec(word)[1];
 const path = /<path[^>]*\/>/.exec(word)[0];
 const balls = [...readFileSync(join(ROOT, 'brand/logo/mark.svg'), 'utf8').matchAll(/<circle [^>]*\/>/g)].map((m) => m[0].replace(/fill="#[0-9A-Fa-f]{6}"/, 'fill="var(--color-mark)"'));
 ---
-<a class="brand" href="/" aria-label="motionhub, all motions">
+<a class="brand" href="/" aria-label="motionhub, home">
   <svg class="mark" viewBox="0 0 96 56" aria-hidden="true" set:html={balls.join('')} />
   <svg class="word" viewBox={viewBox} aria-hidden="true" set:html={path} />
 </a>

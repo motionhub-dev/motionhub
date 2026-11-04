@@ -52,13 +52,6 @@ async function loginNow(id) {
   return typeof user?.login === 'string' ? user.login : undefined;
 }
 
-/** The tags used by more than one motion, the most used first: the gallery's chips. */
-export function chips(limit = 12) {
-  const counts = new Map();
-  for (const r of rows) for (const t of r.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
-  return [...counts].filter(([, n]) => n > 1).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).slice(0, limit).map(([t]) => t);
-}
-
 /** What a motion's fit.kind means to a person browsing (SPEC.md §3, What it is for), in the order the gallery offers them */
 export const KINDS = {
   general: {label: 'General', note: 'Carries many subjects'},
@@ -90,9 +83,6 @@ const covered = new Map(rows.map((r) => [r.slug, coverage(r.slug)]));
 /** The index's rows in the gallery's order */
 export const recommended = [...rows].sort((a, b) => featured(a) - featured(b) || rank(a) - rank(b) || covered.get(b.slug) - covered.get(a.slug) || (a.slug < b.slug ? -1 : 1));
 
-/** Every tool directory any motion has, A to Z. */
-export const tools = [...new Set(rows.flatMap((r) => r.tools))].sort();
-
 export const kb = (bytes) => `${Math.ceil(bytes / 1024)} KB`;
 
 /**
@@ -109,7 +99,66 @@ export const ENGINE_LINKS = {
   Remotion: {site: 'https://www.remotion.dev', repo: 'https://github.com/remotion-dev/remotion', skills: 'https://www.remotion.dev/docs/ai/skills', guide: '/docs/remotion/'},
   HyperFrames: {site: 'https://hyperframes.heygen.com', repo: 'https://github.com/heygen-com/hyperframes', skills: 'https://github.com/heygen-com/hyperframes#readme', guide: '/docs/hyperframes/'},
 };
-export const toolLabel = (tool) => (TOOL_ENGINES[tool] ? `Components for ${toolEngines(tool).join(' and ')}` : `Pieces for ${tool}`);
+
+/** What a search matches: the id, every name and line in every language, the tags, the engines and the authors. */
+export const searchText = (r) => [r.slug, ...Object.values(r.name), ...Object.values(r.line), ...r.tags, ...r.tools, ...r.tools.flatMap(toolEngines), ...r.authors.flatMap((a) => [a.name, a.github])].join(' ').toLowerCase();
+
+const GROUNDS = ['light', 'dark'];
+const TYPES = {serif: 'Serif', 'sans-serif': 'Sans', monospace: 'Mono', cursive: 'Hand'};
+const SIZES = [['small', 'Under 150 KB', 150], ['medium', '150 to 300 KB', 300], ['large', 'Over 300 KB', Infinity]];
+const HUES = [['red', 15], ['orange', 45], ['yellow', 70], ['green', 170], ['blue', 260], ['purple', 335], ['red', 360]];
+const title = (s) => s[0].toUpperCase() + s.slice(1);
+
+/** A colour's family by its hue, or null when it is too grey to have one. */
+function family(hex) {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const max = Math.max(r, g, b), chroma = max - Math.min(r, g, b);
+  if (chroma < 0.3) return null;
+  const h = (max === r ? ((g - b) / chroma + 6) % 6 : max === g ? (b - r) / chroma + 2 : (r - g) / chroma + 4) * 60;
+  return HUES.find(([, end]) => h < end)[0];
+}
+
+const palette = (r) => { try { return colours(JSON.parse(read(r.slug, 'tokens.json'))); } catch { return []; } };
+
+/** What the gallery filters a motion by, each a list of values. Colour and type are read from its tokens. */
+export function motionFacets(r) {
+  const kb = r.package.bytes / 1024;
+  let fonts = [];
+  try { fonts = faces(JSON.parse(read(r.slug, 'tokens.json'))); } catch {}
+  return {
+    tag: r.tags,
+    colour: [...new Set(palette(r).map((c) => family(c.hex)).filter(Boolean))],
+    type: [...new Set(fonts.flatMap((f) => f.faces).filter((f) => TYPES[f]))],
+    size: [SIZES.find(([, , under]) => kb < under)[0]],
+    engine: [...new Set(r.tools.flatMap(toolEngines))],
+    by: r.authors.map((a) => a.github),
+  };
+}
+
+/** The gallery's filters. A value every motion has tells them apart from nothing, so it is left out, and so is a filter left with one value. */
+export function galleryFacets() {
+  const all = rows.map((r) => ({r, f: motionFacets(r)}));
+  const options = (key, text, swatch) => {
+    const counts = new Map();
+    for (const {f} of all) for (const v of f[key]) counts.set(v, (counts.get(v) ?? 0) + 1);
+    return [...counts].map(([value, count]) => ({value, count, text: text(value), swatch: swatch?.(value)}));
+  };
+  const byCount = (a, b) => b.count - a.count || (a.text < b.text ? -1 : 1);
+  // a colour family's swatch is a colour a motion in it really uses, so the page decides no colour of its own
+  const swatch = (value) => all.flatMap(({r}) => palette(r)).find((c) => family(c.hex) === value)?.hex;
+  const authors = new Map(rows.flatMap((r) => r.authors.map((a) => [a.github, a.name])));
+  const tags = options('tag', (v) => v).sort(byCount);
+  const facets = [
+    {key: 'tag', label: 'Ground', options: tags.filter((o) => GROUNDS.includes(o.value)).map((o) => ({...o, text: title(o.value)}))},
+    {key: 'tag', label: 'Style', options: tags.filter((o) => !GROUNDS.includes(o.value))},
+    {key: 'colour', label: 'Colour', options: options('colour', title, swatch).sort(byCount)},
+    {key: 'type', label: 'Type', options: options('type', (v) => TYPES[v]).sort(byCount)},
+    {key: 'size', label: 'Package', options: SIZES.map(([value, text]) => options('size', () => text).find((o) => o.value === value)).filter(Boolean)},
+    {key: 'engine', label: 'Engine', options: options('engine', (v) => v).sort(byCount)},
+    {key: 'by', label: 'Creator', options: options('by', (v) => authors.get(v) ?? v).sort(byCount)},
+  ];
+  return facets.map((f) => ({...f, options: f.options.filter((o) => o.count < rows.length)})).filter((f) => f.options.length > 1);
+}
 
 /** The prompt that works in any agent, and the skill that makes it shorter: installed for every agent by skills. */
 export const TOPIC = '<your topic>';
