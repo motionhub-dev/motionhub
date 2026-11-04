@@ -54,7 +54,7 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
 
       <ul class="mine" id="mine">
         {rows.map((r) => (
-          <li class="mrow" hidden data-id={r.slug} data-owners={owners(r)} data-name={en(r.name)} data-version={r.version} data-poster={r.poster.replace(/\.jpg$/, '-480.webp')} data-built={builtOnBy(r.slug).map((b) => `${b.slug}|${en(b.name)}`).join(' ')}>
+          <li class="mrow" hidden data-id={r.slug} data-owners={owners(r)} data-name={en(r.name)} data-version={r.version} data-poster={r.poster.replace(/\.jpg$/, '-480.webp')} data-built={JSON.stringify(builtOnBy(r.slug).map((b) => ({id: b.slug, name: en(b.name)})))}>
             <img class="poster" src={r.poster.replace(/\.jpg$/, '-480.webp')} alt="" width="960" height="540" loading="lazy" decoding="async">
             <div class="mmain">
               <a class="mname" href={`/m/${r.slug}/`}>{en(r.name)}</a>
@@ -166,6 +166,8 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
   const fmt = new Intl.NumberFormat('en');
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
   const SHOWN = 10;
+  /** The motions that name this one in basedOn, as {id, name}. */
+  const builtBy = (li: HTMLElement) => JSON.parse(li.dataset.built || '[]') as {id: string; name: string}[];
 
   (window as any).motionhubMe.then((me: Me) => {
     if (!me.person) { $('you-out').hidden = false; return; }
@@ -191,7 +193,7 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
       $('you-tally').hidden = false;
       $('tab-review').hidden = false;
       $('you-tally').querySelector('[data-t="motions"]')!.textContent = String(mine.length);
-      const built = new Set(mine.flatMap((li) => (li.dataset.built ? li.dataset.built.split(' ') : []).map((b) => b.split('|')[0])).filter((id) => !ids.has(id)));
+      const built = new Set(mine.flatMap((li) => builtBy(li).map((b) => b.id)).filter((id) => !ids.has(id)));
       $('you-tally').querySelector('[data-t="built"]')!.textContent = String(built.size);
     } else $('first').hidden = false;
     const showAll = () => { for (const li of mine) li.hidden = false; $('you-more').hidden = true; };
@@ -265,7 +267,7 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
         // the motions it changes show it on their row
         for (const mid of pr.motions) {
           const chip = document.querySelector<HTMLAnchorElement>(`.mrow[data-id="${CSS.escape(mid)}"] .pr-chip`);
-          if (!chip) continue;
+          if (!chip || !chip.hidden) continue;
           chip.hidden = false; chip.href = pr.url;
           chip.textContent = `${pr.next === 'change' ? '✕ Needs a change' : 'In review'} · #${pr.number}`;
         }
@@ -327,7 +329,7 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
       li.querySelector('[data-retire]')!.addEventListener('click', () => {
         rt.querySelector('#rt-title span')!.textContent = name;
         $('rt-id').textContent = id;
-        const built = li.dataset.built ? li.dataset.built.split(' ').map((b) => b.split('|')[1]) : [];
+        const built = builtBy(li).map((b) => b.name);
         $('rt-free').hidden = built.length > 0;
         $('rt-built').hidden = built.length === 0;
         $('rt-built').querySelector('b')!.textContent = built.join(', ');

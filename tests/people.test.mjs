@@ -149,7 +149,7 @@ test('your pull requests: only yours by account id, with their checks, review an
     '/commits/aaa/check-runs?check_name=check&per_page=1': {check_runs: [{status: 'completed', conclusion: 'success'}]},
     '/commits/ccc/check-runs?check_name=check&per_page=1': {check_runs: [{status: 'completed', conclusion: 'failure'}]},
     '/pulls/41/files?per_page=100': [{filename: 'motions/@ana/field-atlas/motion.json'}, {filename: 'motions/@ana/field-atlas/react/reel.tsx'}],
-    '/pulls/43/files?per_page=100': [{filename: 'motions/@ana/tide-table/motion.json'}, {filename: 'accounts/ana.json'}],
+    '/pulls/43/files?per_page=100': [{filename: 'motions/@ana/tide-table/motion.json'}, {filename: 'accounts/ana.json'}, {filename: 'motions/red-pencil/MOTION.md'}],
     '/issues/41/comments?per_page=100': [{user: {login: 'claude[bot]'}, body: '**Summary.** Fine.'}],
     '/issues/43/comments?per_page=100': [{user: {login: 'claude[bot]'}, body: 'Claude Code is working…'}],
   };
@@ -168,7 +168,7 @@ test('your pull requests: only yours by account id, with their checks, review an
   const {pulls, all} = await r.json();
   assert.deepEqual(pulls, [
     {number: 41, title: 'Update Field Atlas 1.1.1', url: 'https://github.com/motionhub-dev/motions/pull/41', updated: '2026-11-03T20:00:00Z', motions: ['@ana/field-atlas'], checks: 'passed', reviewed: true, next: 'maintainer'},
-    {number: 43, title: 'Add Tide Table 1.0.0', url: 'y', updated: '2026-11-03T19:00:00Z', motions: ['@ana/tide-table'], checks: 'failed', reviewed: false, next: 'change'},
+    {number: 43, title: 'Add Tide Table 1.0.0', url: 'y', updated: '2026-11-03T19:00:00Z', motions: ['@ana/tide-table', 'red-pencil'], checks: 'failed', reviewed: false, next: 'change'},
   ], 'a renamed login is still theirs, another account with their old login is not, and the reviewer\'s working note is no review');
   assert.ok(!asked.some((p) => p.includes('/42')) && !asked.includes('/commits/bbb/check-runs?check_name=check&per_page=1'), 'someone else\'s pull request is not looked into');
   assert.match(all, /^https:\/\/github\.com\/motionhub-dev\/motions\/pulls\?q=/);
@@ -178,4 +178,23 @@ test('your pull requests: only yours by account id, with their checks, review an
   assert.equal(down.status, 502, 'GitHub unreachable');
   assert.equal((await down.json()).pulls, null);
   assert.equal((await send('POST', '/api/me/pulls', {cookie, origin: SITE})).status, 405);
+});
+
+test('your pull requests are found past GitHub\'s first page', async () => {
+  const {pulls, motionsIn} = await import('../site/pulls.mjs');
+  assert.deepEqual(motionsIn([{filename: 'motions/red-pencil/a'}, {filename: 'motions/@ana/x/b'}, {filename: 'motions/@ana/'}, {filename: 'tools/check.mjs'}]), ['@ana/x', 'red-pencil']);
+  const API = 'https://api.github.com/repos/motionhub-dev/motions';
+  const others = Array.from({length: 100}, (_, i) => ({number: 1000 + i, user: {id: 1}, head: {sha: 'x'}}));
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    if (u === `${API}/pulls?state=open&per_page=100&sort=updated&direction=desc`) return Response.json(others, {headers: {link: `<${API}/pulls?page=2>; rel="next", <${API}/pulls?page=2>; rel="last"`}});
+    if (u === `${API}/pulls?page=2`) return Response.json([{number: 7, title: 'Old', html_url: 'u', updated_at: 't', draft: true, user: {id: 42}, head: {sha: 's'}}]);
+    if (u.startsWith(`${API}/commits/s/`)) return Response.json({check_runs: []});
+    if (u.startsWith(`${API}/pulls/7/files`)) return Response.json([]);
+    if (u.startsWith(`${API}/issues/7/comments`)) return Response.json([]);
+    throw new Error(`unexpected ${u}`);
+  };
+  globalThis.caches = undefined;
+  const body = await (await pulls(new Request(`${SITE}/api/me/pulls`), {}, ctx, {id: 42, login: 'Ana'})).json();
+  assert.deepEqual(body.pulls.map((p) => [p.number, p.checks, p.next]), [[7, 'none', 'draft']]);
 });
