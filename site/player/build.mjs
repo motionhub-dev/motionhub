@@ -1,11 +1,13 @@
 #!/usr/bin/env node
-// Builds a player for every motion with a reel (react/reel.tsx) into ../dist/play/<id>/: index.html, reel.js (the reel,
-// its components, React and @motionhub/runtime in one file), reel.css (the motion's tokens as custom properties and its
-// faces) and fonts/. A motion's page shows it in a sandboxed frame; _headers gives /play/* a policy that loads nothing
+// Builds a player for every motion with a reel (react/reel.tsx) into ../dist/play/<id>/: index.html, reel-<hash>.js (the
+// reel and its components, and nothing else), reel.css (the motion's tokens as custom properties and its faces) and fonts/.
+// What every reel shares is built once into ../dist/play/_shared/: the core (React, @motionhub/runtime and the player) and
+// three.js, each named by its content; a reel's page loads the core, three.js if it draws in 3D, then its own script. A motion's page shows it in a sandboxed frame; _headers gives /play/* a policy that loads nothing
 // from anywhere else (HUB.md, "Reels").
 //
 //   node player/build.mjs [id …]   from site/, after tools/build.mjs (npm run build does both); ids build only those
-import {existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, copyFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, copyFileSync} from 'node:fs';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {build} from 'esbuild';
@@ -74,7 +76,7 @@ async function faces(families, dir, motion) {
   return {css, missing};
 }
 
-const page = (name, id, version, heavy) => `<!doctype html>
+const page = (name, id, version, heavy, scripts) => `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -119,49 +121,91 @@ button:focus-visible, .scrub:focus-visible { outline: 2px solid #fff; outline-of
 </head>
 <body>
 <div id="player" data-motion="${id}" data-version="${version}"${heavy ? ' data-heavy="1"' : ''}></div>
-<script src="reel.js"></script>
+${scripts.map((src) => `<script src="${src}"></script>`).join('\n')}
 </body>
 </html>
 `;
 
-async function player(id) {
+/** esbuild's options for a script of the player: React, three.js and the runtime are site/'s, one copy of each */
+const common = (plugins) => ({
+  bundle: true, format: 'iife', minify: true, write: false, jsx: 'automatic', target: 'es2020', logLevel: 'error', metafile: true,
+  nodePaths: [join(SITE, 'node_modules')], define: {'process.env.NODE_ENV': '"production"'}, alias: {'@motionhub/runtime': RUNTIME},
+  plugins: [{name: 'site', setup(b) {
+    // one React and one three.js, site/'s, whoever imports them: a second copy (packages/runtime's own, once its tests have
+    // installed it) would give the reel hooks from a React that is not rendering it
+    b.onResolve({filter: /^(react|react-dom|three)(\/.*)?$/}, (args) => (args.pluginData === 'site' ? undefined : b.resolve(args.path, {kind: args.kind, resolveDir: SITE, pluginData: 'site'})));
+  }}, ...plugins],
+});
+
+/** Writes `bytes` into `dir` as <name>-<hash>.js, named by its content so a browser may keep it for good; returns the file's name */
+function hashed(dir, name, bytes) {
+  const file = `${name}-${createHash('sha256').update(bytes).digest('hex').slice(0, 12)}.js`;
+  mkdirSync(dir, {recursive: true});
+  writeFileSync(join(dir, file), bytes);
+  return file;
+}
+
+/**
+ * What every reel's page shares, in /play/_shared/: the core (React, the runtime and the player, player.jsx, offering the
+ * interface v1) and three.js for the reels in 3D. Returns their paths
+ */
+async function shared() {
+  // added to, never emptied: a reel built before, by another run over fewer ids, keeps the files it names
+  const dir = join(OUT, '_shared');
+  const core = await build({...common([]), entryPoints: [join(HERE, 'player.jsx')]});
+  const three = await build({...common([]), stdin: {contents: "import * as THREE from 'three';\nglobalThis.__motionhubPlayer = {...globalThis.__motionhubPlayer, three: THREE};", resolveDir: SITE, loader: 'js'}});
+  return {core: `/play/_shared/${hashed(dir, 'core-v1', core.outputFiles[0].contents)}`, three: `/play/_shared/${hashed(dir, 'three', three.outputFiles[0].contents)}`};
+}
+
+/** The modules a motion's script takes from the shared scripts, and the expression each is found at there */
+const FROM_CORE = {'react': 'v1.modules["react"]', 'react/jsx-runtime': 'v1.modules["react/jsx-runtime"]', '@motionhub/runtime': 'v1.modules["@motionhub/runtime"]', 'three': 'three'};
+
+async function player(id, {core, three}) {
   const dir = join(ROOT, 'motions', id), out = join(OUT, id);
   const tokens = resolveTokens(JSON.parse(readFileSync(join(dir, 'tokens.json'), 'utf8')));
   const manifest = JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8')), name = manifest.name?.en ?? id;
+  rmSync(out, {recursive: true, force: true});
   mkdirSync(out, {recursive: true});
   const {css, missing} = await faces(familiesOf(tokens), out, dir);
   writeFileSync(join(out, 'reel.css'), [...css, ':root {', ...Object.entries(tokenVariables(tokens)).map(([k, v]) => `  ${k}: ${v};`), '}', ''].join('\n'));
-  const {metafile} = await build({
-    entryPoints: [join(HERE, 'player.jsx')],
-    bundle: true, format: 'iife', minify: true, metafile: true, outfile: join(out, 'reel.js'), jsx: 'automatic', target: 'es2020', logLevel: 'error',
-    nodePaths: [join(SITE, 'node_modules')],
-    define: {'process.env.NODE_ENV': '"production"'},
-    alias: {'@motionhub/runtime': RUNTIME},
-    plugins: [{name: 'motionhub', setup(b) {
-      // one React and one three.js, site/'s, whoever imports them: a second copy (packages/runtime's own, once its tests have
-      // installed it) would give the reel hooks from a React that is not rendering it
-      b.onResolve({filter: /^(react|react-dom|three)(\/.*)?$/}, (args) => (args.pluginData === 'site' ? undefined : b.resolve(args.path, {kind: args.kind, resolveDir: SITE, pluginData: 'site'})));
+  // a reel that imports three.js draws in 3D: its page loads three.js, and the player holds it on a weak device until it is tapped
+  let heavy = false;
+  const result = await build({
+    ...common([{name: 'motionhub', setup(b) {
+      // the motion's script holds the motion's code alone: what the core offers it takes from there
+      b.onResolve({filter: /^(react|react-dom|three|@motionhub\/runtime)(\/.*)?$/}, (args) => {
+        if (args.path in FROM_CORE) {
+          if (args.path === 'three') heavy = true;
+          return {path: args.path, namespace: 'core'};
+        }
+        // three.js's addons are the motion's own, and import three.js from the shared script like the motion does
+        if (/^three\/(examples\/jsm|addons)\//.test(args.path)) return undefined;
+        return {errors: [{text: `${args.path} is not something a reel can import: a reel has react, @motionhub/runtime, three and three's addons (three/addons/, three/examples/jsm/)`}]};
+      });
+      b.onLoad({filter: /.*/, namespace: 'core'}, ({path}) => ({contents: `module.exports = globalThis.__motionhubPlayer.${FROM_CORE[path]};`, loader: 'js'}));
       b.onResolve({filter: /^motionhub:reel$/}, () => ({path: join(dir, 'react/reel.tsx')}));
-      b.onResolve({filter: /^motionhub:tokens$/}, () => ({path: 'tokens', namespace: 'motionhub'}));
+      b.onResolve({filter: /^motionhub:(tokens|sound)$/}, (args) => ({path: args.path.slice(10), namespace: 'motionhub'}));
       // the motion's sound (react/sound.json), or none
-      b.onResolve({filter: /^motionhub:sound$/}, () => ({path: 'sound', namespace: 'motionhub'}));
-      b.onResolve({filter: /^motionhub:sound-lib$/}, () => ({path: join(ROOT, 'packages/runtime/sound.js')}));
       b.onLoad({filter: /.*/, namespace: 'motionhub'}, ({path}) => ({contents: `export default ${path === 'sound'
         ? (existsSync(join(dir, 'react/sound.json')) ? readFileSync(join(dir, 'react/sound.json'), 'utf8') : 'null')
         : JSON.stringify(tokens)};`, loader: 'js'}));
-    }}],
+    }}]),
+    stdin: {contents: "import * as module from 'motionhub:reel';\nimport sound from 'motionhub:sound';\nimport tokens from 'motionhub:tokens';\nglobalThis.__motionhubPlayer.v1.mount({module, sound, tokens});", resolveDir: dir, loader: 'js'},
   });
-  // a reel that bundles three.js draws in 3D: the player holds it on a weak device until it is tapped
-  const heavy = Object.keys(metafile.inputs).some((f) => /node_modules\/three\//.test(f));
-  writeFileSync(join(out, 'index.html'), page(name, id, manifest.version, heavy));
+  // a second React or three.js in a reel's script would draw with objects the shared ones do not know
+  const copied = Object.keys(result.metafile.inputs).filter((f) => /node_modules\/(react|react-dom|scheduler|three\/(build|src))\//.test(f));
+  if (copied.length) throw new Error(`play/${id}/ would carry its own copy of ${copied[0]}: import it so the shared scripts provide it`);
+  const reel = hashed(out, 'reel', result.outputFiles[0].contents);
+  writeFileSync(join(out, 'index.html'), page(name, id, manifest.version, heavy, [core, ...(heavy ? [three] : []), reel]));
   return missing;
 }
 
 const wanted = process.argv.slice(2);
 const ids = listMotions(join(ROOT, 'motions')).filter((id) => existsSync(join(ROOT, 'motions', id, 'react/reel.tsx')))
   .filter((id) => !wanted.length || wanted.includes(id)).sort();
+const scripts = await shared();
 for (const id of ids) {
-  const missing = await player(id);
+  const missing = await player(id, scripts);
   console.log(`play/${id}/${missing.length ? `  (no web font for ${missing.join(', ')}: the stack's next face draws it)` : ''}`);
 }
-console.log(`${ids.length} reel player(s) built into ${OUT}`);
+console.log(`${ids.length} reel player(s) and ${Object.values(scripts).join(', ')} built into ${OUT}`);
