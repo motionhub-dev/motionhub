@@ -21,7 +21,7 @@ export const DOCS = [
     {slug: 'contribute', file: 'CONTRIBUTING.md', label: 'Share a motion', title: 'Share a motion'},
   ]},
   {group: 'Reference', pages: [
-    {slug: 'spec', file: 'SPEC.md', label: 'Specification'},
+    {slug: 'spec', file: 'SPEC.md', label: 'Specification', title: 'Specification'},
     {slug: 'cli', file: 'docs/cli.md', label: 'Command line'},
     {slug: 'remotion-binding', file: 'packages/remotion/README.md', label: '@motionhub/remotion'},
     {slug: 'hyperframes-binding', file: 'packages/hyperframes/README.md', label: '@motionhub/hyperframes'},
