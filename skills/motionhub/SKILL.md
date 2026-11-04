@@ -103,7 +103,7 @@ To publish a new version of a motion the person published (only when they ask, a
 1. Have the motion at hand: their copy in the project, or `npx @motionhub/cli get @<scope>/<slug>` into `./motion`.
 2. Make the change they want, from their project, holding to what `MOTION.md` says the look is; a new look is a new motion.
 3. Raise `version` in `motion.json` above the published one: the patch for a fix, the minor for something added (a component, a section), the major for a change films already made in it would not survive. A published version never changes.
-4. `npx @motionhub/cli share <dir> --wait`, as above: they open the link and submit; if a pull request for it is open already, the new version is added to it. Only one of the motion's authors can change it.
+4. `npx @motionhub/cli share <dir> --wait`, as above: they open the link and submit; if their pull request for it is open already, the new version is added to it. Only one of the motion's authors can change it; another author's share opens a pull request of its own. `--wait` waits up to 30 minutes.
 
 To change a motion after review notes on its pull request, read the notes (`https://api.github.com/repos/motionhub-dev/motions/issues/<n>/comments` and `.../pulls/<n>/comments`, no token needed), make the changes they ask for, and share again the same way.
 

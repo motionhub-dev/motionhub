@@ -16,9 +16,14 @@
 
 import {person, sameOrigin, sha256} from './people.mjs';
 import {PackageError, untgz} from './tar.mjs';
-import {commitSubmission} from './github-app.mjs';
+import {BINARIES, commitSubmission, isText} from './github-app.mjs';
 
 const DAY = 86400;
+/** Seconds after which a submit that never finished (the Worker stopped mid-way) may be tried again. */
+const STUCK = 300;
+/** The authors a motion names at most (each may cost the app a call to GitHub). */
+const AUTHORS = 20;
+const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
 /** Submissions a person may make in a day, and wrong codes a link takes before it stops. */
 export const PER_DAY = 5, ATTEMPTS = 5;
 const ID = /^@[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,38}\/[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -100,21 +105,42 @@ async function readPackage(bytes) {
   let manifest;
   try { manifest = JSON.parse(new TextDecoder().decode(raw.data)); } catch { throw new PackageError('motion.json is not JSON'); }
   if (typeof manifest?.scope !== 'string' || `@${manifest.scope}/${manifest.slug}` !== root) throw new PackageError(`motion.json names @${manifest?.scope}/${manifest?.slug}, but its files are under ${root}/`);
-  if (typeof manifest.version !== 'string' || !/^\d+\.\d+\.\d+/.test(manifest.version)) throw new PackageError('motion.json has no version');
+  if (typeof manifest.version !== 'string' || !SEMVER.test(manifest.version)) throw new PackageError('motion.json has no version, or not a semantic one');
+  if (Array.isArray(manifest.authors) && manifest.authors.length > AUTHORS) throw new PackageError(`a motion names at most ${AUTHORS} authors`);
+  // each file that is not text goes to GitHub on its own call, and a Worker makes only so many
+  if (files.filter((f) => !isText(f.data)).length > BINARIES) throw new PackageError(`a motion shared this way holds at most ${BINARIES} files that are not text (pictures, fonts, sounds): open its pull request with --pr`);
   if (!files.some((f) => f.path === 'MOTION.md')) throw new PackageError('the motion has no MOTION.md');
   return {id: root, manifest, files};
 }
 
 const ready = (env) => env.SUBMISSIONS !== 'off' && env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.DB && env.PACKAGES;
 
+/** A request's body, read no further than `most` bytes (with or without a content-length): its bytes, or null past it. */
+async function body(request, most) {
+  if (Number(request.headers.get('content-length') ?? 0) > most) return null;
+  if (!request.body) return new Uint8Array();
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+  for (;;) {
+    const {done, value} = await reader.read();
+    if (done) break;
+    total += value.length;
+    if (total > most) { await reader.cancel().catch(() => {}); return null; }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const c of chunks) { out.set(c, at); at += c.length; }
+  return out;
+}
+
 async function upload(request, env, now) {
   if (!ready(env)) return json({error: 'sharing from motionhub.dev is not open yet: open the pull request yourself with npx @motionhub/cli share <dir> --pr'}, 503);
   const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
   if (env.SUBMIT_LIMIT && !(await env.SUBMIT_LIMIT.limit({key: ip})).success) return json({error: 'too many shares from here: try again in a minute'}, 429);
-  const length = Number(request.headers.get('content-length') ?? 0);
-  if (length > 1024 * 1024) return json({error: 'a motion is at most 1 MB, its poster included'}, 413);
-  const bytes = new Uint8Array(await request.arrayBuffer());
-  if (bytes.length > 1024 * 1024) return json({error: 'a motion is at most 1 MB, its poster included'}, 413);
+  const bytes = await body(request, 1024 * 1024);
+  if (!bytes) return json({error: 'a motion is at most 1 MB, its poster included'}, 413);
   let pkg;
   try { pkg = await readPackage(bytes); } catch (e) {
     if (e instanceof PackageError) return json({error: e.message}, 422);
@@ -128,6 +154,7 @@ async function upload(request, env, now) {
   return json({id, url: `${new URL(request.url).origin}/share/${id}`, code, poll, motion: pkg.id, version: pkg.manifest.version, expires: new Date((at + DAY) * 1000).toISOString()}, 201);
 }
 
+const changes = (result) => result?.meta?.changes ?? result?.changes ?? 0;
 const row = (env, id) => env.DB.prepare('SELECT * FROM submissions WHERE id = ?').bind(id).first();
 const prUrl = (r) => (r.pr ? `https://github.com/motionhub-dev/motions/pull/${r.pr}` : null);
 
@@ -193,13 +220,14 @@ async function submit(request, env, id, now) {
   const r = await row(env, id);
   if (!r || expired(r, now)) return json({error: 'this share link has expired: share the motion again'}, 404);
   if (r.status === 'submitted') return json({error: 'this share is submitted already', pr: r.pr, prUrl: prUrl(r)}, 409);
-  if (r.attempts >= ATTEMPTS) return json({error: 'too many wrong codes: share the motion again for a new link'}, 429);
-  const body = await request.json().catch(() => ({}));
-  if (!sameCode(body.code, r.code)) {
-    await env.DB.prepare('UPDATE submissions SET attempts = attempts + 1 WHERE id = ?').bind(id).run();
-    return json({error: 'that is not the code your terminal shows for this share'}, 400);
-  }
-  if (body.mine !== true || body.dco !== true) return json({error: 'confirm that you started this share and certify the DCO'}, 400);
+  const sent = await request.json().catch(() => ({}));
+  if (sent.mine !== true || sent.dco !== true) return json({error: 'confirm that you started this share and certify the DCO'}, 400);
+  // a try is counted before the code is compared, in one step, so many tries at once never get past the limit; a
+  // right code gives its try back
+  const tried = await env.DB.prepare('UPDATE submissions SET attempts = attempts + 1 WHERE id = ? AND attempts < ?').bind(id, ATTEMPTS).run();
+  if (!changes(tried)) return json({error: 'too many wrong codes: share the motion again for a new link'}, 429);
+  if (!sameCode(sent.code, r.code)) return json({error: 'that is not the code your terminal shows for this share'}, 400);
+  await env.DB.prepare('UPDATE submissions SET attempts = attempts - 1 WHERE id = ?').bind(id).run();
   const at = Math.floor(now / 1000);
   const today = await env.DB.prepare('SELECT COUNT(*) AS n FROM submissions WHERE person = ? AND dco_at > ?').bind(me.id, at - DAY).first();
   if ((today?.n ?? 0) >= PER_DAY) return json({error: `at most ${PER_DAY} shares a day: try again tomorrow`}, 429);
@@ -209,17 +237,25 @@ async function submit(request, env, id, now) {
   const accounts = await recorded(request, env);
   const verdict = eligibility(me, pkg.manifest, published, accounts);
   if (!verdict.may) return json({error: verdict.why}, 403);
-  // claimed before GitHub is asked, so two submits of one link never make two commits
-  const claim = await env.DB.prepare("UPDATE submissions SET status = 'submitting', person = ?, dco_at = ? WHERE id = ? AND status IN ('uploaded', 'viewed')").bind(me.id, at, id).run();
-  if (!(claim?.meta?.changes ?? claim?.changes)) return json({error: 'this share is being submitted already'}, 409);
+  // claimed before GitHub is asked, in one step with the day's count, so two submits at once never make two commits
+  // nor pass the limit; a claim whose Worker stopped before it finished is taken again after a while
+  const claim = await env.DB.prepare(`UPDATE submissions SET status = 'submitting', person = ?1, dco_at = ?2 WHERE id = ?3
+    AND (status IN ('uploaded', 'viewed') OR (status = 'submitting' AND dco_at < ?2 - ${STUCK}))
+    AND (SELECT COUNT(*) FROM submissions WHERE person = ?1 AND dco_at > ?2 - ${DAY} AND id != ?3) < ${PER_DAY}`).bind(me.id, at, id).run();
+  if (!changes(claim)) {
+    const now = await row(env, id);
+    return now?.status === 'submitting' ? json({error: 'this share is being submitted already'}, 409) : json({error: `at most ${PER_DAY} shares a day: try again tomorrow`}, 429);
+  }
+  let done;
   try {
-    const done = await commitSubmission(env, {id: r.motion, manifest: pkg.manifest, published: Boolean(published), files: pkg.files, me, accounts, submission: id, sha256: r.sha256});
-    await env.DB.prepare("UPDATE submissions SET status = 'submitted', pr = ?, branch = ? WHERE id = ?").bind(done.pr, done.branch, id).run();
-    return json({pr: done.pr, prUrl: done.url, added: done.added});
+    done = await commitSubmission(env, {id: r.motion, manifest: pkg.manifest, published: Boolean(published), files: pkg.files, me, accounts, submission: id, sha256: r.sha256});
   } catch (e) {
     await env.DB.prepare("UPDATE submissions SET status = 'viewed', dco_at = NULL WHERE id = ?").bind(id).run();
     return json({error: `GitHub could not take it just now (${e.message}); try again in a minute`}, 502);
   }
+  // the pull request is open: from here nothing undoes the claim, so a retry never commits it twice
+  await env.DB.prepare("UPDATE submissions SET status = 'submitted', pr = ?, branch = ? WHERE id = ?").bind(done.pr, done.branch, id).run();
+  return json({pr: done.pr, prUrl: done.url, added: done.added});
 }
 
 /** Handles the routes this file owns, or returns null. */

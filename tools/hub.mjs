@@ -182,11 +182,6 @@ export function scaffold(slug, author) {
 }
 
 /**
- * Check a motion for the hub as its pull request will be checked, under the person's GitHub account and against what
- * is published for its id; with `pr`, fork this repository, commit it signed off as the person's git identity and
- * open the pull request from their fork. Nothing is published without `pr`.
- */
-/**
  * Share a motion through motionhub.dev, with no git, gh or GitHub token here: check it as its pull request will be
  * checked (all but who you are, which the site and the pull request judge), pack it, upload it, and say where to open
  * the pull request: a link to sign in with GitHub at and a code to type there. With `wait`, ask until the pull request
@@ -215,13 +210,21 @@ export async function shareLink(dir, {wait = false, log = () => {}, ask = 5000, 
   log(lines.join('\n'));
   for (const until = Date.now() + most; Date.now() < until;) {
     await new Promise((r) => setTimeout(r, ask));
-    const s = await (await fetch(`${base}/api/submissions/${body.id}?poll=${encodeURIComponent(body.poll)}`, {headers: {'user-agent': 'motionhub-cli'}})).json().catch(() => ({}));
+    // a moment without the network, or an answer that is not one, is asked again next time
+    const res = await fetch(`${base}/api/submissions/${body.id}?poll=${encodeURIComponent(body.poll)}`, {headers: {'user-agent': 'motionhub-cli'}}).catch(() => undefined);
+    if (res?.status === 404) throw new Error('motionhub.dev no longer knows this share: share again');
+    const s = res?.ok ? await res.json().catch(() => ({})) : {};
     if (s.prUrl) return `The pull request is open: ${s.prUrl}`;
     if (s.status === 'expired') throw new Error('the share link expired before it was submitted: share again');
   }
   return `Not submitted yet; the link still works until ${body.expires}: ${body.url}`;
 }
 
+/**
+ * Check a motion for the hub as its pull request will be checked, under the person's GitHub account and against what
+ * is published for its id; with `pr`, fork this repository, commit it signed off as the person's git identity and
+ * open the pull request from their fork. Nothing is published without `pr`.
+ */
 export async function share(dir, {pr = false, github} = {}, base = HUB) {
   // the pull request is made by whoever gh is signed in as, so --github may only name that account; without --pr it says whose checks to run
   const signedIn = github && !pr ? undefined : githubAccount();

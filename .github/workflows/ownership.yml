@@ -82,25 +82,27 @@ jobs:
         run: |
           who=$(node tools/check.mjs --submitter "$RUNNER_TEMP/commits.json")
           echo "Submitted by $who"
-          echo "AUTHOR_ID=${who%% *}" >> "$GITHUB_ENV"
-          echo "AUTHOR=${who#* }" >> "$GITHUB_ENV"
+          # names of their own: the job's env (AUTHOR, AUTHOR_ID) would win over GITHUB_ENV's
+          echo "SUBMITTER_ID=${who%% *}" >> "$GITHUB_ENV"
+          echo "SUBMITTER=${who#* }" >> "$GITHUB_ENV"
       - name: The accounts it records, against what GitHub says
         run: node tools/check.mjs --accounts-was accounts --accounts pr/accounts
       - name: The motions it adds, changes or takes out, against its author and what is published
         run: |
           set -f
+          author="${SUBMITTER:-$AUTHOR}" author_id="${SUBMITTER_ID:-$AUTHOR_ID}"
           # a motion is motions/@<scope>/<slug>/
           grep '^motions/' "$RUNNER_TEMP/files" | awk -F/ '{print ($2 ~ /^@/) ? $2"/"$3 : $2}' | sort -u > "$RUNNER_TEMP/motions"
           status=0
           while IFS= read -r d; do
             if [ -d "pr/motions/$d" ]; then
               if [ -f "motions/$d/motion.json" ]; then
-                node tools/check.mjs "pr/motions/$d" --author "$AUTHOR" --author-id "$AUTHOR_ID" --accounts pr/accounts --was "motions/$d/motion.json" || status=1
+                node tools/check.mjs "pr/motions/$d" --author "$author" --author-id "$author_id" --accounts pr/accounts --was "motions/$d/motion.json" || status=1
               else
-                node tools/check.mjs "pr/motions/$d" --author "$AUTHOR" --author-id "$AUTHOR_ID" --accounts pr/accounts || status=1
+                node tools/check.mjs "pr/motions/$d" --author "$author" --author-id "$author_id" --accounts pr/accounts || status=1
               fi
             elif [ -f "motions/$d/motion.json" ]; then
-              node tools/check.mjs --removed --was "motions/$d/motion.json" --author "$AUTHOR" --author-id "$AUTHOR_ID" --accounts pr/accounts || status=1
+              node tools/check.mjs --removed --was "motions/$d/motion.json" --author "$author" --author-id "$author_id" --accounts pr/accounts || status=1
             fi
           done < "$RUNNER_TEMP/motions"
           exit $status

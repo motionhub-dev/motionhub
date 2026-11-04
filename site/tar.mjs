@@ -5,8 +5,8 @@
 
 export const LIMITS = {packed: 1024 * 1024, unpacked: 2 * 1024 * 1024, files: 300};
 
-/** A segment of a path in a package: letters, digits, @ . _ - (not only dots). */
-const SEGMENT = /^(?!\.+$)[A-Za-z0-9@._-]{1,100}$/;
+/** A segment of a path in a package: letters, digits, @ . _ - (not only dots); tools/check.mjs SEGMENT, which the Worker cannot import. */
+export const SEGMENT = /^(?!\.+$)[A-Za-z0-9@._-]{1,100}$/;
 
 export class PackageError extends Error {}
 const refuse = (message) => { throw new PackageError(message); };
@@ -66,8 +66,9 @@ export async function untgz(bytes, limits = LIMITS) {
     const path = prefix ? `${prefix}/${name}` : name;
     const length = octal(header, 124, 12);
     if (!path.split('/').every((s) => SEGMENT.test(s))) refuse(`a path in the package is not allowed: ${JSON.stringify(path.slice(0, 120))}`);
-    if (seen.has(path)) refuse(`the package holds ${path} twice`);
-    seen.add(path);
+    // twice, or twice but for case: one of them would take the other's place on a disk that ignores case
+    if (seen.has(path.toLowerCase())) refuse(`the package holds ${path} twice`);
+    seen.add(path.toLowerCase());
     size += length;
     if (size > limits.unpacked) refuse(`the package unpacks to more than ${limits.unpacked} bytes`);
     if (out.length >= limits.files) refuse(`the package holds more than ${limits.files} files`);

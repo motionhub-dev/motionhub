@@ -46,7 +46,7 @@ async function installationToken(env, now = Date.now()) {
   const inst = await fetch(`${API}/repos/${REPO}/installation`, {headers});
   if (!inst.ok) throw new Error(`the GitHub App is not installed on ${REPO} (${inst.status})`);
   const {id} = await inst.json();
-  const res = await fetch(`${API}/app/installations/${id}/access_tokens`, {method: 'POST', headers, body: JSON.stringify({repositories: [REPO.split('/')[1]]})});
+  const res = await fetch(`${API}/app/installations/${id}/access_tokens`, {method: 'POST', headers, body: JSON.stringify({repositories: [REPO.split('/')[1]], permissions: {contents: 'write', pull_requests: 'write'}})});
   if (!res.ok) throw new Error(`GitHub gave no installation token (${res.status})`);
   const body = await res.json();
   cached = {token: body.token, until: Date.parse(body.expires_at) - 10 * 60 * 1000};
@@ -66,12 +66,21 @@ async function api(env, method, path, body, {missing = false} = {}) {
   return res.status === 204 ? null : res.json();
 }
 
+/** Files a submission may hold that are not text: each is a call to GitHub of its own, and a Worker makes only so many. */
+export const BINARIES = 40;
+
 /** Whether bytes read as UTF-8 text with no NUL: such a file goes into the tree as text, anything else as a blob. */
-function isText(data) {
+export function isText(data) {
   if (data.includes(0)) return false;
   try { new TextDecoder('utf-8', {fatal: true}).decode(data); return true; } catch { return false; }
 }
 const base64 = (data) => { let s = ''; for (let i = 0; i < data.length; i += 0x8000) s += String.fromCharCode(...data.subarray(i, i + 0x8000)); return btoa(s); };
+
+/** Text from a motion or a profile on one line, for a title, a commit or a trailer: no line breaks or other controls. */
+export const oneLine = (s, most = 120) => String(s ?? '').replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, ' ').trim().slice(0, most);
+
+/** Text from a motion for a pull request's body, shown as it is: no mention, link, picture or other markdown of its own. */
+export const plain = (s) => oneLine(s, 300).replace(/[\\`*_{}[\]()<>#+!|~]/g, '\\$&').replace(/@/g, '@\u200b');
 
 /** The only paths a submission may write: its own motion's directory, and new account records. */
 export function allowed(path, id) {
@@ -125,22 +134,23 @@ export async function commitSubmission(env, {id, manifest, published, files, me,
   for (const e of entries) if (!allowed(e.path, id)) throw new Error(`a submission may not write ${e.path}`);
 
   const newTree = await api(env, 'POST', `/repos/${REPO}/git/trees`, {base_tree: baseTree, tree: entries});
-  const name = me.name || me.login;
+  const name = oneLine(me.name, 80) || me.login;
   const email = `${me.id}+${me.login}@users.noreply.github.com`;
   const added = !open;
-  const what = `${published ? 'Update' : 'Add'} ${manifest.name?.en ?? id} ${manifest.version}`;
+  const what = `${published ? 'Update' : 'Add'} ${oneLine(manifest.name?.en) || id} ${oneLine(manifest.version, 40)}`;
   const message = `${what}\n\nSubmitted through motionhub.dev (package SHA-256 ${sha256}).\n\nSigned-off-by: ${name} <${email}>\nMotionhub-Submitted-By: ${me.id} ${me.login}\nMotionhub-Submission: ${submission}\n`;
   const commit = await api(env, 'POST', `/repos/${REPO}/git/commits`, {message, tree: newTree.sha, parents: [parent], author: {name, email, date: new Date().toISOString()}});
   if (existing) await api(env, 'PATCH', `/repos/${REPO}/git/refs/${ref}`, {sha: commit.sha, force: !open});
   else await api(env, 'POST', `/repos/${REPO}/git/refs`, {ref: `refs/${ref}`, sha: commit.sha});
 
-  const body = [manifest.line?.en ?? '', '', `Submitted by @${me.login} through motionhub.dev. They certified the [Developer Certificate of Origin](https://developercertificate.org) for this package (SHA-256 \`${sha256}\`).`, '', `To change it, @${me.login} shares it again: the new version is added to this pull request.`].join('\n');
+  const body = [manifest.line?.en ? `> ${plain(manifest.line.en)}` : '', '', `Submitted by @${me.login} through motionhub.dev. They certified the [Developer Certificate of Origin](https://developercertificate.org) for this package (SHA-256 \`${sha256}\`).`, '', `To change it, @${me.login} shares it again: the new version is added to this pull request.`].join('\n');
   if (open) {
     if (open.title !== what) await api(env, 'PATCH', `/repos/${REPO}/pulls/${open.number}`, {title: what});
-    await api(env, 'POST', `/repos/${REPO}/issues/${open.number}/comments`, {body: `@${me.login} shared it again: ${manifest.version}, package SHA-256 \`${sha256}\`.`});
+    await api(env, 'POST', `/repos/${REPO}/issues/${open.number}/comments`, {body: `@${me.login} shared it again: ${oneLine(manifest.version, 40)}, package SHA-256 \`${sha256}\`.`});
     return {pr: open.number, url: open.html_url, branch, added};
   }
   const pr = await api(env, 'POST', `/repos/${REPO}/pulls`, {title: what, head: branch, base: 'main', body});
-  await api(env, 'POST', `/repos/${REPO}/issues/${pr.number}/labels`, {labels: ['submission']});
+  // a label helps the maintainers find it; the pull request is open without one
+  await api(env, 'POST', `/repos/${REPO}/issues/${pr.number}/labels`, {labels: ['submission']}).catch(() => {});
   return {pr: pr.number, url: pr.html_url, branch, added};
 }

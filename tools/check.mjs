@@ -65,6 +65,10 @@ const VIDEO = new Set(['.mp4', '.webm', '.mov', '.mkv', '.avi', '.m4v']);
 const AUDIO = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac', '.opus']);
 const CODE = new Set(['.js', '.mjs', '.cjs', '.ts', '.tsx', '.jsx', '.mts', '.cts', '.html', '.htm', '.svg']);
 const FORBIDDEN_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'out', '.next']);
+/** A name in a motion's path, as its package carries it (site/tar.mjs): letters, digits, @ . _ - (not only dots). */
+export const SEGMENT = /^(?!\.+$)[A-Za-z0-9@._-]{1,100}$/;
+/** The files a motion holds at most, as its package carries them (site/tar.mjs). */
+export const MOTION_FILES = 300;
 const UNSAFE = [
   [/\bfetch\s*\(/, 'reaches the network (fetch)'],
   [/\bXMLHttpRequest\b/, 'reaches the network (XMLHttpRequest)'],
@@ -573,8 +577,14 @@ function checkHub(dir, manifest, {author, authorId, accounts, was}, add) {
       add('hub.account', 'motion.json', `${name} is not recorded: add accounts/${name}.json with ${mine ? `{"login": "${name}", "id": ${authorId}}` : `{"login": "${name}", "id": <the numeric id of that GitHub account>}`} (npx @motionhub/cli share --pr adds it)`);
     }
   }
-  let total = 0;
+  let total = 0, count = 0;
+  const names = new Set();
   for (const rel of walk(dir)) {
+    // every name is one a package and a git tree carry the same everywhere, and no two differ only in case
+    const bad = rel.replace(/\/$/, '').split('/').find((n) => !SEGMENT.test(n));
+    if (bad !== undefined) add('hub.path', rel, `"${bad}": a file or directory in a motion is named with letters, digits, @ . _ and - only`);
+    if (names.has(rel.toLowerCase())) add('hub.path', rel, 'another file has this name but for its case');
+    names.add(rel.toLowerCase());
     if (rel.endsWith('/')) {
       const name = rel.slice(0, -1).split('/').pop();
       if (FORBIDDEN_DIRS.has(name)) add('hub.build', rel, 'no build output, dependencies or repositories in a motion');
@@ -582,6 +592,7 @@ function checkHub(dir, manifest, {author, authorId, accounts, was}, add) {
     }
     const size = statSync(join(dir, rel)).size;
     total += size;
+    count++;
     const ext = extname(rel).toLowerCase();
     if (VIDEO.has(ext)) add('hub.video', rel, 'no video in the repository: samples are published by the hub');
     if (AUDIO.has(ext) && size > AUDIO_BYTES) add('hub.audio', rel, `${size} bytes: audio is at most ${AUDIO_BYTES}`);
@@ -595,6 +606,7 @@ function checkHub(dir, manifest, {author, authorId, accounts, was}, add) {
     }
   }
   if (total > MOTION_BYTES) add('hub.size', '.', `${total} bytes: a motion is at most ${MOTION_BYTES}`);
+  if (count > MOTION_FILES) add('hub.size', '.', `${count} files: a motion holds at most ${MOTION_FILES}`);
   // faces a motion carries for its components (react/fonts/): WOFF2, each named in fonts.json and credited
   const fontDir = join(dir, 'react/fonts');
   if (existsSync(fontDir)) {

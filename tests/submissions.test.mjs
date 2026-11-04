@@ -12,10 +12,10 @@ import {fileURLToPath} from 'node:url';
 import {DatabaseSync} from 'node:sqlite';
 import worker from '../site/worker.mjs';
 import {sha256} from '../site/people.mjs';
-import {untgz, PackageError} from '../site/tar.mjs';
-import {appJwt, allowed, forgetToken, pkcs8} from '../site/github-app.mjs';
+import {untgz, PackageError, SEGMENT as SITE_SEGMENT} from '../site/tar.mjs';
+import {appJwt, allowed, forgetToken, pkcs8, oneLine, plain} from '../site/github-app.mjs';
 import {compareVersions as siteCompare, eligibility} from '../site/submissions.mjs';
-import {compareVersions} from '../tools/check.mjs';
+import {compareVersions, SEGMENT} from '../tools/check.mjs';
 import {tgz} from '../tools/pack.mjs';
 import {shareLink} from '../tools/hub.mjs';
 
@@ -139,6 +139,8 @@ test('a package is read strictly: regular files at safe paths, within the limits
   await refused(rawTgz([{path: '@ana/ledger/hard', type: '1'}]), 'a hard link');
   await refused(rawTgz([{path: 'PaxHeader', type: 'x', data: Buffer.from('30 path=@ana/ledger/../../x\n')}]), 'an extended header');
   await refused(rawTgz([{path: '@ana/ledger/a', data: Buffer.from('1')}, {path: '@ana/ledger/a', data: Buffer.from('2')}]), 'a name twice');
+  await refused(rawTgz([{path: '@ana/ledger/A', data: Buffer.from('1')}, {path: '@ana/ledger/a', data: Buffer.from('2')}]), 'a name twice but for case');
+  assert.equal(SITE_SEGMENT.source, SEGMENT.source, 'the Worker reads the names the checker allows');
   await refused(rawTgz([{path: '@ana/ledger/big', data: Buffer.alloc(3 * 1024 * 1024)}]), 'a small package that unpacks huge');
   await refused(rawTgz(Array.from({length: 4}, (_, i) => ({path: `@ana/ledger/f${i}`, data: Buffer.from('x')}))), 'too many files', {packed: 1e6, unpacked: 1e6, files: 3});
   await refused(Buffer.from('not gzip at all'), 'not gzip');
@@ -155,6 +157,11 @@ test('the app signs its JWT with GitHub\'s PKCS#1 key, and writes only the motio
   assert.equal(pkcs8(privateKey)[0], 0x30);
   for (const ok of ['motions/@ana/ledger/MOTION.md', 'motions/@ana/ledger/react/parts/a.tsx', 'accounts/ana.json']) assert.ok(allowed(ok, '@ana/ledger'), ok);
   for (const no of ['motions/@ana/ledgers/x', 'motions/@bo/ledger/x', '.github/workflows/check.yml', 'tools/check.mjs', 'accounts/../tools/x.json', 'motions/@ana/ledger/../../tools/x', 'accounts/Ana.json']) assert.ok(!allowed(no, '@ana/ledger'), no);
+});
+
+test('text from a motion or a profile stays on its line, and shows in a pull request as it is', () => {
+  assert.equal(oneLine('Ledger\nSigned-off-by: Eve <e@x>\r\nMotionhub-Submitted-By: 1 eve'), 'Ledger Signed-off-by: Eve <e@x> Motionhub-Submitted-By: 1 eve');
+  assert.equal(plain('hi @org/team ![t](https://x/p.png) <img>'), 'hi @\u200borg/team \\!\\[t\\]\\(https://x/p.png\\) \\<img\\>');
 });
 
 test('the site\'s version order is the checker\'s', () => {
@@ -277,11 +284,31 @@ test('a new version is added to the open pull request; wrong codes and too many 
   for (let i = 0; i < 5; i++) assert.equal((await submit(share.id, ana, {code: 'NOPE-00', mine: true, dco: true})).status, 400);
   assert.equal((await submit(share.id, ana, {code: share.code, mine: true, dco: true})).status, 429, 'five wrong codes and the link stops');
 
+  // many tries at once are counted as many: the code cannot be guessed by asking all at once
+  share = await (await upload(pkg(manifest({version: '1.0.2'})))).json();
+  const at = await Promise.all(Array.from({length: 20}, () => submit(share.id, ana, {code: 'NOPE-00', mine: true, dco: true})));
+  assert.equal(at.filter((r) => r.status === 400).length, 5);
+  assert.equal(env.DB.raw.prepare('SELECT attempts FROM submissions WHERE id = ?').get(share.id).attempts, 5);
+
   // one submitted already today (1.0.1): four more make five, and the sixth waits for tomorrow
   for (let n = 3; n < 8; n++) {
     share = await (await upload(pkg(manifest({version: `1.0.${n}`})))).json();
     assert.equal((await submit(share.id, ana, {code: share.code, mine: true, dco: true})).status, n < 7 ? 200 : 429, `share ${n}`);
   }
+});
+
+test('a submit the Worker never finished is taken again after a while; a label GitHub refuses stops nothing', async () => {
+  const ana = await session(42, 'ana');
+  const share = await (await upload()).json();
+  const at = Math.floor(Date.now() / 1000);
+  env.DB.raw.prepare("UPDATE submissions SET status = 'submitting', person = 42, dco_at = ? WHERE id = ?").run(at - 10, share.id);
+  assert.equal((await submit(share.id, ana, {code: share.code, mine: true, dco: true})).status, 409, 'still being submitted');
+  env.DB.raw.prepare('UPDATE submissions SET dco_at = ? WHERE id = ?').run(at - 600, share.id);
+  const fetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => (String(url).endsWith('/labels') ? Response.json({}, {status: 422}) : fetch(url, init));
+  const done = await submit(share.id, ana, {code: share.code, mine: true, dco: true});
+  assert.equal(done.status, 200, await done.clone().text());
+  assert.equal(env.DB.raw.prepare('SELECT status FROM submissions WHERE id = ?').get(share.id).status, 'submitted');
 });
 
 test('an upload that is not a motion is refused, and nothing is taken before the app is set up', async () => {
@@ -290,6 +317,13 @@ test('an upload that is not a motion is refused, and nothing is taken before the
   const mismatched = tgz([['@ana/ledger/motion.json', Buffer.from(JSON.stringify(manifest({slug: 'other'})))], ['@ana/ledger/MOTION.md', Buffer.from('#')]]);
   assert.equal((await upload(mismatched)).status, 422);
   assert.equal((await call('POST', '/api/submissions', {body: Buffer.alloc(1024 * 1024 + 1), type: 'application/gzip'})).status, 413);
+  // a body with no length is read no further than the limit
+  const chunks = new ReadableStream({start(c) { for (let i = 0; i < 5; i++) c.enqueue(new Uint8Array(300 * 1024)); c.close(); }});
+  assert.equal((await worker.fetch(new Request(`${SITE}/api/submissions`, {method: 'POST', body: chunks, duplex: 'half'}), env, ctx)).status, 413);
+  assert.equal((await upload(pkg(manifest({version: '1.0'})))).status, 422, 'not a semantic version');
+  assert.equal((await upload(pkg(manifest({version: '1.0.0\nSigned-off-by: x'})))).status, 422);
+  const many = Array.from({length: 41}, (_, i) => [`@ana/ledger/img${i}.png`, POSTER]);
+  assert.match((await (await upload(pkg(manifest(), many))).json()).error, /at most 40 files that are not text/);
   delete env.GITHUB_APP_PRIVATE_KEY;
   const off = await upload();
   assert.equal(off.status, 503);

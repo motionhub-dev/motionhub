@@ -210,6 +210,11 @@ test('the hub\'s rules: licences, author, size, media and unsafe code', () => {
   assert.ok(hub({extra: {'react/demo/clip.mp4': 'x'}}).includes('hub.video'));
   assert.ok(hub({extra: {'react/node_modules/a.js': ''}, manifest: {...MANIFEST, license: {text: 'CC-BY-4.0', code: 'MIT'}}}).includes('hub.build'));
   assert.ok(hub({extra: {'react/big.bin': Buffer.alloc(1024 * 1024 + 1)}}).includes('hub.size'));
+  // names a package and a git tree carry the same everywhere
+  assert.ok(hub({extra: {'react/my file.tsx': ''}}).includes('hub.path'));
+  assert.ok(hub({extra: {'react/图.png': ''}}).includes('hub.path'));
+  assert.ok(hub({extra: {'react/A.js': '', 'react/a.js': ''}}).includes('hub.path'));
+  assert.ok(!hub({extra: {'react/a_b-1.@x.js': ''}}).includes('hub.path'));
   const code = (src) => hub({extra: {'react/parts/a.tsx': src}, manifest: {...MANIFEST, license: {text: 'CC-BY-4.0', code: 'MIT'}}});
   for (const src of ['fetch("/x")', 'new WebSocket(u)', 'eval(s)', 'new Function("a")', 'setTimeout("go()", 1)', 'await import("./x")', 'document.cookie', 'localStorage.setItem(a, b)']) {
     assert.ok(code(src).includes('hub.code'), src);
