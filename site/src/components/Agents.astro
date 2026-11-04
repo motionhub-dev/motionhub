@@ -1,0 +1,11 @@
+---
+// The agents a prompt works in, as their makers draw them (brand/BRAND.md), and the dots for all the others.
+import claude from '../assets/agents/claude.svg?raw';
+import openai from '../assets/agents/openai.svg?raw';
+const label = 'Works in Claude Code, Codex and any agent that can open a URL';
+---
+<span class="agent-marks" role="img" aria-label={label} title={label}>
+  <Fragment set:html={claude} />
+  <Fragment set:html={openai} />
+  <svg class="others" width="14" height="16" viewBox="0 0 14 16" fill="currentColor" aria-hidden="true"><circle cx="2" cy="8" r="1.5"/><circle cx="7" cy="8" r="1.5"/><circle cx="12" cy="8" r="1.5"/></svg>
+</span>

@@ -9,7 +9,7 @@ A **motion** is a reusable look for narrated and explanatory video: how a film l
 Pick a motion, then paste this into any agent that can open a URL, with your topic and the motion's id:
 
 ```text
-Read https://motionhub.dev/llms.txt, then make a film about "<your topic>" in the motion https://motionhub.dev/m/@iamsuosi/clay-world/
+Read https://motionhub.dev/llms.txt, then make a film about "<your topic>" in the motion @iamsuosi/clay-world
 ```
 
 That is all. To make it shorter, install the skill once, for every agent on your computer:

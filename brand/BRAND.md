@@ -23,27 +23,31 @@ one vermilion that belongs to the logo and to the one action a page asks for. Ev
 | Token | Light | Dark | Used for |
 | --- | --- | --- | --- |
 | `bg` | `#F3EEE4` | `#1A1714` | the page: paper |
-| `surface` | `#FBF8F2` | `#221E1A` | inputs, code, panels on the page |
+| `surface` | `#FBF8F2` | `#221E1A` | inputs, panels on the page |
 | `surface-2` | `#EAE2D4` | `#2C2722` | selected and hover |
 | `line` | `#DDD3C3` | `#3B342D` | borders and rules |
 | `text` | `#2A2622` | `#F1EBE0` | headings, primary buttons |
 | `text-2` | `#4A453E` | `#D3CABC` | body copy |
 | `muted` | `#6B645A` | `#A89E90` | labels, counts, captions |
-| `mark` | `#E2442B` | `#FF6A4D` | the logo, and nothing else |
+| `mark` | `#E2442B` | `#FF6A4D` | the logo, and the trail on what asks a visitor to share a motion, and nothing else |
 | `like` | `#C24A33` | `#FF7A5E` | a like that has been given, and nothing else |
-| `accent` | `#C4381F` | `#FF6A4D` | the one call to action a page has (Copy prompt), and nothing else |
+| `accent` | `#C4381F` | `#FF6A4D` | the one call to action a screen has (Copy prompt, Share a motion), and nothing else |
 | `on-accent` | `#FBF8F2` | `#1A1714` | text on `accent` |
+| `code` | `#2A2622` | `#C9BEAE` | the ground of a code block: the theme turned over |
+| `on-code` | `#F3EEE4` | `#1A1714` | text on `code` |
 
 - The interface is ink on paper. Buttons, links and focus are `text`, not a colour (`accent` aside): colour on the page is the
   motions' posters and samples.
-- Vermilion is three tokens with three jobs. `mark` is the logo; `like` is a like the viewer has given; `accent` is
-  the one thing a page most wants a visitor to do, at most once a page. None is a link colour or a warning.
+- Vermilion is three tokens with three jobs. `mark` is the logo, and the trail that asks a visitor to share a motion: the mark's balls as flat discs, stepping up in size and strength, never a gradient; `like` is a like the viewer has given; `accent` is
+  the one thing a screen most wants a visitor to do, at most once a screen. None is a link colour or a warning.
 - Every text colour reads on every ground at WCAG AA (4.5:1), `mark`, `like` and `accent` at 3:1, and `on-accent`
   on `accent` at 4.5:1. `tests/brand.test.mjs` holds the tokens to it, so a colour that fails does not merge.
 - Dark follows the system unless a page sets `data-theme="light"`; `data-theme="dark"` forces it. The footer's
   theme switch sets it, and remembers the choice in the browser.
 - Remotion's and HyperFrames' logos appear beside their names where a motion works in them, as each project draws
   them (`site/src/assets/engines/`). They are their owners' marks, never recoloured or used for anything else.
+- Claude's and OpenAI's marks appear beside the prompt, saying which agents it works in, as each company draws them
+  (`site/src/assets/agents/`): Claude's in its own colour, OpenAI's in the text colour of the theme. The same rule holds.
 
 ## Type
 

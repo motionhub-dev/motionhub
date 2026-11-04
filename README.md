@@ -47,7 +47,7 @@ A motion holds a look and no film: its ground, colour and type, and how things a
 Nothing to install. Pick a motion, then paste this into any agent that can open a URL:
 
 ```text
-Read https://motionhub.dev/llms.txt, then make a film about "<your topic>" in the motion https://motionhub.dev/m/@iamsuosi/red-pencil/
+Read https://motionhub.dev/llms.txt, then make a film about "<your topic>" in the motion @iamsuosi/red-pencil
 ```
 
 To make it shorter, install the skill once, for every agent on your computer:

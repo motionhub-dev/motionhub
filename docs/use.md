@@ -1,13 +1,13 @@
 # Use a motion
 
-Pick a motion on [motionhub.dev](https://motionhub.dev), then make your film in it whichever way you work. The format is open, so the same motion gives the same look in every engine. Every motion's page has these steps with its own id filled in.
+Pick a motion on [motionhub.dev](https://motionhub.dev), then make your film in it whichever way you work. The format is open, so the same motion gives the same look in every engine. Every motion's page has the prompt with its own id filled in.
 
 ## With any agent
 
 Nothing to install. Paste this into any agent that can open a URL, with your topic and the motion you picked:
 
 ```text
-Read https://motionhub.dev/llms.txt, then make a film about "<your topic>" in the motion https://motionhub.dev/m/@iamsuosi/red-pencil/
+Read https://motionhub.dev/llms.txt, then make a film about "<your topic>" in the motion @iamsuosi/red-pencil
 ```
 
 [/llms.txt](https://motionhub.dev/llms.txt) tells the agent how: it fetches the motion, checks it against its SHA-256, reads `MOTION.md` and `tokens.json` whole, and makes your film in its look with whatever engine it uses.

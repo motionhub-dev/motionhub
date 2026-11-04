@@ -5,8 +5,9 @@ import {defineConfig} from 'astro/config';
 export default defineConfig({
   site: 'https://motionhub.dev',
   outDir: './dist',
-  // in development the served files are the public directory; in a build they are already in ../dist
-  publicDir: process.env.MOTIONHUB_DEV ? '../dist' : './public',
+  // in development the served files are the public directory, a copy of their own so that tools/build.mjs emptying
+  // ../dist leaves a running server alone; in a build they are already in ../dist
+  publicDir: process.env.MOTIONHUB_DEV ? './.cache/dev-public' : './public',
   trailingSlash: 'always',
   build: {format: 'directory', assets: '_astro', inlineStylesheets: 'never'},
   devToolbar: {enabled: false},

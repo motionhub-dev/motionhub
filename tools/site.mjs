@@ -132,7 +132,7 @@ export function creatorKeys(rows, accounts = new Map()) {
   return keys;
 }
 
-/** The files beside the pages: the headers file, robots.txt and the sitemap of the gallery and every motion's page. */
+/** The files beside the pages: the headers file, robots.txt and the sitemap of the home page, the gallery and every motion's page. */
 export function writeSiteFiles(out, rows, docs = [], accounts = new Map()) {
   writeFileSync(join(out, '_headers'), HEADERS);
   writeFileSync(join(out, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml\n`);
@@ -141,6 +141,6 @@ export function writeSiteFiles(out, rows, docs = [], accounts = new Map()) {
   const creators = [...new Set(keys.values())].sort();
   const moved = [...keys].filter(([login, key]) => login !== key).sort();
   writeFileSync(join(out, '_redirects'), moved.map(([login, key]) => `/creators/${login}/ /creators/${key}/ 301\n/creators/${login} /creators/${key}/ 301\n`).join(''));
-  const urls = ['/', ...docs, '/creators/', ...creators.map((c) => `/creators/${c}/`), ...rows.map((r) => `/m/${r.slug}/`)];
+  const urls = ['/', '/motions/', ...docs, '/creators/', ...creators.map((c) => `/creators/${c}/`), ...rows.map((r) => `/m/${r.slug}/`)];
   writeFileSync(join(out, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((u) => `  <url><loc>${SITE}${u}</loc></url>`).join('\n')}\n</urlset>\n`);
 }

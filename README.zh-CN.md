@@ -49,7 +49,7 @@ Motion（风格）只管外观，不含片子：底色、配色、字体，以�
 不用安装任何东西。挑一个 motion，把下面这段话粘贴给任何能打开网址的 agent：
 
 ```text
-Read https://motionhub.dev/llms.txt, then make a film about "<你的主题>" in the motion https://motionhub.dev/m/@iamsuosi/red-pencil/
+Read https://motionhub.dev/llms.txt, then make a film about "<你的主题>" in the motion @iamsuosi/red-pencil
 ```
 
 想再省事一点，可以安装一次 skill，电脑上所有 agent 都能用：

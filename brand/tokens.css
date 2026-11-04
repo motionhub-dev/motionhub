@@ -13,6 +13,8 @@
   --color-like: #C24A33;
   --color-accent: #C4381F;
   --color-on-accent: #FBF8F2;
+  --color-code: #2A2622;
+  --color-on-code: #F3EEE4;
   --font-ui: "Inter", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", "Menlo", monospace;
   --font-wordmark: "Instrument Serif", serif;
@@ -47,6 +49,8 @@
     --color-like: #FF7A5E;
     --color-accent: #FF6A4D;
     --color-on-accent: #1A1714;
+    --color-code: #C9BEAE;
+    --color-on-code: #1A1714;
   }
 }
 
@@ -63,4 +67,6 @@
   --color-like: #FF7A5E;
   --color-accent: #FF6A4D;
   --color-on-accent: #1A1714;
+  --color-code: #C9BEAE;
+  --color-on-code: #1A1714;
 }

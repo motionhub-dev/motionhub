@@ -15,7 +15,7 @@ How this repository is published at [motionhub.dev](https://motionhub.dev): the 
 | `packages/runtime/`, `packages/remotion/`, `packages/hyperframes/` | The npm packages `@motionhub/runtime` (what a motion's components draw with, in any engine) and its bindings for Remotion and HyperFrames. A tag `<package>-v<version>` stages one the same way |
 | `tools/build.mjs` | Builds the files below into `dist/` from `motions/` and the skill, refusing while any motion has an issue |
 | `brand/`, `tools/brand.mjs` | The brand: tokens (colours for both themes, type, sizes), the logo, icons, favicons and default share card, and the rules for using them ([brand/BRAND.md](brand/BRAND.md)). `node tools/brand.mjs` writes `brand/tokens.css` from the tokens |
-| `site/` | The site's pages, an [Astro](https://astro.build) project with its own `package.json`: the gallery, a page per motion and the 404 page, in the brand's tokens and self-hosted fonts. `npm run build` there runs `tools/build.mjs` into `dist/`, builds the pages over it and adds them, never replacing a served file |
+| `site/` | The site's pages, an [Astro](https://astro.build) project with its own `package.json`: the home page, the gallery, a page per motion and the 404 page, in the brand's tokens and self-hosted fonts. `npm run build` there runs `tools/build.mjs` into `dist/`, builds the pages over it and adds them, never replacing a served file |
 | `docs/`, `tools/docs.mjs` | The guides only the docs have (overview, using a motion, the command line), and the list of every docs page with the document it is. A docs page is a document where it already lives in the repository, never a copy |
 | `tools/site.mjs` | What the pages share with the build, with no dependencies: the Markdown a motion's documents use, its colours and faces, and `_headers`, `robots.txt` and `sitemap.xml` |
 | `site/player/` | The reel player and its build: one page and one script per motion with a reel, under `/play/<id>/` |
@@ -31,7 +31,7 @@ A static site, rebuilt from the main branch whenever it changes and every six ho
 
 | Path | What it is |
 | --- | --- |
-| `/` and `/m/<id>` | The gallery and a page per motion: poster, reel, colours, faces, `MOTION.md` |
+| `/`, `/motions/` and `/m/<id>` | The home page, the gallery to search and filter, and a page per motion: poster, reel, colours, `MOTION.md`, credits |
 | `/creators/` and `/creators/<login>/` | Everyone who is an author of a motion, one page per GitHub account (`accounts/`): their motions, the motions of others built on them (`basedOn`), and their downloads and likes. The page is at a scope the account publishes under (else its login), in lowercase; every other login it published under is redirected there (`_redirects`). It shows the account's login now when the build can ask GitHub, else that address's login |
 | `/api/motions.json` | The index: `spec`, and `motions`, one row per motion ordered by id, with `slug` (the motion's id, `<slug>` or `@<scope>/<slug>`, so a client that only knows `motion/0.1` never takes one motion for another), `scope` (when it has one), `spec` (its motion's), `version`, `name`, `line`, `lang`, `tags`, `authors`, `basedOn` (when it has one), `fit` (what it is for, when it says: SPEC.md §3), `license`, `poster`, `tools` (the directories it has for tools), `package` (`url`, `sha256`, `bytes`) and, when it has a reel, `reel` (the path of its player). Paths are relative to the site |
 | `/api/stats.json` | Each motion's downloads and likes: `motions`, by id, with `downloads.total`, `downloads.last30` and `likes`, and `generated`. Kept for five minutes; see Counts below |
@@ -52,7 +52,7 @@ A motion's page plays the motion live, from its reel: `react/reel.tsx`, a React 
 
 ## The gallery's order
 
-The gallery lists motions in a recommended order, and anyone can switch to A to Z, most downloaded or most liked.
+The gallery (`/motions/`) lists motions in a recommended order, and anyone can switch to A to Z, most downloaded or most liked. The home page shows the first ten.
 
 - First come the few motions named in `FEATURED` (`site/src/lib/catalogue.mjs`), in that order. This is the only part kept by hand: a short pick for a catalogue with little data yet.
 - The rest are ordered by what they are for (`fit.kind`, SPEC.md §3): general motions first, then motions drawn over the maker's own footage, then topic motions, then motions that do not say.

@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import ShareCard from '../../components/ShareCard.astro';
 import Dropdown from '../../components/Dropdown.astro';
 import {avatar, creatorPath, creators, en} from '../../lib/catalogue.mjs';
 const n = creators.length;
@@ -35,13 +36,7 @@ const n = creators.length;
     ))}
   </div>
 
-  <aside class="invite">
-    <div>
-      <b>Made a look people should see?</b>
-      <p>Share it as a motion. It is credited to your GitHub account, it gets a page here, and anyone who builds on it names you.</p>
-    </div>
-    <a class="btn primary" href="/docs/contribute/">Share a motion</a>
-  </aside>
+  <ShareCard />
 </Base>
 
 <script>

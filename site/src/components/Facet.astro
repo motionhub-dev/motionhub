@@ -1,0 +1,10 @@
+---
+// One value of a filter in the gallery: a checkbox, its swatch if it has one, its name and how many motions it leaves.
+const {facet, label, option} = Astro.props;
+---
+<label class="facet" title={option.note}>
+  <input type="checkbox" data-facet={facet} value={option.value} data-label={`${label}: ${option.text}`}>
+  {option.swatch && <i class="swatch" style={`background:${option.swatch}`}></i>}
+  <span>{option.text}</span>
+  <small data-count>{option.count}</small>
+</label>

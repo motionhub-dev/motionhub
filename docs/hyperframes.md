@@ -1,6 +1,6 @@
 # HyperFrames
 
-[HyperFrames](https://hyperframes.heygen.com) turns HTML, CSS, media and seekable animations into deterministic MP4 video, made by HeyGen and open source under the Apache 2.0 licence ([github.com/heygen-com/hyperframes](https://github.com/heygen-com/hyperframes)). A motion's components draw in it unchanged, at your GSAP timeline's time, so a film in HyperFrames can take any look on motionhub.
+Made by HeyGen: HTML, CSS, media and seekable animations become deterministic MP4 video. A motion's components draw unchanged, at your GSAP timeline's time.
 
 ## With your agent
 
@@ -22,7 +22,7 @@ The motionhub skill fetches the motion into `./motion` and checks it against its
 An agent without motionhub's skill can take the same request as a prompt that starts by reading it:
 
 ```text
-Read https://motionhub.dev/llms.txt, then make a HyperFrames film about "<your topic>" in the motion https://motionhub.dev/m/@iamsuosi/clay-world/
+Read https://motionhub.dev/llms.txt, then make a HyperFrames film about "<your topic>" in the motion @iamsuosi/clay-world
 ```
 
 ## By hand
