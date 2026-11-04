@@ -97,6 +97,11 @@ test('a callback signs the person in, keeps only the hash of the session and nev
   assert.deepEqual(me, {person: {id: 42, login: 'Ana', name: 'Ana Lee', avatar: 'https://avatars.githubusercontent.com/u/42'}, likes: []});
 });
 
+test('signing in from the header\'s Share button comes back to the share guide', async () => {
+  const {done} = await signIn('/you/#share');
+  assert.equal(done.headers.get('location'), '/you/#share');
+});
+
 test('after signing in, only a path on this site', () => {
   assert.equal(safeNext('/m/red-pencil/'), '/m/red-pencil/');
   for (const bad of ['//evil.example', '/\\evil.example', 'https://evil.example', 'javascript:alert(1)', '', null]) assert.equal(safeNext(bad), '/');
