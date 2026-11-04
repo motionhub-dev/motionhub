@@ -16,7 +16,7 @@
 
 [![npm](https://img.shields.io/npm/v/@motionhub/cli?color=2A2622&label=npm)](https://www.npmjs.com/package/@motionhub/cli)
 [![check](https://github.com/motionhub-dev/motions/actions/workflows/check.yml/badge.svg)](https://github.com/motionhub-dev/motions/actions/workflows/check.yml)
-[![spec](https://img.shields.io/badge/spec-motion%2F0.4-2A2622)](SPEC.md)
+[![spec](https://img.shields.io/badge/spec-motion%2F0.5-2A2622)](SPEC.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2A2622)](LICENSE)
 
 <table>

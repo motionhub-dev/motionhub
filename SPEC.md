@@ -1,6 +1,6 @@
-# Motion format 0.4
+# Motion format 0.5
 
-> **Status:** Draft · **Version:** `motion/0.4` · what each version added: §10
+> **Status:** Draft · **Version:** `motion/0.5` · what each version added: §10
 
 What a motion is on disk: the files, their fields and the rules any tool can rely on. This document only grows: a later version adds to it and never changes the meaning of what is here.
 
@@ -12,7 +12,7 @@ A motion holds no film. It has no story, script, scene list, timings or end card
 
 ## 2. Files
 
-A motion is a directory named after its slug. A copy taken into a project may sit in a directory of another name (`motion/`); its `slug` still names it:
+A motion is a directory named after its slug, or since `motion/0.5` a single `MOTION.md` (§11). A copy taken into a project may sit in a directory of another name (`motion/`); its `slug` still names it:
 
 ```
 <slug>/
@@ -35,7 +35,7 @@ A JSON object with these members and no others, except extension members (§7).
 
 | Member | Required | Value |
 | --- | --- | --- |
-| `spec` | yes | `"motion/0.4"`; or `"motion/0.3"` for a motion without `fit`, `"motion/0.2"` for one without `fit` and `basedOn`, or `"motion/0.1"` for one without `fit`, `scope` and `basedOn` |
+| `spec` | yes | `"motion/0.5"`; or `"motion/0.4"` for a motion not held to §12, `"motion/0.3"` for one also without `fit`, `"motion/0.2"` for one without `fit` and `basedOn`, or `"motion/0.1"` for one without `fit`, `scope` and `basedOn` |
 | `scope` | no | The GitHub username, in lowercase, of the person or organization that publishes the motion (since 0.2) |
 | `slug` | yes | 3 to 40 characters of `a-z`, `0-9` and single hyphens, starting and ending with a letter or digit; the name of the directory it is published in (§2) |
 | `version` | yes | A [Semantic Versioning 2.0](https://semver.org) version of this motion, for example `"1.0.0"` |
@@ -130,7 +130,15 @@ It has a level-two heading for each of these five topics. The heading starts wit
 | `Motion` | How things arrive, change and leave; the easing; how motion relates to narration or music; what never moves |
 | `Avoid` | The mistakes this look invites, and what to do instead |
 
-Any other sections may follow, in any order. A number in the text says where it comes from when that matters: measured, from a source, or chosen.
+A motion with components (§12) also has a `Components` section, saying what each one is for (since 0.5).
+
+Any other sections may follow, in any order. Two are recommended, and neither is required:
+
+| Heading | Says |
+| --- | --- |
+| `Treatments` | A recipe for each kind of frame this look makes: what is the focal point, how much stays empty, what is fixed and what is free, how dense it is. It describes the layout, never a particular film's content |
+| `Self-audit` | What to check before a film in this look is finished |
+ A number in the text says where it comes from when that matters: measured, from a source, or chosen.
 
 `MOTION.<lang>.md` is a translation of `MOTION.md` into the language `<lang>` (a BCP 47 tag). It follows the same rules and says nothing `MOTION.md` does not.
 
@@ -147,7 +155,7 @@ Everything that belongs to one tool lives in that tool's space, and every other 
 - **Members.** A tool keeps its own `motion.json` members under one member named `x-<tool>`, for example `"x-remotion": { "fps": 30 }`.
 - **Rule.** A tool reading a motion ignores directories and `x-` members it does not know, and does not report them. It never writes into another tool's space.
 
-What several tools come to share moves into a later version of this format.
+What several tools come to share moves into a later version of this format, as `react/` has (§12).
 
 ## 8. Languages
 
@@ -161,7 +169,7 @@ What several tools come to share moves into a later version of this format.
 
 A motion's `version` changes whenever any of its files change. A published version is never changed: a fix is a new version. A film that uses a motion keeps the copy it took.
 
-`spec` names the version of this format. A tool that meets a `spec` it does not know does not guess its meaning. A tool that reads a version reads every version before it: a `motion/0.1` motion is a `motion/0.2` motion without a scope, a `motion/0.2` motion is a `motion/0.3` motion without `basedOn`, and a `motion/0.3` motion is a `motion/0.4` motion without `fit`.
+`spec` names the version of this format. A tool that meets a `spec` it does not know does not guess its meaning. A tool that reads a version reads every version before it: a `motion/0.1` motion is a `motion/0.2` motion without a scope, a `motion/0.2` motion is a `motion/0.3` motion without `basedOn`, and a `motion/0.3` motion is a `motion/0.4` motion without `fit`. A `motion/0.4` motion is a `motion/0.5` motion not held to §12.
 
 ## 10. Versions of this format
 
@@ -171,3 +179,74 @@ A motion's `version` changes whenever any of its files change. A published versi
 | `motion/0.2` | `scope`, and a motion's id `@<scope>/<slug>` (§3, Identity) |
 | `motion/0.3` | `basedOn`: the motions a motion builds on (§3, Building on another motion) |
 | `motion/0.4` | `fit`: what a motion is for, its kind, and what it handles badly (§3, What it is for) |
+| `motion/0.5` | A motion in one file (§11), components as part of the format (§12), and a `Components` section and recommended sections in `MOTION.md` (§5) |
+
+## 11. A motion in one file
+
+Since `motion/0.5`, a `MOTION.md` is a motion on its own. It starts with front matter that holds what the other files would:
+
+```markdown
+---
+spec: motion/0.5
+name: Clay World
+tokens:
+  color:
+    floor: "#E8D5B7"
+    ink: "#3A2A2C"
+    title: "{color.ink}"
+  font:
+    display: ["Fredoka", "sans-serif"]
+  duration:
+    enter: 0.6s
+  easing:
+    arrive: [0.22, 1, 0.36, 1]
+---
+
+# Clay World
+
+## Essence
+```
+
+Its body follows §5. Its front matter has these members, and may also have `x-<tool>` members (§7):
+
+| Member | Required | Value |
+| --- | --- | --- |
+| `spec` | yes | `motion/0.5` or later |
+| `name` | yes | At most 60 characters |
+| `tokens` | yes | Its values, in the short form below |
+| `lang` | no | As in §3 |
+
+`tokens` has a `color` group and a `font` group, each with at least one token, and may have `duration` and `easing` groups. It says what §4 says, more shortly, and a tool reads it as these tokens:
+
+| Group | A token is | Read as |
+| --- | --- | --- |
+| `color` | `"#RRGGBB"`, or an alias such as `"{color.ink}"` | A `color` token in `srgb` |
+| `font` | A name, or a list of names | A `fontFamily` token |
+| `duration` | Seconds or milliseconds: `0.6s`, `600ms` | A `duration` token |
+| `easing` | `[x1, y1, x2, y2]` | A `cubicBezier` token |
+
+Front matter is a small part of YAML, so a tool needs no YAML library to read it: `key: value` lines, maps nested by two spaces, strings plain or in double quotes, lists on one line as JSON, and whole-line comments. Nothing else is allowed. A colour is always quoted, since `#` would start a comment.
+
+A motion in a directory (§2) may have front matter in its `MOTION.md`, but never `tokens`: its values are in `tokens.json`, so they have one source.
+
+A tool looking for a project's motion reads `MOTION.md` at the project's root, and otherwise `motion/MOTION.md`. A project may hold other design files too; this format says nothing about them.
+
+## 12. `react/`
+
+Since `motion/0.5`, the directory `react/` is part of the format. It is optional, like any tool directory (§7), and it holds a motion's components, which run in any React engine through a binding. A tool uses a motion's components first, and makes what they do not draw from the motion's words and tokens. Every motion can be made from its words and tokens alone.
+
+```
+react/
+  parts/       the components, one in each .tsx or .jsx file
+  assets/      the files they import
+  previews/    a picture of each component: <file>.jpg
+```
+
+A component in `react/parts/`:
+
+- imports only `react`, `@motionhub/runtime`, `three`, parts of those packages, and files by a relative path
+- colours with `var(--color-<name>)` and sets type with `var(--font-<name>)`, from the motion's tokens
+- takes its words, data, progress and video `src` as props
+- exports a literal `meta` with `name`, `purpose`, `line`, `fits`, `params` (each with `type` and `doc`) and `preview`
+
+`purpose` is what the component is for: one of `title`, `open`, `close`, `data`, `compare`, `steps`, `term`, `link`, `quote`, `mark`, `transition` or `ground`.

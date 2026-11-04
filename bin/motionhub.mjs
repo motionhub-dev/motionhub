@@ -2,7 +2,7 @@
 // The motionhub command, published as @motionhub/cli: check motions against the format and the hub's rules
 // (tools/check.mjs, the same checks a pull request runs); search, get, start and share them (tools/hub.mjs).
 //
-//   motionhub check [dir ...] [--format-only] [--author <github-login>] [--author-id <github-id>] [--was <motion.json>]
+//   motionhub check [dir or MOTION.md ...] [--format-only] [--author <github-login>] [--author-id <github-id>] [--was <motion.json>]
 //   motionhub search [words ...]
 //   motionhub get <id> [--out <dir>]
 //   motionhub init <slug> [--github <login>]
@@ -12,7 +12,7 @@ import {readFileSync} from 'node:fs';
 import {main as check} from '../tools/check.mjs';
 import {main as hub} from '../tools/hub.mjs';
 
-const USAGE = `usage: motionhub check [dir ...] [--format-only] [--author <github-login>] [--author-id <github-id>] [--was <motion.json>]
+const USAGE = `usage: motionhub check [dir or MOTION.md ...] [--format-only] [--author <github-login>] [--author-id <github-id>] [--was <motion.json>]
        motionhub search [words ...]
        motionhub get <id> [--out <dir>]
        motionhub init <slug> [--github <login>]
