@@ -160,6 +160,23 @@ export function galleryFacets() {
   return facets.map((f) => ({...f, options: f.options.filter((o) => o.count < rows.length)})).filter((f) => f.options.length > 1);
 }
 
+/** A motion's directory as the home page shows it: its MOTION.md, its tokens and its components, read from the motion itself. */
+export function motionTree(row) {
+  const dir = join(ROOT, 'motions', row.slug, 'react/parts');
+  const parts = existsSync(dir) ? readdirSync(dir).filter((n) => /\.(tsx|jsx)$/.test(n)).sort() : [];
+  const shown = parts.slice(0, 3).join('  ');
+  return [
+    `${row.slug.split('/').pop()}/`,
+    '  MOTION.md       the look, in words',
+    '    ## Essence  ## Colour  ## Type  ## Motion  ## Avoid',
+    '  tokens.json     the exact values',
+    ...(parts.length ? ['  react/parts/    its components, ready to use', `    ${shown}${parts.length > 3 ? `  + ${parts.length - 3} more` : ''}`] : []),
+    '  motion.json     its id, version, authors and licence',
+    '  poster.jpg      one frame of a film made in it',
+    '  CREDITS.md      every font and asset it needs',
+  ].join('\n');
+}
+
 /** The prompt that works in any agent, and the skill that makes it shorter: installed for every agent by skills. */
 export const TOPIC = '<your topic>';
 export const agentPrompt = (id, topic = TOPIC) => `Read ${SITE}/llms.txt, then make a film about "${topic}" in the motion ${id}`;

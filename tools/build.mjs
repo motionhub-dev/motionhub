@@ -13,6 +13,8 @@
 //   llms.txt                         the generic skill, for agents (skills/motionhub/SKILL.md without its front matter),
 //                                    ending with the index of the docs' Markdown twins
 //   docs/<page>.md, llms-full.txt    each docs page as Markdown, and all of them in one file (tools/docs.mjs)
+//   MOTION.md                        the latest definition of the format in one file, from SPEC.md and
+//                                    CONTRIBUTING.md (tools/docs.mjs)
 //   _headers, _redirects, robots.txt, sitemap.xml  beside the pages (tools/site.mjs); the pages themselves, index.html,
 //                                    m/<id>/index.html and 404.html, are site/'s Astro build over these files
 //   favicon.svg, favicon-32.png, apple-touch-icon.png, icon-192.png, icon-512.png, site.webmanifest, og-default.png
@@ -32,7 +34,7 @@ import {checkMotion, listMotions, motionId, readAccounts} from './check.mjs';
 /** The index's own format. A row adds members over time and says its motion's `spec`; readers of motion/0.1 still read it. */
 export const INDEX_SPEC = 'motion/0.1';
 import {writeSiteFiles} from './site.mjs';
-import {llmsIndex, writeDocs} from './docs.mjs';
+import {llmsIndex, motionDefinition, writeDocs} from './docs.mjs';
 
 const ROOT = resolve(fileURLToPath(import.meta.url), '../..');
 const SERVED = /^(motion\.json|MOTION(\.[A-Za-z0-9-]+)?\.md|tokens\.json|CREDITS\.md|poster\.jpg)$/;
@@ -120,6 +122,7 @@ export function build(out, root = ROOT) {
   writeFileSync(join(out, 'api/accounts.json'), JSON.stringify(Object.fromEntries([...readAccounts(join(ROOT, 'accounts'))].sort()), null, 2) + '\n');
   const skill = readFileSync(join(root, 'skills/motionhub/SKILL.md'), 'utf8');
   writeFileSync(join(out, 'llms.txt'), skill.replace(/^---\n[\s\S]*?\n---\n+/, '').trimEnd() + '\n' + llmsIndex(ROOT));
+  writeFileSync(join(out, 'MOTION.md'), motionDefinition(ROOT));
   const docs = writeDocs(ROOT, out);
   writeSiteFiles(out, rows, docs, readAccounts(join(ROOT, 'accounts')));
   // the brand's favicons, web manifest and default share card, from brand/ (BRAND.md)

@@ -436,6 +436,25 @@ pre { margin: 0; padding: 12px 14px; background: var(--color-code); color: var(-
 .creator .strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .creator .strip .poster { border-radius: var(--radius-sm); }
 .creator .nums { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: var(--size-xs); color: var(--color-muted); }
+.pitch .sub code { font-family: var(--font-mono); font-size: 0.92em; color: var(--color-text); }
+.open b.mono { font-family: var(--font-mono); }
+.format { display: flex; flex-wrap: wrap; gap: 24px 40px; margin-top: 40px; padding-top: 28px; border-top: 1px solid var(--color-line); }
+.format-words { flex: 5 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.format-words h2 { margin: 0; font-size: var(--size-lg); font-weight: var(--weight-semibold); }
+.format-words h2 code { font-family: var(--font-mono); }
+.format-words p { margin: 0; max-width: 54ch; color: var(--color-text-2); }
+.format-words p code, .format dl code { font-family: var(--font-mono); font-size: var(--size-sm); }
+.format dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 4px 0; font-size: var(--size-sm); color: var(--color-muted); }
+.format dd { margin: 0; }
+.format dt { color: var(--color-muted); }
+.format .on { color: var(--color-text); font-weight: var(--weight-medium); }
+.format-words .format-links { display: flex; flex-wrap: wrap; gap: 4px 20px; font-size: var(--size-sm); }
+.format-links a { color: var(--color-text-2); text-decoration: none; }
+.format-links a:hover { color: var(--color-text); text-decoration: underline; }
+.format figure { flex: 7 1 420px; min-width: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.format figcaption { font-size: var(--size-xs); color: var(--color-muted); }
+.format figcaption a { color: inherit; }
+.format pre code { font-size: inherit; }
 .invite { position: relative; overflow: hidden; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; margin-top: 32px; padding: 18px 20px; border: 1px solid var(--color-line); border-radius: var(--radius-xl); background: var(--color-surface); }
 .invite > :not(.trail) { position: relative; }
 .invite .trail { position: absolute; right: -28px; top: -44px; height: 200px; opacity: 0.3; }

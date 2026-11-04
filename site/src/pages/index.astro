@@ -5,7 +5,7 @@ import Engine from '../components/Engine.astro';
 import Agents from '../components/Agents.astro';
 import Prompt from '../components/Prompt.astro';
 import ShareCard from '../components/ShareCard.astro';
-import {ENGINE_LINKS, en, recommended, rows, toolEngines} from '../lib/catalogue.mjs';
+import {ENGINE_LINKS, en, motionTree, recommended, rows, toolEngines} from '../lib/catalogue.mjs';
 
 // the looks the try card offers, far apart from each other; any that is gone is left out
 const TRY = ['@iamsuosi/clay-world', '@iamsuosi/ink-scroll', '@iamsuosi/drafting-table', '@iamsuosi/field-atlas', '@iamsuosi/lab-notebook'];
@@ -20,14 +20,14 @@ const featured = recommended.slice(0, 10);
   <section class="intro" aria-labelledby="intro-title">
     <div class="pitch">
       <h1 id="intro-title">Open looks for AI‑made video.</h1>
-      <p class="sub">A visual style, written down. Hand it to your agent with your story, and get a film in that look.</p>
+      <p class="sub">Every look is a <code>MOTION.md</code>: a visual style written down, with components ready to use. Hand it to your agent with your story, and get a film in that look.</p>
       <div class="engines">
         <span class="label">Works with</span>
         {engines.map((e) => <Engine name={e} class="pill" href={ENGINE_LINKS[e]?.guide} />)}
         <a class="pill any" href="/docs/use/#in-anything-else">any code‑video engine</a>
       </div>
       <ul class="open">
-        <li><a href="/docs/spec/"><b>Motion Open Format</b><span>How a film looks and moves, in a public spec any agent can read.</span><span class="go">Read the spec <span aria-hidden="true">→</span></span></a></li>
+        <li><a href="/docs/motion-md/"><b class="mono">MOTION.md</b><span>An open format for how a film looks and moves, with its components.</span><span class="go">What is MOTION.md <span aria-hidden="true">→</span></span></a></li>
         <li><a href="/motions/"><b>Free to use</b><span>Every look is openly licensed, ready for your next film.</span><span class="go">Browse the motions <span aria-hidden="true">→</span></span></a></li>
         <li><a href="/docs/contribute/"><b>Yours to share</b><span>Publish your own look and keep the credit.</span><span class="go">Publish a look <span aria-hidden="true">→</span></span></a></li>
       </ul>
@@ -70,6 +70,26 @@ const featured = recommended.slice(0, 10);
   <div class="grid">
     {featured.map((r, i) => <Card row={r} eager={i < 5} bare />)}
   </div>
+
+  <section class="format" aria-labelledby="format-title">
+    <div class="format-words">
+      <h2 id="format-title"><code>MOTION.md</code></h2>
+      <p>An open format for how a film looks and moves. A <code>MOTION.md</code> leads a directory, the way a <code>SKILL.md</code> does: your agent reads it, uses the components that come with it first, and makes your story in that look.</p>
+      <dl>
+        <dt><code>AGENTS.md</code></dt><dd>How to work in this project</dd>
+        <dt><code>SKILL.md</code></dt><dd>How to do a task, with its scripts</dd>
+        <dt class="on"><code>MOTION.md</code></dt><dd class="on">How a film looks and moves, with its components</dd>
+      </dl>
+      <p class="format-links">
+        <a href="/docs/motion-md/">What is MOTION.md <span aria-hidden="true">→</span></a>
+        <a href="/MOTION.md">The latest definition <span aria-hidden="true">→</span></a>
+      </p>
+    </div>
+    <figure>
+      <figcaption><a href={`/m/${first.slug}/`}>{en(first.name)}</a>, as a directory</figcaption>
+      <pre tabindex="0"><code>{motionTree(first)}</code></pre>
+    </figure>
+  </section>
 
   <ShareCard />
 </Base>

@@ -1,5 +1,7 @@
 # Contributing a motion
 
+Sharing a look means writing it down as a [`MOTION.md`](docs/motion-md.md), with the tokens and components that come with it.
+
 A motion arrives as a pull request that adds `motions/@<you>/<slug>/` in the [format](SPEC.md). Your GitHub account is your identity here: the motion's `scope` is your GitHub username in lowercase, its id is `@<you>/<slug>`, and the `github` of at least one author in `motion.json` must be the account that opens the pull request. Every motion here has a scope, the maintainers' own included: there are no unscoped, official ids.
 
 ## The quick way
