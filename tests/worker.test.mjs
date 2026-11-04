@@ -58,8 +58,14 @@ test('a video is served whole or by range, never counted, and only for a scoped 
   const bytes = new Uint8Array(100).map((_, i) => i);
   const asked = [];
   const e = env();
-  e.PACKAGES.head = async (k) => (k === 'm/@ana/red-pencil/1.0.2.mp4' ? {size: 100, httpEtag: '"v"'} : null);
-  e.PACKAGES.get = async (k, o) => { asked.push(o?.range ?? null); return {body: o?.range ? bytes.slice(o.range.offset, o.range.offset + o.range.length) : bytes, httpEtag: '"v"'}; };
+  let etag = 'v';
+  e.PACKAGES.head = async (k) => (k === 'm/@ana/red-pencil/1.0.2.mp4' ? {size: 100, etag: 'v', httpEtag: '"v"'} : null);
+  // R2 gives an object without its body when onlyIf is not met
+  e.PACKAGES.get = async (k, o) => {
+    asked.push(o?.range ?? null);
+    if (o?.onlyIf?.etagMatches !== etag) return {httpEtag: `"${etag}"`};
+    return {body: o?.range ? bytes.slice(o.range.offset, o.range.offset + o.range.length) : bytes, httpEtag: '"v"'};
+  };
   const path = '/m/@ana/red-pencil/1.0.2.mp4';
 
   const whole = await worker.fetch(req(path), e, ctx);
@@ -84,18 +90,37 @@ test('a video is served whole or by range, never counted, and only for a scoped 
   assert.equal(head.headers.get('content-length'), '100');
   assert.equal(await head.text(), '');
 
-  const outside = await worker.fetch(req(path, {range: 'bytes=200-'}), e, ctx);
-  assert.equal(outside.status, 416);
-  assert.equal(outside.headers.get('content-range'), 'bytes */100');
+  const headPart = await worker.fetch(req(path, {range: 'bytes=0-1'}, 'HEAD'), e, ctx);
+  assert.equal(headPart.status, 206);
+  assert.equal(headPart.headers.get('content-range'), 'bytes 0-1/100');
 
-  assert.equal((await worker.fetch(req(path, {'if-none-match': '"v"'}), e, ctx)).status, 304);
+  for (const r of ['bytes=200-', 'bytes=-0']) {
+    const outside = await worker.fetch(req(path, {range: r}), e, ctx);
+    assert.equal(outside.status, 416, r);
+    assert.equal(outside.headers.get('content-range'), 'bytes */100');
+    assert.equal(outside.headers.get('cache-control'), 'no-store', 'a refusal is not kept');
+  }
+
+  for (const tag of ['"v"', 'W/"v"', '"x", "v"', '*']) {
+    const not = await worker.fetch(req(path, {'if-none-match': tag}), e, ctx);
+    assert.equal(not.status, 304, tag);
+    assert.equal(not.headers.get('content-length'), null);
+  }
+  assert.equal((await worker.fetch(req(path, {'if-none-match': '"x"'}), e, ctx)).status, 200);
   assert.equal((await worker.fetch(req(path, {range: 'bytes=0-1', 'if-range': '"old"'}), e, ctx)).status, 200, 'a range of another copy: the whole video');
   assert.equal((await worker.fetch(req(path, {range: 'bytes=0-1', 'if-range': '"v"'}), e, ctx)).status, 206);
-  assert.deepEqual(asked, [null, {offset: 0, length: 2}, {offset: 90, length: 10}, null, {offset: 0, length: 2}], 'R2 reads only the bytes asked for');
+  assert.equal((await worker.fetch(req(path, {range: 'bytes=0-1', 'if-range': 'Wed, 04 Nov 2026 00:00:00 GMT'}), e, ctx)).status, 200, 'a date: the whole video');
+  assert.deepEqual(asked, [null, {offset: 0, length: 2}, {offset: 90, length: 10}, null, null, {offset: 0, length: 2}, null], 'R2 reads only the bytes asked for');
+
+  etag = 'w';
+  const changed = await worker.fetch(req(path, {range: 'bytes=0-1'}), e, ctx);
+  assert.equal(changed.status, 503, 'replaced between the size and the bytes: never a mix of two videos');
+  etag = 'v';
 
   assert.equal((await worker.fetch(req('/m/@ana/red-pencil/9.9.9.mp4'), e, ctx)).status, 404);
   assert.equal((await worker.fetch(req('/m/%40ana/red-pencil/1.0.2.mp4', {range: 'bytes=0-1'}), e, ctx)).status, 206, 'the %40 spelling too');
   assert.equal((await worker.fetch(req(path, {}, 'POST'), e, ctx)).status, 405);
+  assert.equal((await worker.fetch(req('/m/red-pencil/1.0.2.mp4'), e, ctx)).status, 404, 'an unscoped id has no video');
   assert.equal(e.points.length, 0);
 });
 

@@ -134,38 +134,38 @@ export function byteRange(header, size) {
   return start < size && start <= end ? {offset: start, length: end - start + 1} : null;
 }
 
+/** Whether an If-None-Match header names `etag`: any of its list, compared weakly (RFC 9110 §13.1.2), or `*` */
+const matchesNone = (header, etag) => !!header && header.split(',').some((t) => { t = t.trim(); return t === '*' || t.replace(/^W\//, '') === etag.replace(/^W\//, ''); });
+
 /**
  * A motion's video from R2, as a phone's player asks for it: a HEAD for its size, then ranges of it (Safari plays nothing
- * that does not answer a Range with 206). The video of a version never changes, so it is cached for a year and revalidated
- * by its etag. Not counted: the page that plays it already was
+ * that does not answer a Range with 206). The video of a version never changes (deploy refuses to replace one), so a
+ * browser keeps it a year and revalidates by its etag; the bytes are read from the object the size came from. Not
+ * counted: the page that plays it already was
  */
 async function videoResponse(request, env, pathname) {
   if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method not allowed', {status: 405, headers: {allow: 'GET, HEAD'}});
   const key = pathname.slice(1);
   const meta = await env.PACKAGES.head(key);
   if (!meta) return new Response('Not found', {status: 404, headers: {'content-type': 'text/plain; charset=utf-8', 'cache-control': 'public, max-age=60', 'access-control-allow-origin': '*'}});
-  const headers = new Headers({
-    'content-type': 'video/mp4',
-    'accept-ranges': 'bytes',
-    'cache-control': 'public, max-age=31536000, immutable',
-    'access-control-allow-origin': '*',
-    etag: meta.httpEtag,
-  });
-  if (request.headers.get('if-none-match') === meta.httpEtag) return new Response(null, {status: 304, headers});
+  const headers = new Headers({'accept-ranges': 'bytes', 'access-control-allow-origin': '*', etag: meta.httpEtag});
   // If-Range: a range of the copy the client holds, or the whole video when that copy is not this one
   const ifRange = request.headers.get('if-range');
   const range = ifRange && ifRange !== meta.httpEtag ? undefined : byteRange(request.headers.get('range'), meta.size);
   if (range === null) {
     headers.set('content-range', `bytes */${meta.size}`);
+    headers.set('cache-control', 'no-store');
     return new Response(null, {status: 416, headers});
   }
-  if (range) {
-    headers.set('content-range', `bytes ${range.offset}-${range.offset + range.length - 1}/${meta.size}`);
-    headers.set('content-length', String(range.length));
-  } else headers.set('content-length', String(meta.size));
+  headers.set('cache-control', 'public, max-age=31536000, immutable');
+  if (matchesNone(request.headers.get('if-none-match'), meta.httpEtag)) return new Response(null, {status: 304, headers});
+  headers.set('content-type', 'video/mp4');
+  if (range) headers.set('content-range', `bytes ${range.offset}-${range.offset + range.length - 1}/${meta.size}`);
+  headers.set('content-length', String(range ? range.length : meta.size));
   if (request.method === 'HEAD') return new Response(null, {status: range ? 206 : 200, headers});
-  const object = await env.PACKAGES.get(key, range ? {range} : undefined);
-  if (!object) return new Response('Not found', {status: 404});
+  const object = await env.PACKAGES.get(key, {...(range ? {range} : {}), onlyIf: {etagMatches: meta.etag}});
+  // replaced between the two reads: the size and the bytes would be of different videos, so the client asks again
+  if (!object?.body) return new Response('The video changed while it was read: try again', {status: 503, headers: {'retry-after': '1', 'cache-control': 'no-store'}});
   return new Response(object.body, {status: range ? 206 : 200, headers});
 }
 
