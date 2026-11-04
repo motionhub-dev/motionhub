@@ -4,29 +4,28 @@
 // when the viewer presses play, with ?autoplay=1&sound=1: it then starts at once with the sound on, and tells the page
 // when its first frame is drawn (a "motionhub:ready" message), so the page can take its poster away. With ?render=1 it is
 // a still for player/render.mjs instead: the frame at full size, no controls and no clock, moved by window.__motionhub.seek.
+//
+// It is the shared core every reel's page loads first (/play/_shared/core-<hash>.js, player/build.mjs): React, the runtime
+// and this player, which then wait for the motion's own script to call mount() with its reel, sound and tokens.
+import * as React from 'react';
+import * as jsxRuntime from 'react/jsx-runtime';
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {createRoot} from 'react-dom/client';
+import * as runtime from '@motionhub/runtime';
 import {MotionRoot, MotionRuntimeProvider} from '@motionhub/runtime';
-import * as R from 'motionhub:reel';
-import sound from 'motionhub:sound';
-import {renderSound} from 'motionhub:sound-lib';
-import tokens from 'motionhub:tokens';
+import {renderSound} from '../../packages/runtime/sound.js';
 
 // a reel plays no footage (the catalogue holds no video): a component's <Video> is a quiet stand-in of its size
 const Footage = ({style}) => <div style={{width: '100%', height: '100%', background: 'radial-gradient(120% 90% at 50% 35%, #5b6068, #2a2d33 60%, #17191d)', ...style}} />;
 
-const Reel = R.default, reel = R.reel, cues = Array.isArray(R.cues) ? R.cues : [];
-// a reel sounds when its motion has a sound and it says when things happen
-const audible = !!sound && cues.length > 0;
-const W = reel.width ?? 1920, H = reel.height ?? 1080, LENGTH = reel.seconds;
+// the motion's, from mount()
+let Reel, reel, cues, sound, tokens, audible, W, H, LENGTH, wait;
 const params = new URLSearchParams(location.search);
 const asked = params.get('autoplay') === '1';
 const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
 // opened on its own, a reel that draws in 3D waits for a tap on a device that would struggle with it: few cores, little
 // memory, or a phone. Asked to play, it plays: the viewer pressed play on the motion's page
-const heavy = document.getElementById('player').dataset.heavy === '1';
 const weak = (navigator.hardwareConcurrency ?? 8) <= 4 || (navigator.deviceMemory ?? 8) <= 4 || matchMedia('(pointer: coarse)').matches;
-const wait = !asked && (still || (heavy && weak));
 const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const SEEK = 2, IDLE_MS = 2500;
 
@@ -200,4 +199,23 @@ function Still() {
   );
 }
 
-createRoot(document.getElementById('player')).render(params.get('render') === '1' ? <Still /> : <Player />);
+/** Plays a motion's reel: its module (react/reel.tsx: the component, `reel`, `cues`), its sound (react/sound.json, or null) and its tokens */
+function mount({module, sound: s, tokens: t}) {
+  Reel = module.default;
+  reel = module.reel;
+  cues = Array.isArray(module.cues) ? module.cues : [];
+  sound = s;
+  tokens = t;
+  // a reel sounds when its motion has a sound and it says when things happen
+  audible = !!sound && cues.length > 0;
+  W = reel.width ?? 1920;
+  H = reel.height ?? 1080;
+  LENGTH = reel.seconds;
+  const heavy = document.getElementById('player').dataset.heavy === '1';
+  wait = !asked && (still || (heavy && weak));
+  createRoot(document.getElementById('player')).render(params.get('render') === '1' ? <Still /> : <Player />);
+}
+
+// What a motion's script may take from the core, by the name it imports: the interface it is built against. A change that
+// removes or alters any of it is a new major version beside this one (HUB.md, "Reels")
+globalThis.__motionhubPlayer = {...globalThis.__motionhubPlayer, v1: {modules: {react: React, 'react/jsx-runtime': jsxRuntime, '@motionhub/runtime': runtime}, mount}};
