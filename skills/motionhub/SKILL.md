@@ -5,7 +5,7 @@ description: Find a motion (a reusable look for narrated and explanatory video) 
 
 # Making a film in a motion
 
-A **motion** is a look for narrated and explanatory video, written down: how a film looks (ground, colour, type) and how it moves (how things arrive, change and leave). It holds no film: no story, script, scenes or timings. You bring the story; the motion decides how it looks and moves. The format is [SPEC.md](https://github.com/motionhub-dev/motions/blob/main/SPEC.md) (`motion/0.4`). A motion is named by its id, its creator's GitHub name and its slug: `@iamsuosi/red-pencil`. On motionhub every id has both.
+A **motion** is a look for narrated and explanatory video, written down: how a film looks (ground, colour, type) and how it moves (how things arrive, change and leave). It holds no film: no story, script, scenes or timings. You bring the story; the motion decides how it looks and moves. The format is [SPEC.md](https://github.com/motionhub-dev/motions/blob/main/SPEC.md) (`motion/0.5`). A motion is named by its id, its creator's GitHub name and its slug: `@iamsuosi/red-pencil`. On motionhub every id has both.
 
 A motion is a directory:
 
@@ -19,9 +19,12 @@ A motion is a directory:
 | `react/` | The motion's components, for any React engine (section 5): `parts/`, the files they import in `assets/`, and a picture of each in `previews/` |
 | `<tool>/` | Ready-made pieces for one other tool. Ignore the directories of tools you are not using |
 
+A motion can also be one file: a `MOTION.md` that starts with front matter holding its `spec`, `name` and `tokens`, in a short form (`floor: "#E8D5B7"`). It says the same as `tokens.json` would, and it has no components, poster or credits.
+
 ## 1. Choose the motion
 
 - **The person named one** (a name, an id, or a `motionhub.dev/m/<id>` link): use it.
+- **The project has one**: `MOTION.md` at the project's root, or else `motion/MOTION.md`: use it, and go to section 3. A project may also hold other design files, such as `frame.md` or `design.md`. The motion decides how the film looks and moves; follow the others for what it does not say, and tell the person where they disagree.
 - **Otherwise** search: `npx @motionhub/cli search <words>` (no words lists them all), or read the index, `https://motionhub.dev/api/motions.json`, whose rows have `slug` (the id), `name`, `line`, `fit`, `tags`, `lang`, `poster` and `package`, with paths relative to `https://motionhub.dev`. Match the subject and the medium (a screen recording, a person's own footage, a dataset, a story) against each motion's `fit`: `fit.for` says what it is for and `fit.not` what it handles badly. A `general` motion carries many subjects, a `topic` motion is made for one and is the better choice when the film is about it, and an `overlay` motion is drawn over footage the person brings, so offer one only when they have that footage. Offer two or three with their posters, and let the person choose. Choose yourself only when they asked you to.
 
 ## 2. Get it
@@ -36,15 +39,16 @@ Without Node: download `https://motionhub.dev/m/<id>/<version>.tgz`, check it ag
 
 ## 3. Read it whole
 
-Read all of `MOTION.md` before drawing anything, and `tokens.json` beside it. If a `MOTION.<lang>.md` matches the language you work in, you may read it; it says nothing `MOTION.md` does not.
+Read all of `MOTION.md` before drawing anything, and `tokens.json` beside it, or the `tokens` in its front matter. If a `MOTION.<lang>.md` matches the language you work in, you may read it; it says nothing `MOTION.md` does not.
 
 ## 4. Make the film
 
-- **Values are exact.** Every colour, face, duration and easing comes from `tokens.json`, by its token, in your engine's terms. A font token is a stack: use its faces in order. Never approximate a colour by eye.
+- **Values are exact.** Every colour, face, duration and easing comes from the motion's tokens, by name, in your engine's terms. A font token is a stack: use its faces in order. Never approximate a colour by eye.
 - **Essence decides every frame.** Each frame must have the traits it names, and must not drift into what it says the motion is not.
 - **Colour and Type are roles, not a palette.** Use each token only for what its section says it is for; what it says is never coloured, stays uncoloured.
 - **Motion is timing.** Things arrive, change and leave the way it says, on the narration or music the way it says. What it says never moves, stays still.
 - **Avoid is binding.** Before you finish, check the film against every point under Avoid.
+- **Never invent a number.** Every figure, date and count in the film comes from the person's story or a source they gave you. Where one is missing, leave a visible placeholder and tell them.
 - **The story is yours.** Lay each scene out for what this film says. Do not copy the poster's or any sample's subject, words or layout.
 - **Components are a shortcut.** If the motion has `react/` or a directory for the tool you are using, use its pieces (section 5). The words and tokens still govern.
 
@@ -59,7 +63,7 @@ Read all of `MOTION.md` before drawing anything, and `tokens.json` beside it. If
 
 Read the binding's README first. Each component's `meta` says what it is for (`purpose`, `line`, `fits`) and what each parameter means, and `react/previews/<file>.jpg` shows it; read a component's code only when you use it. A parameter of type `progress` runs from 0 to 1: animate it in your engine, on the words that call for it. A component that draws in 3D imports `three`, which you install. `Caption` (from `@motionhub/runtime`) draws a spoken line in the motion's caption skin. Lay out each scene for your story; the components are the look, not the film.
 
-**Otherwise**, or for anything the components do not draw: the tokens are DTCG values; turn each into your engine's own once, in one place (a theme module), and use it by name everywhere:
+**Otherwise**, or for anything the components do not draw: the tokens are DTCG values, and `npx @motionhub/cli tokens --out tokens.json` writes them out from a motion in one file, for a binding or a theme; turn each into your engine's own once, in one place (a theme module), and use it by name everywhere:
 
 - **Colour**: `$value.hex`.
 - **Font**: `$value` is a stack: the CSS `font-family` is its names in order, each quoted, the generic last.
@@ -92,6 +96,8 @@ To publish a look the person made (only when they ask):
 4. Optionally the reusable components, in `react/parts/` as [CONTRIBUTING.md](https://github.com/motionhub-dev/motions/blob/main/CONTRIBUTING.md) describes: React components that import only `react` and `@motionhub/runtime` (in Remotion, `useTime()` and `useVideoConfig()` from it instead of Remotion's), take what changes as props, and hold nothing of this film's story.
 5. `npx @motionhub/cli share <slug>` runs the checks its pull request will run, as the person's GitHub account. Show them the result; with their yes, `npx @motionhub/cli share <slug> --pr` opens the pull request from their fork, recording each login the motion names in `accounts/` with its GitHub id if it is not there yet.
 
+A motion in one file publishes the same way: `init` writes the directory, its `tokens` go into `tokens.json` (`npx @motionhub/cli tokens --out <slug>/tokens.json`), and its body into `<slug>/MOTION.md`, without the front matter's `tokens`.
+
 To publish a new version of a motion the person published (only when they ask, as in "publish a new version of @<scope>/<slug> from this project"):
 
 1. Have the motion at hand: their copy in the project, or `npx @motionhub/cli get @<scope>/<slug>` into `./motion`.
@@ -103,4 +109,4 @@ To build on someone else's motion, publish yours under your own scope, name thei
 
 ## 8. Check before you hand it over
 
-Put a frame of your film beside `poster.jpg`: the same ground, the same colours in the same roles, the same faces. Then read Essence and Avoid once more against the film, and fix what does not hold.
+Put a frame of your film beside `poster.jpg`, if the motion has one: the same ground, the same colours in the same roles, the same faces. Then read Essence and Avoid once more against the film, and fix what does not hold.

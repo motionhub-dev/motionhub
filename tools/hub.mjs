@@ -7,6 +7,8 @@
 //                                               (default ./motion), which must not exist yet
 //   motionhub init <slug> [--github <login>]    ./<slug>/ with every required file but the poster, to fill in, scoped to
 //                                               the account gh is signed in as (or --github): its id is @<login>/<slug>
+//   motionhub tokens [MOTION.md] [--out <file>] a motion in one file's tokens, as tokens.json; by default the project's
+//                                               (./MOTION.md, else ./motion/MOTION.md), to standard output
 //   motionhub share <dir> [--github <login>] [--pr]
 //                                               the pull request's checks, as the person and against what is published;
 //                                               with --pr, the pull request itself, from the fork of the account gh is
@@ -18,9 +20,19 @@ import {cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeF
 import {tmpdir} from 'node:os';
 import {basename, dirname, join, resolve} from 'node:path';
 import {gunzipSync} from 'node:zlib';
-import {SPEC, checkMotion, motionId} from './check.mjs';
+import {SPEC, checkMotion, expandTokens, motionId, parseFrontMatter} from './check.mjs';
 
 export const HUB = 'https://motionhub.dev';
+
+/** The motion a project holds, as SPEC.md §11 says a tool looks for one, or undefined. */
+export const projectMotion = (root = '.') => ['MOTION.md', 'motion/MOTION.md'].map((f) => join(root, f)).find((f) => existsSync(f));
+
+/** A motion in one file's tokens, in the form of tokens.json; a file that is not a valid one is refused, with why. */
+export function motionTokens(path) {
+  const issues = checkMotion(path, {hub: false});
+  if (issues.length) throw new Error(`${path} is not a valid motion in one file:\n${issues.map((i) => `  ${i.code}  ${i.message}`).join('\n')}`);
+  return expandTokens(parseFrontMatter(readFileSync(path, 'utf8')).data.tokens);
+}
 
 async function get(url) {
   let res;
@@ -93,6 +105,13 @@ export async function main(command, args, base = HUB) {
   }
   const value = (flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : undefined; };
   const slug = args.find((a, i) => !a.startsWith('--') && !['--out', '--github'].includes(args[i - 1]));
+  if (command === 'tokens') {
+    const file = slug ?? projectMotion();
+    if (!file) { console.error('no MOTION.md here or in ./motion: usage: motionhub tokens [MOTION.md] [--out <file>]'); return 2; }
+    const json = `${JSON.stringify(motionTokens(file), null, 2)}\n`;
+    if (value('--out')) { writeFileSync(value('--out'), json); console.log(`${value('--out')}, the tokens of ${file}`); } else process.stdout.write(json);
+    return 0;
+  }
   if (command === 'share') {
     if (!slug) { console.error('usage: motionhub share <dir> [--github <login>] [--pr]'); return 2; }
     console.log(await share(resolve(slug), {pr: args.includes('--pr'), github: value('--github')}, base));
