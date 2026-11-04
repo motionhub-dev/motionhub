@@ -27,7 +27,7 @@ npx remotion render
 An agent without motionhub's skill can take the same request as a prompt that starts by reading it:
 
 ```text
-Read https://motionhub.dev/llms.txt, then make a Remotion film about "<your topic>" in the motion https://motionhub.dev/m/@iamsuosi/clay-world/
+Read https://motionhub.dev/llms.txt, then make a Remotion film about "<your topic>" in the motion @iamsuosi/clay-world
 ```
 
 ## By hand

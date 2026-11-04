@@ -2,6 +2,7 @@
 import Base from '../layouts/Base.astro';
 import Card from '../components/Card.astro';
 import Engine from '../components/Engine.astro';
+import Agents from '../components/Agents.astro';
 import Prompt from '../components/Prompt.astro';
 import {ENGINE_LINKS, en, rows, toolEngines} from '../lib/catalogue.mjs';
 
@@ -23,20 +24,24 @@ const featured = [...tries, ...rows.filter((r) => !tries.includes(r))].slice(0, 
         <span class="label">Works with</span>
         {engines.map((e) => <Engine name={e} class="pill" href={ENGINE_LINKS[e]?.guide} />)}
         <a class="pill any" href="/docs/use/#in-anything-else">any code‑video engine</a>
-      </div>      <ul class="open">
-        <li><b>Open format</b><span>A <a href="/docs/spec/">public spec</a>. CC BY looks, MIT code.</span></li>
-        <li><b>Any engine</b><span>Words and design tokens, not a renderer.</span></li>
-        <li><b>Open to share</b><span><a href="/docs/contribute/">Publish your look</a>, credited to you.</span></li>
+      </div>
+      <ul class="open">
+        <li><a href="/docs/spec/"><b>Motion Open Format</b><span>How a film looks and moves, in a public spec any agent can read.</span><span class="go">Read the spec <span aria-hidden="true">→</span></span></a></li>
+        <li><a href="/motions/"><b>Free to use</b><span>Every look is openly licensed, ready for your next film.</span><span class="go">Browse the motions <span aria-hidden="true">→</span></span></a></li>
+        <li><a href="/docs/contribute/"><b>Yours to share</b><span>Publish your own look and keep the credit.</span><span class="go">Publish a look <span aria-hidden="true">→</span></span></a></li>
       </ul>
     </div>
 
     <div class="try" id="try">
-      <h2>Make a film with your agent</h2>
+      <div class="try-head">
+        <h2>Make a film with your agent</h2>
+        <Agents />
+      </div>
       <div class="step">
-        <div class="step-head"><span><i>1</i>Pick a look</span><span id="try-name">{en(first.name)}</span></div>
+        <div class="step-head"><span><i>1</i>Pick a look</span></div>
         <div class="thumbs" role="radiogroup" aria-label="A look">
           {tries.map((r, i) => (
-            <button type="button" role="radio" aria-checked={String(i === 0)} aria-label={en(r.name)} data-id={r.slug} data-name={en(r.name)}>
+            <button type="button" role="radio" aria-checked={String(i === 0)} aria-label={en(r.name)} data-id={r.slug}>
               <img src={r.poster.replace(/\.jpg$/, '-480.webp')} alt="" width="96" height="54" loading="eager" decoding="async">
             </button>
           ))}
@@ -50,7 +55,7 @@ const featured = [...tries, ...rows.filter((r) => !tries.includes(r))].slice(0, 
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
             <span>Copy prompt</span>
           </button>
-          <span>Any agent that can open a URL. <a href="/docs/use/">Other ways</a></span>
+          <a href="/docs/use/#from-the-command-line">Use it manually <span aria-hidden="true">→</span></a>
         </div>
       </div>
     </div>
@@ -62,13 +67,12 @@ const featured = [...tries, ...rows.filter((r) => !tries.includes(r))].slice(0, 
   </div>
 
   <div class="grid">
-    {featured.map((r, i) => <Card row={r} eager={i < 5} />)}
+    {featured.map((r, i) => <Card row={r} eager={i < 5} bare />)}
   </div>
 </Base>
 
 <script>
   // the gallery's searches used to live here: an old address with one goes on to the gallery
-  const $ = <T extends Element>(s: string) => document.querySelector<T>(s);
   if (/[?&](q|tag|tool|view|sort)=/.test(location.search)) location.replace(`/motions/${location.search}`);
 
   // the try card: picking a look puts it in the prompt. Without the script the prompt names the first look.
@@ -76,8 +80,7 @@ const featured = [...tries, ...rows.filter((r) => !tries.includes(r))].slice(0, 
   const looks = [...document.querySelectorAll<HTMLButtonElement>('.thumbs [role="radio"]')];
   const choose = (b: HTMLButtonElement, focus = false) => {
     for (const x of looks) { x.setAttribute('aria-checked', String(x === b)); x.tabIndex = x === b ? 0 : -1; }
-    $('#try-name')!.textContent = b.dataset.name!;
-    target.textContent = target.textContent!.replace(/\/m\/.+\/$/, `/m/${b.dataset.id}/`);
+    target.textContent = b.dataset.id!;
     if (focus) b.focus();
   };
   looks.forEach((b, i) => {

@@ -22,7 +22,7 @@ The motionhub skill fetches the motion into `./motion` and checks it against its
 An agent without motionhub's skill can take the same request as a prompt that starts by reading it:
 
 ```text
-Read https://motionhub.dev/llms.txt, then make a HyperFrames film about "<your topic>" in the motion https://motionhub.dev/m/@iamsuosi/clay-world/
+Read https://motionhub.dev/llms.txt, then make a HyperFrames film about "<your topic>" in the motion @iamsuosi/clay-world
 ```
 
 ## By hand

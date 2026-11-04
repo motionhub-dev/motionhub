@@ -46,6 +46,8 @@ one vermilion that belongs to the logo and to the one action a page asks for. Ev
   theme switch sets it, and remembers the choice in the browser.
 - Remotion's and HyperFrames' logos appear beside their names where a motion works in them, as each project draws
   them (`site/src/assets/engines/`). They are their owners' marks, never recoloured or used for anything else.
+- Claude's and OpenAI's marks appear beside the prompt, saying which agents it works in, as each company draws them
+  (`site/src/assets/agents/`): Claude's in its own colour, OpenAI's in the text colour of the theme. The same rule holds.
 
 ## Type
 

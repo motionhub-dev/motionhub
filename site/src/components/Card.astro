@@ -1,10 +1,10 @@
 ---
 import {CARD_SIZES, en, posterSet} from '../lib/catalogue.mjs';
-const {row, small = false, eager = false, ...attrs} = Astro.props;
+const {row, small = false, eager = false, bare = false, ...attrs} = Astro.props;
 const by = row.authors.map((a) => a.name).join(', ');
 ---
 <a class="card" href={`/m/${row.slug}/`} title={en(row.line)} {...attrs}>
   <img class="poster" src={row.poster} srcset={posterSet(row.poster)} sizes={CARD_SIZES} alt={`A frame of a film in ${en(row.name)}`} loading={eager ? 'eager' : 'lazy'} fetchpriority={eager ? 'high' : undefined} decoding="async" width="960" height="540">
-  <span class="t"><b>{en(row.name)}</b></span>
-  {!small && <span class="m"><span>{by}</span><span class="counts"><span class="dl" data-lk={row.slug} hidden></span><span class="dl" data-dl={row.slug} hidden></span></span></span>}
+  {!bare && <span class="t"><b>{en(row.name)}</b></span>}
+  {!small && !bare && <span class="m"><span>{by}</span><span class="counts"><span class="dl" data-lk={row.slug} hidden></span><span class="dl" data-dl={row.slug} hidden></span></span></span>}
 </a>

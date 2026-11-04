@@ -162,9 +162,8 @@ export function galleryFacets() {
 
 /** The prompt that works in any agent, and the skill that makes it shorter: installed for every agent by skills. */
 export const TOPIC = '<your topic>';
-export const agentPrompt = (id, topic = TOPIC) => `Read ${SITE}/llms.txt, then make a film about "${topic}" in the motion ${SITE}/m/${id}/`;
+export const agentPrompt = (id, topic = TOPIC) => `Read ${SITE}/llms.txt, then make a film about "${topic}" in the motion ${id}`;
 export const skillInstall = 'npx skills add motionhub-dev/motions -g';
-export const skillShare = "/motionhub share this project's look as a motion";
 
 /** The motions a motion builds on that are in the catalogue, and the ones that build on it. */
 const byId = new Map(rows.map((r) => [r.slug, r]));
