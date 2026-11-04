@@ -19,7 +19,7 @@ How this repository is published at [motionhub.dev](https://motionhub.dev): the 
 | `docs/`, `tools/docs.mjs` | The guides only the docs have (overview, using a motion, the command line), and the list of every docs page with the document it is. A docs page is a document where it already lives in the repository, never a copy |
 | `tools/site.mjs` | What the pages share with the build, with no dependencies: the Markdown a motion's documents use, its colours and faces, and `_headers`, `robots.txt` and `sitemap.xml` |
 | `site/player/` | The reel player and its build: one page and one script per motion with a reel, under `/play/<id>/` |
-| `site/worker.mjs`, `wrangler.jsonc` | The Cloudflare Worker: it serves the build as static assets and the packages from the R2 bucket `motionhub` |
+| `site/worker.mjs`, `wrangler.jsonc` | The Cloudflare Worker: it serves the build as static assets and the packages and reels' videos from the R2 bucket `motionhub` |
 | `.github/workflows/deploy.yml` | Builds, publishes each new package to R2 and deploys, on every push to the main branch and every six hours. It refuses to replace a published package |
 | `skills/motionhub/SKILL.md` | The generic skill: how any agent chooses a motion, fetches it and makes a film in it. `/llms.txt` is the same text, followed by the index of the docs |
 
@@ -40,6 +40,7 @@ A static site, rebuilt from the main branch whenever it changes and every six ho
 | `/you/` and `/api/me/pulls` | The signed-in person's own page: the motions they may change (by their account's id in `accounts/`), their open pull requests on this repository with each one's checks, review and motions (read from GitHub's public API by the account's id, kept for a minute), and what they liked. Nothing there changes a motion: it says how to open the pull request |
 | `/m/<id>/MOTION.md`, `/m/<id>/tokens.json`, `/m/<id>/motion.json` | The newest version's files, to read directly |
 | `/m/<id>/<version>.tgz` | The whole motion at that version, its paths under `<id>/`, with its SHA-256 in the index. The same files always give the same bytes |
+| `/m/<id>/<version>.mp4` | The reel of the motion at that version as a 1080p video (Reels below), when it has been rendered: from R2, whole or by byte range (`206`), kept by the browser for a year. A version's video never changes; one not rendered yet is `404` |
 | `/play/<id>/` | The motion's reel, playing live: its `react/reel.tsx`, its components, React and `@motionhub/runtime` in one script, with its faces. Served under a policy that lets it load nothing from anywhere else |
 | `/llms.txt` | For agents: what a motion is, how to choose one from the index and how to use it, then every docs page's Markdown twin |
 | `/docs/<page>/`, `/docs/<page>.md`, `/llms-full.txt` | The docs: the repository's own documents (`SPEC.md`, `CONTRIBUTING.md`, the packages' READMEs, `brand/BRAND.md`) and the guides in `docs/`, each as a page and as Markdown, and all of them in one file. The list is `tools/docs.mjs` |
