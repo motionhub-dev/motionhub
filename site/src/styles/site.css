@@ -54,6 +54,9 @@ pre::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--
 .btn:hover { background: var(--color-surface); color: var(--color-text); }
 .btn.primary { background: var(--color-text); color: var(--color-bg); border-color: var(--color-text); }
 .btn.primary:hover { opacity: 0.88; color: var(--color-bg); }
+/* asking to share a motion: the logo's balls, flat discs that step up in size and strength, and no gradient */
+.trail { flex: none; display: block; height: 12px; width: auto; aspect-ratio: 96 / 56; }
+.btn.share { font-weight: var(--weight-medium); }
 @media (max-width: 860px) {
   .top .wrap { height: auto; flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; gap: 10px 16px; }
   .search { order: 5; flex-basis: 100%; margin-left: 0; }
@@ -117,7 +120,7 @@ pre.prompt { padding: 12px 14px; white-space: pre-wrap; overflow-wrap: break-wor
 /* the part of a prompt the visitor fills in */
 pre .nb { white-space: nowrap; }
 .slot { background-color: var(--color-accent); color: var(--color-on-accent); border-radius: var(--radius-sm); padding: 1px 4px; font-weight: 500; }
-/* the one call to action a page has (brand/BRAND.md) */
+/* the one call to action a screen has (brand/BRAND.md) */
 .btn.accent { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-on-accent); font-weight: var(--weight-semibold); }
 .btn.accent:hover { opacity: 0.9; background: var(--color-accent); color: var(--color-on-accent); }
 .btn.accent:focus-visible { outline-color: var(--color-accent); }
@@ -420,7 +423,6 @@ pre { margin: 0; padding: 12px 14px; background: var(--color-code); color: var(-
 .btn.like[aria-pressed="true"] .n { color: inherit; }
 .do .btn.like { flex: 0 0 auto; padding: 0 14px; }
 .card .counts { display: inline-flex; gap: 10px; flex: none; }
-@media (max-width: 480px) { .actions .share { display: none; } }
 
 /* creators */
 .creators { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-top: 14px; }
@@ -434,7 +436,10 @@ pre { margin: 0; padding: 12px 14px; background: var(--color-code); color: var(-
 .creator .strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .creator .strip .poster { border-radius: var(--radius-sm); }
 .creator .nums { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: var(--size-xs); color: var(--color-muted); }
-.invite { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; margin-top: 32px; padding: 18px 20px; border: 1px solid var(--color-line); border-radius: var(--radius-xl); background: var(--color-surface); }
+.invite { position: relative; overflow: hidden; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; margin-top: 32px; padding: 18px 20px; border: 1px solid var(--color-line); border-radius: var(--radius-xl); background: var(--color-surface); }
+.invite > :not(.trail) { position: relative; }
+.invite .trail { position: absolute; right: -28px; top: -44px; height: 200px; opacity: 0.3; }
+@media (max-width: 640px) { .invite .trail { right: -20px; top: auto; bottom: -24px; height: 110px; } }
 .invite b { font-weight: var(--weight-semibold); }
 .invite p { margin: 2px 0 0; color: var(--color-text-2); max-width: 640px; }
 .profile { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; padding-bottom: 20px; border-bottom: 1px solid var(--color-line); }
@@ -448,7 +453,6 @@ pre { margin: 0; padding: 12px 14px; background: var(--color-code); color: var(-
 .tally dt { font-size: var(--size-xs); color: var(--color-muted); }
 .tally dd { margin: 0; font-size: var(--size-lg); font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; }
 @media (max-width: 480px) { .tally { gap: 18px; } }
-@media (max-width: 480px) { #signin { padding: 0 10px; } #signin .long { display: none; } }
 @media (max-width: 480px) {
   .brand { gap: 6px; }
   .brand .mark { width: 28px; height: 17px; }

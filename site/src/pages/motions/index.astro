@@ -3,11 +3,11 @@ import Base from '../../layouts/Base.astro';
 import Card from '../../components/Card.astro';
 import Dropdown from '../../components/Dropdown.astro';
 import Facet from '../../components/Facet.astro';
-import {KINDS, en, galleryFacets, motionFacets, rows, searchText, toolEngines} from '../../lib/catalogue.mjs';
+import {KINDS, en, galleryFacets, motionFacets, recommended, rows, searchText, toolEngines} from '../../lib/catalogue.mjs';
 
 const n = rows.length;
 const facets = galleryFacets();
-const index = rows.map((r) => ({id: r.slug, text: searchText(r), facets: motionFacets(r)}));
+const index = recommended.map((r) => ({id: r.slug, text: searchText(r), facets: motionFacets(r)}));
 // a long filter shows its most used values and keeps the rest a click away
 const SHOWN = 8;
 ---
@@ -48,8 +48,8 @@ const SHOWN = 8;
 
     <div class="found">
       <div class="bar">
-        <p class="count" id="count" aria-live="polite">{n} {n === 1 ? 'motion' : 'motions'}, A to Z</p>
-        <Dropdown id="sort" label="Sort" fieldId="sortfield" hidden options={[{value: '', text: 'A to Z'}, {value: 'last30', text: 'Most downloaded, 30 days'}, {value: 'total', text: 'Most downloaded, all time'}, {value: 'likes', text: 'Most liked'}]} />
+        <p class="count" id="count" aria-live="polite">{n} {n === 1 ? 'motion' : 'motions'}, recommended first</p>
+        <Dropdown id="sort" label="Sort" fieldId="sortfield" options={[{value: '', text: 'Recommended'}, {value: 'az', text: 'A to Z'}, {value: 'last30', text: 'Most downloaded, 30 days'}, {value: 'total', text: 'Most downloaded, all time'}, {value: 'likes', text: 'Most liked'}]} />
         <div class="seg" role="group" aria-label="View">
           <button type="button" data-view="grid" aria-pressed="true" aria-label="Grid"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
           <button type="button" data-view="list" aria-pressed="false" aria-label="List"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
@@ -59,14 +59,14 @@ const SHOWN = 8;
       <div class="picked" id="picked" hidden></div>
 
       <div class="grid" id="grid">
-        {rows.map((r, i) => <Card row={r} eager={i < 4} data-id={r.slug} />)}
+        {recommended.map((r, i) => <Card row={r} eager={i < 4} data-id={r.slug} />)}
       </div>
 
       <div class="table" id="list" hidden>
         <table>
           <thead><tr><th colspan="2">Motion</th><th>Kind</th><th>Looks</th><th>Engines</th><th>By</th><th class="r">Likes</th><th class="r">Downloads</th><th class="r">Version</th></tr></thead>
           <tbody>
-            {rows.map((r) => (
+            {recommended.map((r) => (
               <tr data-id={r.slug}>
                 <td class="p"><img src={r.poster.replace(/\.jpg$/, '-480.webp')} alt="" loading="lazy" decoding="async" width="96" height="54"></td>
                 <td class="n"><a href={`/m/${r.slug}/`}>{en(r.name)}</a><div>{en(r.line)}</div></td>
@@ -170,12 +170,13 @@ const SHOWN = 8;
       row.classList.toggle('off', b.disabled);
     }
 
-    // order: A to Z (the page's own order), or by downloads or likes with A to Z among equals
-    const by = sort.value as '' | 'total' | 'last30' | 'likes';
-    const score = (id: string) => (by === 'likes' ? counts[id]?.likes ?? 0 : by ? counts[id]?.downloads[by] ?? 0 : 0);
+    // order: recommended (the page's own order), A to Z, or by downloads or likes with the recommended order among equals
+    const by = sort.value as '' | 'az' | 'total' | 'last30' | 'likes';
+    const score = (id: string) => (by === 'likes' ? counts[id]?.likes ?? 0 : by === 'total' || by === 'last30' ? counts[id]?.downloads[by] ?? 0 : 0);
+    const place = (a: string, b: string) => (by === 'az' ? (a < b ? -1 : 1) : order.get(a)! - order.get(b)!);
     for (const box of [grid, tbody]) {
       const kids = [...box.children] as HTMLElement[];
-      kids.sort((a, b) => score(b.dataset.id!) - score(a.dataset.id!) || order.get(a.dataset.id!)! - order.get(b.dataset.id!)!);
+      kids.sort((a, b) => score(b.dataset.id!) - score(a.dataset.id!) || place(a.dataset.id!, b.dataset.id!));
       box.append(...kids);
     }
     paint(by === 'last30' ? 'last30' : 'total');
@@ -188,7 +189,7 @@ const SHOWN = 8;
     const n = shown.size;
     const parts = [`${n} ${n === 1 ? 'motion' : 'motions'}`];
     if (q.value.trim()) parts.push(`matching “${q.value.trim()}”`);
-    $('#count')!.textContent = parts.join(' ') + ', ' + (by === 'likes' ? 'most liked first' : by ? `most downloaded${by === 'last30' ? ' in 30 days' : ''} first` : 'A to Z');
+    $('#count')!.textContent = parts.join(' ') + ', ' + (by === 'likes' ? 'most liked first' : by === 'az' ? 'A to Z' : by ? `most downloaded${by === 'last30' ? ' in 30 days' : ''} first` : 'recommended first');
     $<HTMLElement>('#empty')!.hidden = n > 0;
 
     const next = new URLSearchParams();
@@ -206,6 +207,7 @@ const SHOWN = 8;
   for (const b of boxes) b.addEventListener('change', apply);
   $('#clearall')!.addEventListener('click', clear);
   for (const v of views) v.addEventListener('click', () => { view = v.dataset.view!; try { localStorage.setItem('motionhub.view', view); } catch {} apply(); });
+  if (params.get('sort') === 'az') sort.value = 'az';
   apply();
 
   // the filters stay out of the way on a phone until asked for
@@ -218,7 +220,6 @@ const SHOWN = 8;
   // the public counts, when they load: downloads on each motion, and sorting by them
   fetch('/api/stats.json').then((r) => (r.ok ? r.json() : Promise.reject())).then((s) => {
     counts = s.motions ?? {};
-    $<HTMLElement>('#sortfield')!.hidden = false;
     const want = params.get('sort');
     if (want === 'total' || want === 'last30' || want === 'likes') sort.value = want;
     apply();

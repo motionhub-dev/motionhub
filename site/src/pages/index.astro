@@ -4,7 +4,8 @@ import Card from '../components/Card.astro';
 import Engine from '../components/Engine.astro';
 import Agents from '../components/Agents.astro';
 import Prompt from '../components/Prompt.astro';
-import {ENGINE_LINKS, en, rows, toolEngines} from '../lib/catalogue.mjs';
+import ShareCard from '../components/ShareCard.astro';
+import {ENGINE_LINKS, en, recommended, rows, toolEngines} from '../lib/catalogue.mjs';
 
 // the looks the try card offers, far apart from each other; any that is gone is left out
 const TRY = ['@iamsuosi/clay-world', '@iamsuosi/ink-scroll', '@iamsuosi/drafting-table', '@iamsuosi/field-atlas', '@iamsuosi/lab-notebook'];
@@ -12,8 +13,8 @@ const tries = TRY.map((id) => rows.find((r) => r.slug === id)).filter(Boolean);
 if (tries.length === 0) tries.push(...rows.slice(0, 5));
 const first = tries[0];
 const engines = [...new Set(rows.flatMap((r) => r.tools.flatMap(toolEngines)))];
-// the home page shows a taste of the gallery: the looks above first, then the rest
-const featured = [...tries, ...rows.filter((r) => !tries.includes(r))].slice(0, 10);
+// the home page shows a taste of the gallery: the first of its recommended order
+const featured = recommended.slice(0, 10);
 ---
 <Base title="motionhub: open looks for AI-made video" description="Open looks for AI-made video: a visual style written down. Hand one to your agent with your story and get a film in that look, in Remotion, HyperFrames or any code-video engine." path="/">
   <section class="intro" aria-labelledby="intro-title">
@@ -69,6 +70,8 @@ const featured = [...tries, ...rows.filter((r) => !tries.includes(r))].slice(0, 
   <div class="grid">
     {featured.map((r, i) => <Card row={r} eager={i < 5} bare />)}
   </div>
+
+  <ShareCard />
 </Base>
 
 <script>

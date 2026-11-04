@@ -52,7 +52,7 @@ A motion's page plays the motion live, from its reel: `react/reel.tsx`, a React 
 
 ## The gallery's order
 
-The gallery lists motions in a recommended order, and anyone can switch to A to Z, most downloaded or most liked.
+The gallery (`/motions/`) lists motions in a recommended order, and anyone can switch to A to Z, most downloaded or most liked. The home page shows the first ten.
 
 - First come the few motions named in `FEATURED` (`site/src/lib/catalogue.mjs`), in that order. This is the only part kept by hand: a short pick for a catalogue with little data yet.
 - The rest are ordered by what they are for (`fit.kind`, SPEC.md §3): general motions first, then motions drawn over the maker's own footage, then topic motions, then motions that do not say.
