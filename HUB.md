@@ -56,7 +56,7 @@ Every pull request and every push to main plays every reel (`site/player/smoke.m
 
 The gallery (`/motions/`) lists motions in a recommended order, and anyone can switch to A to Z, most downloaded or most liked. The home page shows the first ten.
 
-- First come the few motions named in `FEATURED` (`site/src/lib/catalogue.mjs`), in that order. This is the only part kept by hand: a short pick for a catalogue with little data yet.
+- First come the few motions named in `FEATURED` (`site/src/lib/catalogue.mjs`), in that order. This is the only part kept by hand: a short pick for a catalogue with little data yet, of looks that carry most subjects and cost an agent little. The home page's try card offers the same looks.
 - The rest are ordered by what they are for (`fit.kind`, SPEC.md §3): general motions first, then motions drawn over the maker's own footage, then topic motions, then motions that do not say.
 - Within a kind, a motion whose components cover more of the core purposes comes first. The core purposes are title, data, compare, steps, term, link and transition, read from each component's `meta.purpose`.
 - Motions that tie are listed A to Z.

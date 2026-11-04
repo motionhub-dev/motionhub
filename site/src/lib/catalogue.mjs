@@ -62,9 +62,9 @@ export const KINDS = {
 /**
  * The gallery's order (HUB.md, "The gallery's order"): the few motions FEATURED names first, in that order; then the rest by what they are for
  * (general, then over the maker's footage, then topic, then those that do not say) and, within a kind, by how many of the explanations' core
- * purposes their components cover; A to Z among equals. FEATURED is the only part kept by hand: a short pick for a cold start.
+ * purposes their components cover; A to Z among equals. FEATURED is the only part kept by hand: a short pick for a cold start, of looks that carry most subjects and cost an agent little, and the looks the home page's try card offers.
  */
-export const FEATURED = ['@iamsuosi/stage-light', '@iamsuosi/screen-desk', '@iamsuosi/on-air'];
+export const FEATURED = ['@iamsuosi/lab-notebook', '@iamsuosi/watercolor-tale', '@iamsuosi/riso-pop', '@iamsuosi/red-pencil', '@iamsuosi/screen-desk'];
 const KIND_RANK = {general: 0, overlay: 1, topic: 2};
 /** What most explanations need from a motion's components (CONTRIBUTING.md, "What makes a good motion") */
 export const CORE = ['title', 'data', 'compare', 'steps', 'term', 'link', 'transition'];
