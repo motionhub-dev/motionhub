@@ -28,12 +28,17 @@ const UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 const familiesOf = (tokens) => [...new Set(Object.values(tokens.font ?? {}).flatMap((s) => String(s).split(',').map((f) => f.trim().replace(/^["']|["']$/g, ''))))]
   .filter((f) => f && !GENERIC.test(f) && !HAN.test(f));
 
-/** Google Fonts' stylesheet for a family: it refuses a weight range a face does not span, so the common ones are tried in turn */
+/**
+ * Google Fonts' stylesheet for a family: it refuses (400) a weight range a face does not span, so the common ones are tried
+ * in turn, and undefined when it has none of them. A failure to reach it throws: a reel (and a video, made once) must not
+ * quietly draw in a fallback face
+ */
 async function googleCss(family) {
   const name = encodeURIComponent(family).replace(/%20/g, '+');
   for (const axes of [':ital,wght@0,100..900;1,100..900', ':wght@100..900', ':wght@200..900', ':wght@100..800', ':wght@200..800', ':wght@300..800', ':wght@300..700', ':wght@400..700', ':wght@400;700', '']) {
-    const res = await fetch(`https://fonts.googleapis.com/css2?family=${name}${axes}&display=block`, {headers: {'user-agent': UA}}).catch(() => undefined);
-    if (res?.ok) return res.text();
+    const res = await fetch(`https://fonts.googleapis.com/css2?family=${name}${axes}&display=block`, {headers: {'user-agent': UA}});
+    if (res.ok) return res.text();
+    if (res.status !== 400) throw new Error(`Google Fonts answers ${res.status} for ${family}`);
   }
   return undefined;
 }
@@ -57,7 +62,11 @@ async function faces(families, dir, motion) {
       const url = /url\(([^)]+)\)/.exec(block)?.[1];
       if (!url) continue;
       const file = `${family.replace(/\W+/g, '-')}-${/font-style:\s*(\w+)/.exec(block)?.[1] ?? 'normal'}-${(/font-weight:\s*([\d ]+)/.exec(block)?.[1] ?? '400').trim().replace(/\s+/g, '-')}.woff2`;
-      if (!existsSync(join(CACHE, file))) writeFileSync(join(CACHE, file), Buffer.from(await (await fetch(url, {headers: {'user-agent': UA}})).arrayBuffer()));
+      if (!existsSync(join(CACHE, file))) {
+        const res = await fetch(url, {headers: {'user-agent': UA}});
+        if (!res.ok) throw new Error(`Google Fonts answers ${res.status} for ${url}`);
+        writeFileSync(join(CACHE, file), Buffer.from(await res.arrayBuffer()));
+      }
       copyFileSync(join(CACHE, file), join(dir, 'fonts', file));
       css.push(block.replace(/url\([^)]+\)/, `url('fonts/${file}')`));
     }
