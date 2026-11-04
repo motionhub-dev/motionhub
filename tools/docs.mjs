@@ -11,23 +11,21 @@ export const DOCS = [
   {group: 'Get started', pages: [
     {slug: 'index', file: 'docs/index.md', label: 'Overview'},
     {slug: 'motion-md', file: 'docs/motion-md.md', label: 'What is MOTION.md'},
+  ]},
+  {group: 'Make a film', pages: [
     {slug: 'use', file: 'docs/use.md', label: 'Use a motion'},
-    {slug: 'cli', file: 'docs/cli.md', label: 'Command line'},
-  ]},
-  {group: 'Make and share', pages: [
-    {slug: 'contribute', file: 'CONTRIBUTING.md', label: 'Share a motion'},
-  ]},
-  {group: 'Reference', pages: [
-    {slug: 'spec', file: 'SPEC.md', label: 'Specification'},
-    {slug: 'hub', file: 'HUB.md', label: 'The hub and its files'},
-    {slug: 'skill', file: 'skills/motionhub/SKILL.md', label: 'Agent skill', title: 'Agent skill'},
-  ]},
-  {group: 'Engines', pages: [
     {slug: 'remotion', file: 'docs/remotion.md', label: 'Remotion', engine: 'Remotion'},
     {slug: 'hyperframes', file: 'docs/hyperframes.md', label: 'HyperFrames', engine: 'HyperFrames'},
-    {slug: 'remotion-binding', file: 'packages/remotion/README.md', label: 'Remotion binding'},
-    {slug: 'hyperframes-binding', file: 'packages/hyperframes/README.md', label: 'HyperFrames binding'},
-    {slug: 'runtime', file: 'packages/runtime/README.md', label: 'Runtime'},
+  ]},
+  {group: 'Share', pages: [
+    {slug: 'contribute', file: 'CONTRIBUTING.md', label: 'Share a motion', title: 'Share a motion'},
+  ]},
+  {group: 'Reference', pages: [
+    {slug: 'spec', file: 'SPEC.md', label: 'Specification', title: 'Specification'},
+    {slug: 'cli', file: 'docs/cli.md', label: 'Command line'},
+    {slug: 'remotion-binding', file: 'packages/remotion/README.md', label: '@motionhub/remotion'},
+    {slug: 'hyperframes-binding', file: 'packages/hyperframes/README.md', label: '@motionhub/hyperframes'},
+    {slug: 'runtime', file: 'packages/runtime/README.md', label: '@motionhub/runtime'},
   ]},
   {group: 'About', pages: [
     {slug: 'brand', file: 'brand/BRAND.md', label: 'Brand'},
@@ -45,7 +43,7 @@ export const twinPath = (p) => `/docs/${p.slug}.md`;
 export function readDoc(root, p) {
   const text = readFileSync(join(root, p.file), 'utf8').replace(/\r\n/g, '\n').replace(/^---\n[\s\S]*?\n---\n+/, '');
   const m = /^# (.+)\n+/.exec(text);
-  // a page may name itself (title) where its document's own heading speaks to another reader, as the skill's does
+  // a page may name itself (title) where its document's own heading speaks to another reader, as CONTRIBUTING.md's does
   return {title: p.title ?? (m ? m[1].replace(/`/g, '') : p.label), body: m ? text.slice(m[0].length) : text};
 }
 

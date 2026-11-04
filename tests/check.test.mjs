@@ -405,7 +405,7 @@ test('the guide\'s one-file example is a valid motion', () => {
 const PART = (extra = '', meta = "export const meta = {name: 'Title', purpose: 'title', line: 'A title.', fits: 'A title.', params: {}, preview: 'title.jpg'};") => `import React from 'react';\nimport {useTime} from '@motionhub/runtime';\nimport * as THREE from 'three';\nimport {helper} from './helper';\n${extra}\n${meta}\nexport default function Title() { return null; }\n`;
 function raised(extra, part = PART(), doc) {
   const dir = mkdtempSync(join(tmpdir(), 'motion-05-'));
-  cpSync(fileURLToPath(new URL('../motions/@iamsuosi/clay-world', import.meta.url)), dir, {recursive: true});
+  cpSync(fileURLToPath(new URL('../motions/@iamsuosi/lab-notebook', import.meta.url)), dir, {recursive: true});
   const manifest = JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8'));
   writeFileSync(join(dir, 'motion.json'), JSON.stringify({...manifest, spec: 'motion/0.5', ...extra}));
   rmSync(join(dir, 'react/parts'), {recursive: true});

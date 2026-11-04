@@ -51,7 +51,7 @@ Motion（风格）只管外观，不含片子：底色、配色、字体，以�
 不用安装任何东西。挑一个 motion，把下面这段话粘贴给任何能打开网址的 agent：
 
 ```text
-Read https://motionhub.dev/llms.txt, then make a film about "<你的主题>" in the motion @iamsuosi/red-pencil
+Read https://motionhub.dev/llms.txt, then make a film about "<你的主题>" in the motion @iamsuosi/lab-notebook
 ```
 
 想再省事一点，可以安装一次 skill，电脑上所有 agent 都能用：
@@ -64,15 +64,15 @@ npx skills add motionhub-dev/motions -g
 
 | 这样说 | 会发生什么 |
 |---|---|
-| `/motionhub make a film about <你的主题> in @iamsuosi/red-pencil` | agent 取回这个 motion，核对 SHA-256，完整读完 `MOTION.md` 和 `tokens.json`，再用它手头的引擎照着这个外观做片 |
-| `/motionhub make a Remotion film about <你的主题> in @iamsuosi/clay-world` | 同上，但用 Remotion，并用这个 motion 的组件和 token 来搭建 |
+| `/motionhub make a film about <你的主题> in @iamsuosi/lab-notebook` | agent 取回这个 motion，核对 SHA-256，完整读完 `MOTION.md` 和 `tokens.json`，再用它手头的引擎照着这个外观做片 |
+| `/motionhub make a Remotion film about <你的主题> in @iamsuosi/lab-notebook` | 同上，但用 Remotion，并用这个 motion 的组件和 token 来搭建 |
 | `/motionhub share this project's look as a motion` | agent 从项目里提取外观写成 motion（不带片子的故事），跑完检查后给你看结果，你同意后才开 pull request |
 
 也可以用命令行，需要 Node.js 20 或更高版本：
 
 ```sh
 npx @motionhub/cli search hand-drawn          # 搜索含有所有关键词的 motion
-npx @motionhub/cli get @iamsuosi/red-pencil   # 下载到 ./motion，并核对 SHA-256
+npx @motionhub/cli get @iamsuosi/lab-notebook   # 下载到 ./motion，并核对 SHA-256
 ```
 
 所有用法见 [Use a motion](docs/use.md)，所有命令见 [Command line](docs/cli.md)。
@@ -95,15 +95,15 @@ motions/@<scope>/<slug>/   一个 motion，id 为 @<scope>/<slug>：创作者的
 {
   "spec": "motion/0.4",
   "scope": "iamsuosi",
-  "slug": "red-pencil",
-  "version": "1.0.5",
-  "name": {"en": "Red Pencil", "zh-CN": "红笔批注"},
-  "line": {"en": "A printed page marked up in red as it is read: figures circled, wrong sums struck and corrected, verdicts written in the margin."},
+  "slug": "lab-notebook",
+  "version": "1.1.0",
+  "name": {"en": "Lab Notebook", "zh-CN": "实验手记"},
+  "line": {"en": "A page of a squared notebook where the diagram is drawn stroke by stroke as it is explained, labelled by hand, the result boxed in red."},
   "authors": [{"name": "SuoSi", "github": "iamsuosi"}],
   "license": {"text": "CC-BY-4.0", "code": "MIT"},
   "lang": "en",
-  "tags": ["hand-drawn", "light"],
-  "fit": {"kind": "general", "for": {"en": "Checking a document line by line: what a price is made of, contract terms, claims in an ad, numbers corrected."}}
+  "tags": ["hand-drawn", "line-art", "light"],
+  "fit": {"kind": "general", "for": {"en": "How things work and what the numbers mean, worked out by hand: science and engineering principles, money and consumer explainers, comparisons and step-by-step reasoning.", "zh-CN": "手算推导的讲解：理工原理、财经与消费类解释、对比和分步推理。"}, "not": {"en": "Stories carried by people and places: it has no map and no characters. Brand films.", "zh-CN": "靠人物和地点推动的故事：它没有地图，也没有角色。品牌片。"}}
 }
 ```
 

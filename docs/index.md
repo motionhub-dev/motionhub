@@ -11,7 +11,7 @@ At its heart is [`MOTION.md`](motion-md.md), an open format that works like a `S
 Pick a motion, then paste this into any agent that can open a URL, with your topic and the motion's id:
 
 ```text
-Read https://motionhub.dev/llms.txt, then make a film about "<your topic>" in the motion @iamsuosi/clay-world
+Read https://motionhub.dev/llms.txt, then make a film about "<your topic>" in the motion @iamsuosi/lab-notebook
 ```
 
 That is all. To make it shorter, install the skill once, for every agent on your computer:
@@ -23,7 +23,7 @@ npx skills add motionhub-dev/motions -g
 then ask:
 
 ```text
-/motionhub make a film about <your topic> in @iamsuosi/clay-world
+/motionhub make a film about <your topic> in @iamsuosi/lab-notebook
 ```
 
 and, to publish a look of your own:
@@ -36,7 +36,7 @@ and, to publish a look of your own:
 
 ## What a motion is made of
 
-A motion is a directory of five files, and a directory for each tool that wants ready-made pieces:
+For your own project, [one `MOTION.md`](motion-md.md#start-with-one-file) is enough: its front matter holds the name and the tokens, and the rest is the look in words. A motion in the catalogue is a directory of five files, and a directory for each tool that wants ready-made pieces:
 
 | File | What it holds |
 | --- | --- |
@@ -53,7 +53,7 @@ The [specification](../SPEC.md) says exactly what each file holds and what any t
 
 - **Make a film in a motion**: [Use a motion](use.md), with any agent, from the command line, or in Remotion or HyperFrames.
 - **Share a look of your own**: [Share a motion](../CONTRIBUTING.md) explains the pull request, what is accepted and how it is reviewed.
-- **Build a tool that reads motions**: the [specification](../SPEC.md), and [the hub](../HUB.md) for the index and the packages motionhub.dev serves.
+- **Build a tool that reads motions**: the [specification](../SPEC.md), and [`HUB.md`](../HUB.md) in the repository for the index and the packages motionhub.dev serves.
 
 ## For agents
 

@@ -5,11 +5,10 @@ import Engine from '../components/Engine.astro';
 import Agents from '../components/Agents.astro';
 import Prompt from '../components/Prompt.astro';
 import ShareCard from '../components/ShareCard.astro';
-import {ENGINE_LINKS, REPO, en, motionTree, recommended, rows, toolEngines} from '../lib/catalogue.mjs';
+import {ENGINE_LINKS, FEATURED, REPO, en, motionTree, recommended, rows, toolEngines} from '../lib/catalogue.mjs';
 
-// the looks the try card offers, far apart from each other; any that is gone is left out
-const TRY = ['@iamsuosi/clay-world', '@iamsuosi/ink-scroll', '@iamsuosi/drafting-table', '@iamsuosi/field-atlas', '@iamsuosi/lab-notebook'];
-const tries = TRY.map((id) => rows.find((r) => r.slug === id)).filter(Boolean);
+// the looks the try card offers are the featured ones; any that is gone is left out
+const tries = FEATURED.map((id) => rows.find((r) => r.slug === id)).filter(Boolean).slice(0, 5);
 if (tries.length === 0) tries.push(...rows.slice(0, 5));
 const first = tries[0];
 const engines = [...new Set(rows.flatMap((r) => r.tools.flatMap(toolEngines)))];

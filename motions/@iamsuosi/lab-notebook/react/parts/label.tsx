@@ -1,4 +1,4 @@
-import {PEN, unit, type Pen} from './pens.ts';
+import {PEN, fit, unit, written, type Pen} from './pens.ts';
 
 export const meta = {
   name: {en: 'Hand label', 'zh-CN': '手写标注'},
@@ -12,17 +12,18 @@ export const meta = {
     pen: {type: 'ink | red | pencil', default: 'ink', doc: 'which pen'},
     underline: {type: 'boolean', default: false, doc: 'a line under it, drawn after the words'},
     tilt: {type: 'degrees', default: -2, doc: 'how far it leans'},
+    width: {type: 'px', doc: 'the widest it may be: a long phrase writes smaller'},
   },
   preview: 4.3,
 };
 
-export function HandLabel({text, write = 1, size = 52, pen = 'ink', underline = false, tilt = -2}: {text: string; write?: number; size?: number; pen?: Pen; underline?: boolean; tilt?: number}) {
+export function HandLabel({text, write = 1, size = 52, pen = 'ink', underline = false, tilt = -2, width}: {width?: number; text: string; write?: number; size?: number; pen?: Pen; underline?: boolean; tilt?: number}) {
   const shown = unit(write * 1.15); // the words finish first, the underline after
   const line = unit((write - 0.85) / 0.15);
   return (
     <div style={{position: 'relative', display: 'inline-block', transform: `rotate(${tilt}deg)`, transformOrigin: 'left center'}}>
-      <div style={{fontFamily: 'var(--font-display)', fontSize: size, lineHeight: 1.25, fontWeight: 500, color: PEN[pen], whiteSpace: 'nowrap',
-        clipPath: `inset(-25% ${((1 - shown) * 100).toFixed(1)}% -25% -4%)`}}>{text}</div>
+      <div style={{fontFamily: 'var(--font-display)', fontSize: width ? fit(text, width, size) : size, lineHeight: 1.25, fontWeight: 500, color: PEN[pen], whiteSpace: 'nowrap',
+        ...written(shown)}}>{text}</div>
       {underline && line > 0 && (
         // Drawn by a clip, left to right, not by a dash: with a non-scaling stroke (which keeps it 4 px at any width) a dash is measured
         // in screen pixels, not against pathLength, and a wide label's line would break into dashes.

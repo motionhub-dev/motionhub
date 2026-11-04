@@ -42,7 +42,7 @@ A static site, rebuilt from the main branch whenever it changes and every six ho
 | `/m/<id>/<version>.tgz` | The whole motion at that version, its paths under `<id>/`, with its SHA-256 in the index. The same files always give the same bytes |
 | `/play/<id>/` | The motion's reel, playing live: its `react/reel.tsx`, its components, React and `@motionhub/runtime` in one script, with its faces. Served under a policy that lets it load nothing from anywhere else |
 | `/llms.txt` | For agents: what a motion is, how to choose one from the index and how to use it, then every docs page's Markdown twin |
-| `/docs/<page>/`, `/docs/<page>.md`, `/llms-full.txt` | The docs: the repository's own documents (`SPEC.md`, `CONTRIBUTING.md`, this file, the skill, the packages' READMEs, `brand/BRAND.md`) and the guides in `docs/`, each as a page and as Markdown, and all of them in one file. The list is `tools/docs.mjs` |
+| `/docs/<page>/`, `/docs/<page>.md`, `/llms-full.txt` | The docs: the repository's own documents (`SPEC.md`, `CONTRIBUTING.md`, the packages' READMEs, `brand/BRAND.md`) and the guides in `docs/`, each as a page and as Markdown, and all of them in one file. The list is `tools/docs.mjs` |
 
 A tool needs the index to search and one package to use a motion; it never downloads the repository. Every published package stays at its URL: the build knows only the newest versions, so the deploy adds packages and never replaces or removes one.
 
@@ -56,7 +56,7 @@ Every pull request and every push to main plays every reel (`site/player/smoke.m
 
 The gallery (`/motions/`) lists motions in a recommended order, and anyone can switch to A to Z, most downloaded or most liked. The home page shows the first ten.
 
-- First come the few motions named in `FEATURED` (`site/src/lib/catalogue.mjs`), in that order. This is the only part kept by hand: a short pick for a catalogue with little data yet.
+- First come the few motions named in `FEATURED` (`site/src/lib/catalogue.mjs`), in that order. This is the only part kept by hand: a short pick for a catalogue with little data yet, of looks that carry most subjects and cost an agent little. The home page's try card offers the same looks.
 - The rest are ordered by what they are for (`fit.kind`, SPEC.md §3): general motions first, then motions drawn over the maker's own footage, then topic motions, then motions that do not say.
 - Within a kind, a motion whose components cover more of the core purposes comes first. The core purposes are title, data, compare, steps, term, link and transition, read from each component's `meta.purpose`.
 - Motions that tie are listed A to Z.

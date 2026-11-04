@@ -58,6 +58,19 @@ test('a scoped page is served at its @ address without a redirect, and counted u
   assert.deepEqual(e.points.map((p) => p.blobs.slice(0, 2)), [['view', '@ana/red-pencil'], ['view', '@ana/red-pencil']]);
 });
 
+test('a docs page that left the site goes to its document on GitHub, and nothing else does', async () => {
+  const e = env();
+  for (const [path, to] of [
+    ['/docs/hub/', 'HUB.md'], ['/docs/hub', 'HUB.md'], ['/docs/hub.md', 'HUB.md'],
+    ['/docs/skill/', 'skills/motionhub/SKILL.md'], ['/docs/skill', 'skills/motionhub/SKILL.md'], ['/docs/skill.md', 'skills/motionhub/SKILL.md'],
+  ]) {
+    const r = await worker.fetch(req(path), e, ctx);
+    assert.equal(r.status, 301, path);
+    assert.equal(r.headers.get('location'), `https://github.com/motionhub-dev/motions/blob/main/${to}`);
+  }
+  assert.equal((await worker.fetch(req('/docs/hubs/'), e, ctx)).status, 404);
+});
+
 test('counting never fails a request', () => {
   assert.equal(count({EVENTS: {writeDataPoint() { throw new Error('down'); }}}, req('/'), 'view', 'x'), false);
   assert.equal(count({}, req('/'), 'view', 'x'), true);

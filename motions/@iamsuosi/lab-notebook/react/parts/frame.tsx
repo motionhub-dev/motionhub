@@ -1,4 +1,4 @@
-import {PEN, drawn, unit} from './pens.ts';
+import {PEN, drawn, unit, written} from './pens.ts';
 
 export const meta = {
   name: {en: 'Figure frame', 'zh-CN': '图框'},
@@ -9,9 +9,9 @@ export const meta = {
     width: {type: 'px', doc: 'the box\'s width'},
     height: {type: 'px', doc: 'the box\'s height'},
     draw: {type: 'progress', default: 1, doc: '0 to 1: how much of the box is drawn; the label is written after'},
-    label: {type: 'text', default: '', doc: 'the figure label: Fig. 1 — ice, from above'},
+    label: {type: 'text', default: '', doc: 'the figure label, written under the box, outside its height: allow 60 px: Fig. 1 — ice, from above'},
   },
-  preview: 16.6,
+  preview: 12,
 };
 
 export function Frame({width, height, draw = 1, label = ''}: {width: number; height: number; draw?: number; label?: string}) {
@@ -21,8 +21,7 @@ export function Frame({width, height, draw = 1, label = ''}: {width: number; hei
       <svg width={width} height={height} style={{position: 'absolute', left: 0, top: 0, overflow: 'visible'}}>
         <path d={`M4 6 L${width - 3} 2 L${width - 5} ${height - 3} L2 ${height - 6} Z`} fill="none" stroke={PEN.pencil} strokeWidth={3} strokeLinejoin="round" {...drawn(box)} />
       </svg>
-      {label && <div style={{position: 'absolute', left: 6, top: height + 12, fontFamily: 'var(--font-display)', fontSize: 34, color: PEN.pencil, whiteSpace: 'nowrap',
-        clipPath: `inset(-25% ${((1 - text) * 100).toFixed(1)}% -25% -4%)`}}>{label}</div>}
+      {label && <div style={{position: 'absolute', left: 6, top: height + 12, fontFamily: 'var(--font-display)', fontSize: 34, color: PEN.pencil, whiteSpace: 'nowrap', ...written(text)}}>{label}</div>}
     </div>
   );
 }

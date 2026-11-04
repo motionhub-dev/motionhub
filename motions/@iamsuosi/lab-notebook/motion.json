@@ -2,7 +2,7 @@
   "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "lab-notebook",
-  "version": "1.0.6",
+  "version": "1.1.0",
   "name": {
     "en": "Lab Notebook",
     "zh-CN": "实验手记"
@@ -29,12 +29,12 @@
   "fit": {
     "kind": "general",
     "for": {
-      "en": "How things work, worked out by hand: physics, chemistry, maths and engineering principles drawn as they are explained.",
-      "zh-CN": "理科原理与推导：物理、化学、数学、工程原理，边讲边画。"
+      "en": "How things work and what the numbers mean, worked out by hand: science and engineering principles, money and consumer explainers, comparisons and step-by-step reasoning.",
+      "zh-CN": "手算推导的讲解：理工原理、财经与消费类解释、对比和分步推理。"
     },
     "not": {
-      "en": "Brand films and stories with no mechanism to draw.",
-      "zh-CN": "品牌片，以及没有机制可画的故事。"
+      "en": "Stories carried by people and places: it has no map and no characters. Brand films.",
+      "zh-CN": "靠人物和地点推动的故事：它没有地图，也没有角色。品牌片。"
     }
   }
 }

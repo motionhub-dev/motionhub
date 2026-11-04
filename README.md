@@ -49,7 +49,7 @@ A motion holds a look and no film: its ground, colour and type, and how things a
 Nothing to install. Pick a motion, then paste this into any agent that can open a URL:
 
 ```text
-Read https://motionhub.dev/llms.txt, then make a film about "<your topic>" in the motion @iamsuosi/red-pencil
+Read https://motionhub.dev/llms.txt, then make a film about "<your topic>" in the motion @iamsuosi/lab-notebook
 ```
 
 To make it shorter, install the skill once, for every agent on your computer:
@@ -62,15 +62,15 @@ Then say what you want:
 
 | Say | What happens |
 |---|---|
-| `/motionhub make a film about <your topic> in @iamsuosi/red-pencil` | The agent fetches the motion, checks it against its SHA-256, reads `MOTION.md` and `tokens.json` whole, and makes your film in its look with whatever engine it uses |
-| `/motionhub make a Remotion film about <your topic> in @iamsuosi/clay-world` | The same, in Remotion, built from the motion's components and tokens |
+| `/motionhub make a film about <your topic> in @iamsuosi/lab-notebook` | The agent fetches the motion, checks it against its SHA-256, reads `MOTION.md` and `tokens.json` whole, and makes your film in its look with whatever engine it uses |
+| `/motionhub make a Remotion film about <your topic> in @iamsuosi/lab-notebook` | The same, in Remotion, built from the motion's components and tokens |
 | `/motionhub share this project's look as a motion` | The agent writes the motion from the project's look and never its story, runs the checks, shows you the result and opens the pull request only when you say yes |
 
 Or from the command line, with Node.js 20 or later:
 
 ```sh
 npx @motionhub/cli search hand-drawn          # motions with every word
-npx @motionhub/cli get @iamsuosi/red-pencil   # into ./motion, checked against its SHA-256
+npx @motionhub/cli get @iamsuosi/lab-notebook   # into ./motion, checked against its SHA-256
 ```
 
 [Use a motion](docs/use.md) has every way, and [Command line](docs/cli.md) every command.
@@ -93,15 +93,15 @@ motions/@<scope>/<slug>/   a motion, id @<scope>/<slug>: its creator's GitHub na
 {
   "spec": "motion/0.4",
   "scope": "iamsuosi",
-  "slug": "red-pencil",
-  "version": "1.0.5",
-  "name": {"en": "Red Pencil", "zh-CN": "红笔批注"},
-  "line": {"en": "A printed page marked up in red as it is read: figures circled, wrong sums struck and corrected, verdicts written in the margin."},
+  "slug": "lab-notebook",
+  "version": "1.1.0",
+  "name": {"en": "Lab Notebook", "zh-CN": "实验手记"},
+  "line": {"en": "A page of a squared notebook where the diagram is drawn stroke by stroke as it is explained, labelled by hand, the result boxed in red."},
   "authors": [{"name": "SuoSi", "github": "iamsuosi"}],
   "license": {"text": "CC-BY-4.0", "code": "MIT"},
   "lang": "en",
-  "tags": ["hand-drawn", "light"],
-  "fit": {"kind": "general", "for": {"en": "Checking a document line by line: what a price is made of, contract terms, claims in an ad, numbers corrected."}}
+  "tags": ["hand-drawn", "line-art", "light"],
+  "fit": {"kind": "general", "for": {"en": "How things work and what the numbers mean, worked out by hand: science and engineering principles, money and consumer explainers, comparisons and step-by-step reasoning.", "zh-CN": "手算推导的讲解：理工原理、财经与消费类解释、对比和分步推理。"}, "not": {"en": "Stories carried by people and places: it has no map and no characters. Brand films.", "zh-CN": "靠人物和地点推动的故事：它没有地图，也没有角色。品牌片。"}}
 }
 ```
 

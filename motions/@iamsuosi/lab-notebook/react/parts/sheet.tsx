@@ -1,3 +1,5 @@
+import {written} from './pens.ts';
+
 export const meta = {
   name: {en: 'Notebook sheet', 'zh-CN': '笔记本页'},
   purpose: 'ground',
@@ -5,7 +7,8 @@ export const meta = {
   fits: 'every scene; a new question is a new heading on the same page, or the page turned',
   params: {
     title: {type: 'text', default: '', doc: 'the heading, written at the top left'},
-    date: {type: 'text', default: '', doc: 'written small at the top right'},
+    date: {type: 'text', default: '', doc: 'written small at the top right; keep it short, a tab goes beside it'},
+    write: {type: 'progress', default: 1, doc: '0 to 1: how much of the heading and date is written; leave at 1 for a page already headed'},
   },
   preview: 0.5,
 };
@@ -13,7 +16,7 @@ export const meta = {
 /** Where the sheet sits on the 1920 × 1080 canvas, the grid's square, and the writing area right of the margin */
 export const SHEET = {left: 60, top: 28, right: 1860, bottom: 876, square: 40, margin: 220, area: [260, 1800] as const};
 
-export function Sheet({title = '', date = ''}: {title?: string; date?: string}) {
+export function Sheet({title = '', date = '', write = 1}: {title?: string; date?: string; write?: number}) {
   const w = SHEET.right - SHEET.left, h = SHEET.bottom - SHEET.top, s = SHEET.square, m = SHEET.margin - SHEET.left;
   const holes = Array.from({length: Math.floor((h - 80) / 150) + 1}, (_, i) => 70 + i * 150);
   return (
@@ -29,8 +32,8 @@ export function Sheet({title = '', date = ''}: {title?: string; date?: string}) 
         </svg>
         <div style={{position: 'absolute', left: SHEET.area[0] - SHEET.left, right: w - (SHEET.area[1] - SHEET.left), top: 22, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
           fontFamily: 'var(--font-display)', color: 'var(--color-text)'}}>
-          <span style={{fontSize: 46, fontWeight: 600}}>{title}</span>
-          <span style={{fontSize: 28, color: 'var(--color-muted)'}}>{date}</span>
+          <span style={{fontSize: 46, fontWeight: 600, ...written(write)}}>{title || '\u00a0'}</span>
+          <span style={{fontSize: 28, color: 'var(--color-muted)', ...written(write)}}>{date}</span>
         </div>
       </div>
     </div>
