@@ -274,6 +274,16 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
       return [back, said] as const;
     };
     const withdrawn = new Set<number>();
+    /** Pull request `n` is withdrawn: gone from In review, and every Shared row for it says so (onWithdrawn below). */
+    let sharedWithdrawn = (_n: number) => {};
+    const onWithdrawn = (n: number) => {
+      withdrawn.add(n);
+      for (const li of [...$('prs').children]) if (li.querySelector(`a[href$="/pull/${n}"]`)) li.remove();
+      count('review', $('prs').children.length);
+      $('prs-empty').hidden = $('prs').children.length > 0;
+      for (const chip of document.querySelectorAll<HTMLAnchorElement>('.pr-chip')) if (chip.href.endsWith(`/pull/${n}`)) chip.hidden = true;
+      sharedWithdrawn(n);
+    };
     /** The numbers of their open pull requests, once GitHub answers; null when it could not be asked. */
     const open = fetch('/api/me/pulls', {credentials: 'same-origin'}).then(async (r) => ({ok: r.ok, body: await r.json()})).then(({ok, body}) => {
       $('prs-wait').hidden = true;
@@ -300,13 +310,7 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
         li.append(head, steps, open);
         // one motionhub opened for them: they may take it back here, with a second click to be sure
         if (pr.shared) {
-          li.append(...withdrawButton(pr.number, () => {
-            withdrawn.add(pr.number);
-            li.remove();
-            count('review', $('prs').children.length);
-            $('prs-empty').hidden = $('prs').children.length > 0;
-            for (const chip of document.querySelectorAll<HTMLAnchorElement>('.pr-chip')) if (chip.href === pr.url) chip.hidden = true;
-          }));
+          li.append(...withdrawButton(pr.number, () => onWithdrawn(pr.number)));
         }
         list.append(li);
         // the motions it changes show it on their row
@@ -351,7 +355,24 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
         $('waiting-list').append(li);
       }
       $('submitted').hidden = mine.submitted.length === 0;
-      const rows: {li: HTMLLIElement; kind: string}[] = [];
+      const rows: {li: HTMLLIElement; kind: string; pr: number | null}[] = [];
+      let only = 'all';
+      /** The filter: closed takes in withdrawn. */
+      const filter = () => {
+        let shown = 0;
+        for (const r of rows) { const on = only === 'all' || r.kind === only || (only === 'closed' && r.kind === 'withdrawn'); r.li.hidden = !on; if (on) shown++; }
+        $('submitted-none').hidden = shown > 0 || rows.length === 0;
+      };
+      // every row of that pull request (a share again joins it), wherever the withdraw was asked
+      sharedWithdrawn = (n: number) => {
+        for (const r of rows) if (r.pr === n) {
+          r.kind = 'withdrawn';
+          const badge = r.li.querySelector('.shared-status')!;
+          badge.className = 'shared-status is-withdrawn'; badge.textContent = LABEL.withdrawn;
+          r.li.querySelectorAll('button.btn, .share-error').forEach((e) => e.remove());
+        }
+        filter();
+      };
       for (const s of mine.submitted) {
         const kind = s.status === 'withdrawn' || (s.pr && withdrawn.has(s.pr)) ? 'withdrawn' : s.published ? 'published' : !openPrs ? 'submitted' : s.pr && openPrs.has(s.pr) ? 'review' : 'closed';
         const li = document.createElement('li');
@@ -365,28 +386,16 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
         if (kind === 'published') { const a = document.createElement('a'); a.className = 'btn'; a.href = `/m/${s.motion}/`; a.textContent = 'View the motion'; acts.append(a); }
         else if (s.prUrl) { const a = document.createElement('a'); a.className = 'btn'; a.href = s.prUrl; a.textContent = 'Open on GitHub'; acts.append(a); }
         li.append(thumb(s.poster), text, badge, acts);
-        const row = {li, kind};
-        if (kind === 'review' && s.pr) {
-          const n = s.pr;
-          li.append(...withdrawButton(n, () => {
-            withdrawn.add(n);
-            badge.className = 'shared-status is-withdrawn'; badge.textContent = LABEL.withdrawn;
-            li.querySelector('.btn:not(a)')?.remove();
-            row.kind = 'withdrawn';
-            for (const p of $('prs').querySelectorAll('li')) if (p.querySelector(`a[href$="/pull/${n}"]`)) p.remove();
-          }));
-        }
+        const row = {li, kind, pr: s.pr};
+        if (kind === 'review' && s.pr) { const n = s.pr; li.append(...withdrawButton(n, () => onWithdrawn(n))); }
         rows.push(row);
         $('submitted-list').append(li);
       }
-      // the filter: closed takes in withdrawn
       const chips = [...document.querySelectorAll<HTMLButtonElement>('.shared-filter [data-show-only]')];
       for (const chip of chips) chip.addEventListener('click', () => {
-        const only = chip.dataset.showOnly!;
+        only = chip.dataset.showOnly!;
         for (const c of chips) c.setAttribute('aria-pressed', String(c === chip));
-        let shown = 0;
-        for (const r of rows) { const on = only === 'all' || r.kind === only || (only === 'closed' && r.kind === 'withdrawn'); r.li.hidden = !on; if (on) shown++; }
-        $('submitted-none').hidden = shown > 0;
+        filter();
       });
     }).catch(() => { $('shared-wait').textContent = 'motionhub could not be asked just now. Try again in a moment.'; });
 

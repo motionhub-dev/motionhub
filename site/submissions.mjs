@@ -20,7 +20,7 @@
 // submitted, and the branches of the app's pull requests that are closed.
 
 import {person, sameOrigin, sha256} from './people.mjs';
-import {PackageError, untgz} from './tar.mjs';
+import {LIMITS, PackageError, untgz} from './tar.mjs';
 import {BINARIES, commitSubmission, isText, sweepBranches, withdrawPull} from './github-app.mjs';
 
 const DAY = 86400;
@@ -187,7 +187,9 @@ async function preview(request, env, id, now) {
   const pkg = await loadPackage(env, r).catch(() => null);
   if (r.status !== 'submitted' && !pkg) return json({error: 'this share link has expired: share the motion again'}, 404);
   const published = pkg ? await publishedManifest(request, env, r.motion) : null;
-  const verdict = r.status === 'submitted' ? {may: false, why: 'This share is submitted already.'} : eligibility(me, pkg.manifest, published, await recorded(request, env));
+  const verdict = r.status === 'submitted' ? {may: false, why: 'This share is submitted already.'}
+    : r.status === 'withdrawn' ? {may: false, why: 'Its pull request was withdrawn. To submit the motion, share it again from your terminal.'}
+    : eligibility(me, pkg.manifest, published, await recorded(request, env));
   // the first person who may submit it and opens it: their page lists it as waiting
   if (verdict.may && r.status === 'uploaded') await env.DB.prepare("UPDATE submissions SET status = 'viewed', person = ? WHERE id = ? AND status = 'uploaded'").bind(me.id, id).run();
   const doc = pkg?.files.find((f) => f.path === 'MOTION.md');
@@ -200,10 +202,12 @@ async function preview(request, env, id, now) {
     changes: pkg && r.status !== 'submitted' ? await changesFrom(env, pkg, published) : null,
     motionMd: doc ? new TextDecoder().decode(doc.data.subarray(0, 64 * 1024)) : '',
     me: {login: me.login}, ...verdict,
-    pr: r.person === me.id ? r.pr : null, prUrl: r.person === me.id ? prUrl(r) : null,
+    pr: r.person === me.id && r.status === 'submitted' ? r.pr : null, prUrl: r.person === me.id && r.status === 'submitted' ? prUrl(r) : null,
   });
 }
 
+/** JSON with every object's keys in order, so a member whose keys only moved is the same. */
+const canonical = (v) => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) : x));
 const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
 
 /**
@@ -214,7 +218,8 @@ const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
 export async function changesFrom(env, pkg, published) {
   if (!published?.version) return null;
   const object = await env.PACKAGES.get(`m/${pkg.id}/${published.version}.tgz`).catch(() => null);
-  if (!object) return null;
+  // a published package is at most what a share may be: anything bigger is not read
+  if (!object || object.size > LIMITS.packed) return null;
   let entries;
   try { entries = await untgz(new Uint8Array(await object.arrayBuffer())); } catch { return null; }
   const was = new Map(entries.filter((e) => e.path.startsWith(`${pkg.id}/`)).map((e) => [e.path.slice(pkg.id.length + 1), e.data]));
@@ -223,7 +228,7 @@ export async function changesFrom(env, pkg, published) {
   let members = [];
   try {
     const before = JSON.parse(new TextDecoder().decode(was.get('motion.json')));
-    members = [...new Set([...Object.keys(before), ...Object.keys(pkg.manifest)])].filter((k) => JSON.stringify(before[k]) !== JSON.stringify(pkg.manifest[k])).sort();
+    members = [...new Set([...Object.keys(before), ...Object.keys(pkg.manifest)])].filter((k) => canonical(before[k]) !== canonical(pkg.manifest[k])).sort();
   } catch {}
   return {base: published.version, files, members};
 }
@@ -243,13 +248,15 @@ async function onSite(request, env) {
 async function myShares(request, env, now) {
   const me = await person(request, env, now);
   if (!me) return json({error: 'sign in to see your shares'}, 401);
-  const {results} = await env.DB.prepare("SELECT id, motion, version, status, pr, created_at, dco_at, expires_at FROM submissions WHERE person = ? AND status IN ('viewed', 'submitted', 'withdrawn') ORDER BY created_at DESC LIMIT 100").bind(me.id).all();
+  if (!env.DB) return json({waiting: [], submitted: []});
+  // one being submitted right now (or stopped while it was) waits with the rest: its page says where it stands
+  const {results} = await env.DB.prepare("SELECT id, motion, version, status, pr, created_at, dco_at, expires_at FROM submissions WHERE person = ? AND status IN ('viewed', 'submitting', 'submitted', 'withdrawn') ORDER BY created_at DESC LIMIT 100").bind(me.id).all();
   const site = await onSite(request, env);
   const at = Math.floor(now / 1000);
   const about = (r) => ({id: r.id, motion: r.motion, version: r.version, name: site.get(r.motion)?.name ?? null, poster: site.get(r.motion)?.poster ?? null});
   return json({
-    waiting: results.filter((r) => r.status === 'viewed' && r.expires_at > at).map((r) => ({...about(r), url: `/share/${r.id}`, created: new Date(r.created_at * 1000).toISOString(), expires: new Date(r.expires_at * 1000).toISOString()})),
-    submitted: results.filter((r) => r.status !== 'viewed').map((r) => {
+    waiting: results.filter((r) => (r.status === 'viewed' || r.status === 'submitting') && r.expires_at > at).map((r) => ({...about(r), url: `/share/${r.id}`, created: new Date(r.created_at * 1000).toISOString(), expires: new Date(r.expires_at * 1000).toISOString()})),
+    submitted: results.filter((r) => r.status === 'submitted' || r.status === 'withdrawn').map((r) => {
       const now = site.get(r.motion)?.version;
       return {...about(r), status: r.status, pr: r.pr, prUrl: prUrl(r), at: new Date((r.dco_at ?? r.created_at) * 1000).toISOString(), published: Boolean(now) && compareVersions(now, r.version) >= 0};
     }),
