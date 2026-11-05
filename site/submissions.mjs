@@ -14,6 +14,7 @@
 //   GET  /api/submissions/<id>/files/<path> signed in: one of its files, to look at, never to run
 //   POST /api/submissions/<id>/submit       signed in, from this site: {code, mine, dco} → {pr, prUrl}
 //   POST /api/me/pulls/<n>/withdraw         signed in, from this site: closes a pull request the app opened for them
+//   GET  /api/me/shares                     signed in: the shares they opened, waiting and submitted, for their page
 //
 // Once a day (worker.mjs, scheduled) sweep() lets go of what is past its day: the packages, the shares never
 // submitted, and the branches of the app's pull requests that are closed.
@@ -182,10 +183,11 @@ async function preview(request, env, id, now) {
   if (!me) return json({error: 'sign in with GitHub to see this share'}, 401);
   const r = await row(env, id);
   if (!r || expired(r, now)) return json({error: 'this share link has expired or does not exist: share the motion again'}, 404);
-  const pkg = r.status === 'submitted' ? null : await loadPackage(env, r);
+  // a submitted share's package may be gone already (the daily sweep): the page then shows what the record keeps
+  const pkg = await loadPackage(env, r).catch(() => null);
   if (r.status !== 'submitted' && !pkg) return json({error: 'this share link has expired: share the motion again'}, 404);
   const published = pkg ? await publishedManifest(request, env, r.motion) : null;
-  const verdict = pkg ? eligibility(me, pkg.manifest, published, await recorded(request, env)) : {may: false, why: 'This share is submitted already.'};
+  const verdict = r.status === 'submitted' ? {may: false, why: 'This share is submitted already.'} : eligibility(me, pkg.manifest, published, await recorded(request, env));
   // the first person who may submit it and opens it: their page lists it as waiting
   if (verdict.may && r.status === 'uploaded') await env.DB.prepare("UPDATE submissions SET status = 'viewed', person = ? WHERE id = ? AND status = 'uploaded'").bind(me.id, id).run();
   const doc = pkg?.files.find((f) => f.path === 'MOTION.md');
@@ -195,9 +197,62 @@ async function preview(request, env, id, now) {
     name: pkg?.manifest.name ?? null, line: pkg?.manifest.line ?? null, authors: pkg?.manifest.authors ?? [],
     published: published ? published.version : null,
     files: pkg ? pkg.files.map((f) => ({path: f.path, bytes: f.data.length})) : [],
+    changes: pkg && r.status !== 'submitted' ? await changesFrom(env, pkg, published) : null,
     motionMd: doc ? new TextDecoder().decode(doc.data.subarray(0, 64 * 1024)) : '',
     me: {login: me.login}, ...verdict,
     pr: r.person === me.id ? r.pr : null, prUrl: r.person === me.id ? prUrl(r) : null,
+  });
+}
+
+const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+
+/**
+ * What a share changes from the version published now ({base, files, members}): each file changed, added, removed
+ * or the same, and the members of motion.json that differ. Null for a new motion, or when the published package
+ * cannot be read (the page then lists the files alone).
+ */
+export async function changesFrom(env, pkg, published) {
+  if (!published?.version) return null;
+  const object = await env.PACKAGES.get(`m/${pkg.id}/${published.version}.tgz`).catch(() => null);
+  if (!object) return null;
+  let entries;
+  try { entries = await untgz(new Uint8Array(await object.arrayBuffer())); } catch { return null; }
+  const was = new Map(entries.filter((e) => e.path.startsWith(`${pkg.id}/`)).map((e) => [e.path.slice(pkg.id.length + 1), e.data]));
+  const files = pkg.files.map((f) => ({path: f.path, bytes: f.data.length, change: !was.has(f.path) ? 'added' : same(f.data, was.get(f.path)) ? 'same' : 'changed'}));
+  for (const [path, data] of was) if (!pkg.files.some((f) => f.path === path)) files.push({path, bytes: data.length, change: 'removed'});
+  let members = [];
+  try {
+    const before = JSON.parse(new TextDecoder().decode(was.get('motion.json')));
+    members = [...new Set([...Object.keys(before), ...Object.keys(pkg.manifest)])].filter((k) => JSON.stringify(before[k]) !== JSON.stringify(pkg.manifest[k])).sort();
+  } catch {}
+  return {base: published.version, files, members};
+}
+
+/** The motions on the site, by id: {version, name, poster} (api/motions.json, written by tools/build.mjs). */
+async function onSite(request, env) {
+  const r = await env.ASSETS.fetch(new Request(new URL('/api/motions.json', request.url))).catch(() => undefined);
+  const body = r?.ok ? await r.json().catch(() => ({})) : {};
+  return new Map((body.motions ?? []).map((m) => [m.slug, {version: m.version, name: m.name, poster: m.poster}]));
+}
+
+/**
+ * GET /api/me/shares: the shares this person opened, newest first. Waiting ones (opened, not submitted, the link still
+ * good) and submitted ones, each with its pull request, whether it was withdrawn, and whether its version (or a
+ * later one) is published now. Whether a pull request is still open is GitHub's: the page has it from /api/me/pulls.
+ */
+async function myShares(request, env, now) {
+  const me = await person(request, env, now);
+  if (!me) return json({error: 'sign in to see your shares'}, 401);
+  const {results} = await env.DB.prepare("SELECT id, motion, version, status, pr, created_at, dco_at, expires_at FROM submissions WHERE person = ? AND status IN ('viewed', 'submitted', 'withdrawn') ORDER BY created_at DESC LIMIT 100").bind(me.id).all();
+  const site = await onSite(request, env);
+  const at = Math.floor(now / 1000);
+  const about = (r) => ({id: r.id, motion: r.motion, version: r.version, name: site.get(r.motion)?.name ?? null, poster: site.get(r.motion)?.poster ?? null});
+  return json({
+    waiting: results.filter((r) => r.status === 'viewed' && r.expires_at > at).map((r) => ({...about(r), url: `/share/${r.id}`, created: new Date(r.created_at * 1000).toISOString(), expires: new Date(r.expires_at * 1000).toISOString()})),
+    submitted: results.filter((r) => r.status !== 'viewed').map((r) => {
+      const now = site.get(r.motion)?.version;
+      return {...about(r), status: r.status, pr: r.pr, prUrl: prUrl(r), at: new Date((r.dco_at ?? r.created_at) * 1000).toISOString(), published: Boolean(now) && compareVersions(now, r.version) >= 0};
+    }),
   });
 }
 
@@ -265,13 +320,6 @@ async function submit(request, env, id, now) {
   return json({pr: done.pr, prUrl: done.url, added: done.added});
 }
 
-/** The shares this person opened and has not submitted yet, newest first: for their page (/you/). */
-export async function waiting(env, me, now = Date.now()) {
-  if (!env.DB) return [];
-  const {results} = await env.DB.prepare("SELECT id, motion, version, expires_at FROM submissions WHERE person = ? AND status = 'viewed' AND expires_at > ? ORDER BY created_at DESC LIMIT 10").bind(me.id, Math.floor(now / 1000)).all();
-  return results.map((r) => ({id: r.id, motion: r.motion, version: r.version, url: `/share/${r.id}`, expires: new Date(r.expires_at * 1000).toISOString()}));
-}
-
 /** The pull requests the app opened for this person, by number: motionhub's own record of them. */
 export async function sharedPulls(env, me) {
   if (!env.DB) return new Set();
@@ -328,6 +376,7 @@ export async function submissions(request, env, now = Date.now()) {
   const m = request.method;
   const out = /^\/api\/me\/pulls\/([1-9]\d{0,8})\/withdraw$/.exec(pathname);
   if (out) return m === 'POST' ? withdraw(request, env, Number(out[1]), now) : json({error: 'method not allowed'}, 405);
+  if (pathname === '/api/me/shares') return m === 'GET' ? myShares(request, env, now) : json({error: 'method not allowed'}, 405);
   if (pathname === '/api/submissions') return m === 'POST' ? upload(request, env, now) : json({error: 'method not allowed'}, 405);
   const one = /^\/api\/submissions\/([A-Za-z0-9_-]{22})(?:\/(submit|files\/(.+)))?$/.exec(pathname);
   if (!one) return pathname.startsWith('/api/submissions/') ? json({error: 'no such share'}, 404) : null;

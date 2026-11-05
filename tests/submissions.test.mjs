@@ -68,6 +68,7 @@ beforeEach(() => {
       const path = new URL(r.url).pathname;
       if (path === '/api/accounts.json') return Response.json({iamsuosi: 264293696});
       if (path === '/m/%40ana/ledger/motion.json' && github.published) return Response.json(github.published);
+      if (path === '/api/motions.json') return Response.json({motions: github.published ? [{slug: '@ana/ledger', version: github.published.version, name: {en: 'Ledger'}, poster: '/m/@ana/ledger/poster.jpg'}] : []});
       return new Response('', {status: 404});
     }},
   };
@@ -387,14 +388,45 @@ test('the daily sweep lets go of old packages, shares never submitted, and close
   assert.deepEqual(github.calls.filter((c) => c.method === 'DELETE').map((c) => c.path), ['/repos/motionhub-dev/motions/git/refs/heads/share/ana/ledger/42']);
 });
 
-test('the shares a person opened and has not submitted wait on their page', async () => {
+test('a person\'s shares: waiting ones, and submitted ones with their pull request and whether they are published', async () => {
   const ana = await session(42, 'ana');
+  const mine = (cookie = ana) => call('GET', '/api/me/shares', {cookie});
+  assert.equal((await mine(null)).status, 401);
   const share = await (await upload()).json();
   const unseen = await (await upload()).json();
   await call('GET', `/api/submissions/${share.id}`, {cookie: ana});
-  const {waiting} = await import('../site/submissions.mjs');
-  assert.deepEqual((await waiting(env, {id: 42})).map((w) => [w.id, w.url]), [[share.id, `/share/${share.id}`]], `${unseen.id}, never opened, is no one's yet`);
-  assert.deepEqual(await waiting(env, {id: 8}), []);
+  let body = await (await mine()).json();
+  assert.deepEqual(body.waiting.map((w) => [w.id, w.url, w.motion, w.version]), [[share.id, `/share/${share.id}`, '@ana/ledger', '1.0.0']], `${unseen.id}, never opened, is no one's yet`);
+  assert.deepEqual(body.submitted, []);
+  assert.equal((await submit(share.id, ana, {code: share.code, mine: true, dco: true})).status, 200);
+  body = await (await mine()).json();
+  assert.deepEqual(body.waiting, []);
+  assert.deepEqual(body.submitted.map((s) => [s.id, s.status, s.pr, s.published]), [[share.id, 'submitted', 77, false]]);
+  github.published = {version: '1.0.0', authors: [{name: 'Ana', github: 'ana'}]};
+  body = await (await mine()).json();
+  assert.deepEqual(body.submitted.map((s) => [s.published, s.name?.en, s.poster]), [[true, 'Ledger', '/m/@ana/ledger/poster.jpg']], 'merged and on the site');
+  assert.deepEqual(await (await mine(await session(8, 'bo'))).json(), {waiting: [], submitted: []}, 'no one else\'s');
+});
+
+test('a new version shows what it changes from the published one', async () => {
+  github.published = {version: '1.0.0', authors: [{name: 'Ana', github: 'ana'}]};
+  // the published package, as the build writes it to R2
+  const old = manifest();
+  store.set('m/@ana/ledger/1.0.0.tgz', tgz([
+    ['@ana/ledger/MOTION.md', Buffer.from('# Ledger\n\n<script>alert(1)</script>\n')],
+    ['@ana/ledger/gone.txt', Buffer.from('x')],
+    ['@ana/ledger/motion.json', Buffer.from(JSON.stringify(old))],
+    ['@ana/ledger/poster.jpg', Buffer.from([1, 2, 3])],
+  ]));
+  const ana = await session(42, 'ana');
+  const share = await (await upload(pkg(manifest({version: '1.0.1'}), [['@ana/ledger/new.txt', Buffer.from('n')]]))).json();
+  const view = await (await call('GET', `/api/submissions/${share.id}`, {cookie: ana})).json();
+  assert.equal(view.changes.base, '1.0.0');
+  assert.deepEqual(view.changes.members, ['version']);
+  assert.deepEqual(Object.fromEntries(view.changes.files.map((f) => [f.path, f.change])), {'MOTION.md': 'same', 'motion.json': 'changed', 'poster.jpg': 'changed', 'new.txt': 'added', 'gone.txt': 'removed'});
+  github.published = null;
+  const fresh = await (await upload()).json();
+  assert.equal((await (await call('GET', `/api/submissions/${fresh.id}`, {cookie: ana})).json()).changes, null, 'a new motion changes nothing published');
 });
 
 test('a text file goes to GitHub byte for byte, a byte-order mark included', async () => {
