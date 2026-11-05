@@ -583,9 +583,9 @@ pre { margin: 0; padding: 12px 14px; background: var(--color-code); color: var(-
   .macts { order: 4; margin-left: auto; }
 }
 
-/* a share's page (/share/<id>) */
-.share { max-width: 860px; margin: 0 auto; padding: 24px 0 48px; display: flex; flex-direction: column; gap: 16px; }
-.share .note { margin: 0; font-size: var(--size-sm); color: var(--color-muted); }
+/* a share's page (/share/<id>): .share-page, as .share is the header's button */
+.share-page { max-width: 860px; margin: 0 auto; padding: 24px 0 48px; display: flex; flex-direction: column; gap: 16px; }
+.share-page .note { margin: 0; font-size: var(--size-sm); color: var(--color-muted); }
 .share-body { display: flex; flex-direction: column; gap: 16px; }
 .share-warn { margin: 0; padding: 10px 14px; border: 1px solid var(--color-line); border-radius: var(--radius-lg); background: var(--color-surface); font-size: var(--size-sm); color: var(--color-text); }
 .share-head { display: flex; flex-wrap: wrap; gap: 16px 20px; align-items: flex-start; }

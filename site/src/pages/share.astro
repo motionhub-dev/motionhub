@@ -8,7 +8,7 @@ import Base from '../layouts/Base.astro';
 <Base title="Share a motion: motionhub" description="Check a motion you shared from your terminal and open its pull request." path="/share/">
   <meta slot="head" name="robots" content="noindex">
 
-  <div class="share" id="share" data-state="loading">
+  <div class="share-page" id="share" data-state="loading">
     <p class="note" data-show="loading">Loading the share…</p>
 
     <section class="you-out" data-show="out" hidden>
@@ -57,8 +57,8 @@ import Base from '../layouts/Base.astro';
         <label class="share-code">The code your terminal shows for this share
           <input id="share-code" name="code" autocomplete="off" spellcheck="false" placeholder="WORD-00" required>
         </label>
-        <label class="share-check"><input type="checkbox" id="share-mine" required> I started this share myself, from my own project, just now.</label>
-        <label class="share-check"><input type="checkbox" id="share-dco" required> I certify the <a href="https://developercertificate.org" target="_blank" rel="noopener">Developer Certificate of Origin 1.1</a> for this motion: I have the right to contribute it under its licence. My GitHub name goes on the commit, signed off.</label>
+        <label class="share-check"><input type="checkbox" id="share-mine" required><span>I started this share myself, from my own project, just now.</span></label>
+        <label class="share-check"><input type="checkbox" id="share-dco" required><span>I certify the <a href="https://developercertificate.org" target="_blank" rel="noopener">Developer Certificate of Origin 1.1</a> for this motion: I have the right to contribute it under its licence. My GitHub name goes on the commit, signed off.</span></label>
         <p class="share-error" id="share-error" role="alert" hidden></p>
         <button type="submit" class="btn accent" id="share-go">Open the pull request</button>
         <p class="note">motionhub's GitHub App opens it on github.com/motionhub-dev/motions as your contribution. It is checked and reviewed there, then a maintainer merges it.</p>
