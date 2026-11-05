@@ -40,7 +40,7 @@ Made a film whose look others should have? With the skill installed, ask your ag
 /motionhub share this project's look as a motion
 ```
 
-It writes the motion as `@<your GitHub login>/<slug>`, takes the look from the project and never the film's story, runs the checks the pull request will run, shows you the result and opens the pull request only when you say yes. [Share a motion](../CONTRIBUTING.md) has the rules it follows and the commands it runs.
+It writes the motion as `@<your GitHub login>/<slug>`, takes the look from the project and never the film's story, runs the checks the pull request will run and shows you the result. With your yes, it gives you a link and a code: open the link, sign in with GitHub, type the code, and the pull request opens under your name. No git, GitHub CLI or token is needed, so a cloud agent can do it too. [Share a motion](../CONTRIBUTING.md) has the rules it follows and the commands it runs.
 
 ## From the command line
 

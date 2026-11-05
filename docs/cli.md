@@ -28,7 +28,7 @@ The newest version of a motion, by its id (`@iamsuosi/lab-notebook`), into `./mo
 npx @motionhub/cli init <slug> [--github <login>]
 ```
 
-A new motion `@<you>/<slug>` in `./<slug>/`, with every required file but the poster, to fill in. Your GitHub login comes from `gh`, or `--github`.
+A new motion `@<you>/<slug>` in `./<slug>/`, with every required file but the poster, to fill in. Your GitHub login comes from `--github`, or from `gh` when it is signed in.
 
 ## tokens
 
