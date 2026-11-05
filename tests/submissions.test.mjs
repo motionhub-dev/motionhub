@@ -13,9 +13,9 @@ import {DatabaseSync} from 'node:sqlite';
 import worker from '../site/worker.mjs';
 import {sha256} from '../site/people.mjs';
 import {untgz, PackageError, SEGMENT as SITE_SEGMENT} from '../site/tar.mjs';
-import {appJwt, allowed, forgetToken, pkcs8, oneLine, plain} from '../site/github-app.mjs';
+import {appJwt, allowed, forgetToken, pkcs8, oneLine, plain, BINARIES, isText} from '../site/github-app.mjs';
 import {compareVersions as siteCompare, eligibility} from '../site/submissions.mjs';
-import {compareVersions, SEGMENT} from '../tools/check.mjs';
+import {compareVersions, SEGMENT, SHARED_BINARIES, isText as checkerText} from '../tools/check.mjs';
 import {tgz} from '../tools/pack.mjs';
 import {shareLink} from '../tools/hub.mjs';
 
@@ -148,6 +148,8 @@ test('a package is read strictly: regular files at safe paths, within the limits
   await refused(rawTgz([{path: '@ana/ledger/a', data: Buffer.from('1')}, {path: '@ana/ledger/a', data: Buffer.from('2')}]), 'a name twice');
   await refused(rawTgz([{path: '@ana/ledger/A', data: Buffer.from('1')}, {path: '@ana/ledger/a', data: Buffer.from('2')}]), 'a name twice but for case');
   assert.equal(SITE_SEGMENT.source, SEGMENT.source, 'the Worker reads the names the checker allows');
+  assert.equal(BINARIES, SHARED_BINARIES, 'and takes as many files that are not text');
+  for (const b of [Buffer.from('a'), Buffer.from([0xef, 0xbb, 0xbf, 0x61]), Buffer.from([0]), Buffer.from([0xff])]) assert.equal(isText(b), checkerText(b));
   await refused(rawTgz([{path: '@ana/ledger/big', data: Buffer.alloc(3 * 1024 * 1024)}]), 'a small package that unpacks huge');
   await refused(rawTgz(Array.from({length: 4}, (_, i) => ({path: `@ana/ledger/f${i}`, data: Buffer.from('x')}))), 'too many files', {packed: 1e6, unpacked: 1e6, files: 3});
   await refused(Buffer.from('not gzip at all'), 'not gzip');
@@ -393,6 +395,14 @@ test('the shares a person opened and has not submitted wait on their page', asyn
   const {waiting} = await import('../site/submissions.mjs');
   assert.deepEqual((await waiting(env, {id: 42})).map((w) => [w.id, w.url]), [[share.id, `/share/${share.id}`]], `${unseen.id}, never opened, is no one's yet`);
   assert.deepEqual(await waiting(env, {id: 8}), []);
+});
+
+test('a text file goes to GitHub byte for byte, a byte-order mark included', async () => {
+  const ana = await session(42, 'ana');
+  const share = await (await upload(pkg(manifest(), [['@ana/ledger/react/a.css', Buffer.from('\ufeffa{}\n')]]))).json();
+  assert.equal((await submit(share.id, ana, {code: share.code, mine: true, dco: true})).status, 200);
+  const tree = github.calls.find((c) => c.method === 'POST' && c.path.endsWith('/git/trees')).body;
+  assert.equal(tree.tree.find((e) => e.path === 'motions/@ana/ledger/react/a.css').content, '\ufeffa{}\n');
 });
 
 test('an upload that is not a motion is refused, and nothing is taken before the app is set up', async () => {

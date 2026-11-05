@@ -1,22 +1,6 @@
-# What needs a maintainer's review, with the ruleset's "require review from code owners": the rules, the workflows that
-# apply them, the tools, the site and what it publishes. A pull request that adds or changes a motion, with the
-# accounts/ records it needs (which ownership.yml checks against GitHub), needs none.
-/.github/          @iamsuosi
-/tools/            @iamsuosi
-/bin/              @iamsuosi
-/packages/         @iamsuosi
-/site/             @iamsuosi
-/tests/            @iamsuosi
-/brand/            @iamsuosi
-/skills/           @iamsuosi
-/docs/             @iamsuosi
-/SPEC.md           @iamsuosi
-/CONTRIBUTING.md   @iamsuosi
-/HUB.md            @iamsuosi
-/REVIEW.md         @iamsuosi
-/CLAUDE.md         @iamsuosi
-/README.md         @iamsuosi
-/README.zh-CN.md   @iamsuosi
-/LICENSE           @iamsuosi
-/package.json      @iamsuosi
-/wrangler.jsonc    @iamsuosi
+# What needs a maintainer's review, with the ruleset's "require review from code owners": everything (the rules, the
+# workflows that apply them, the tools, the site, and any file added later) but the motions and the accounts/ records
+# they need, which ownership.yml judges against GitHub. The last matching line wins, so the two below have no owner.
+*           @iamsuosi
+/motions/
+/accounts/

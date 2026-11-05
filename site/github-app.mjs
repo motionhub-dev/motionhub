@@ -77,7 +77,7 @@ async function api(env, method, path, body, {missing = false} = {}) {
   return res.status === 204 ? null : res.json();
 }
 
-/** Files a submission may hold that are not text: each is a call to GitHub of its own, and a Worker makes only so many. */
+/** Files a submission may hold that are not text: each is a call to GitHub of its own, and a Worker makes only so many (tools/check.mjs SHARED_BINARIES, hub.share). */
 export const BINARIES = 40;
 
 /** Whether bytes read as UTF-8 text with no NUL: such a file goes into the tree as text, anything else as a blob. */
@@ -130,7 +130,7 @@ export async function commitSubmission(env, {id, manifest, published, files, me,
   for (const path of have) if (path.startsWith(`motions/${id}/`) && !now.has(path)) entries.push({path, mode: '100644', type: 'blob', sha: null});
   for (const f of files) {
     const path = `motions/${id}/${f.path}`;
-    if (isText(f.data)) entries.push({path, mode: '100644', type: 'blob', content: new TextDecoder().decode(f.data)});
+    if (isText(f.data)) entries.push({path, mode: '100644', type: 'blob', content: new TextDecoder('utf-8', {ignoreBOM: true}).decode(f.data)});
     else entries.push({path, mode: '100644', type: 'blob', sha: (await api(env, 'POST', `/repos/${REPO}/git/blobs`, {content: base64(f.data), encoding: 'base64'})).sha});
   }
   // every login the motion names, recorded once with its account's id (accounts/, CONTRIBUTING.md)
