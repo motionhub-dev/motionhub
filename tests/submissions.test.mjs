@@ -442,6 +442,24 @@ test('a new version shows what it changes from the published one', async () => {
   assert.equal((await (await call('GET', `/api/submissions/${fresh.id}`, {cookie: ana})).json()).changes, null, 'a new motion changes nothing published');
 });
 
+test('a submitted share\'s page says where its pull request stands', async () => {
+  const ana = await session(42, 'ana');
+  const share = await (await upload()).json();
+  assert.equal((await submit(share.id, ana, {code: share.code, mine: true, dco: true})).status, 200);
+  const outcome = async (cookie = ana) => (await (await call('GET', `/api/submissions/${share.id}`, {cookie})).json()).outcome;
+  github.pulls = {77: {number: 77, state: 'open', merged_at: null}};
+  assert.equal(await outcome(), 'open');
+  github.pulls[77] = {number: 77, state: 'closed', merged_at: '2026-11-05T03:00:00Z'};
+  assert.equal(await outcome(), 'merged');
+  github.pulls[77] = {number: 77, state: 'closed', merged_at: null};
+  assert.equal(await outcome(), 'closed');
+  github.published = {version: '1.0.0', authors: [{name: 'Ana', github: 'ana'}]};
+  github.calls = [];
+  assert.equal(await outcome(), 'published', 'on the site: GitHub need not be asked');
+  assert.ok(!github.calls.some((c) => c.path.endsWith('/pulls/77')));
+  assert.equal(await outcome(await session(8, 'bo')), null, 'only its person learns about it');
+});
+
 test('a text file goes to GitHub byte for byte, a byte-order mark included', async () => {
   const ana = await session(42, 'ana');
   const share = await (await upload(pkg(manifest(), [['@ana/ledger/react/a.css', Buffer.from('\ufeffa{}\n')]]))).json();

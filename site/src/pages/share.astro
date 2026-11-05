@@ -122,9 +122,9 @@ const working = [
         </ol>
       </section>
 
-      <section class="share-card share-done" id="share-done" aria-labelledby="share-done-title" hidden>
+      <section class="share-card share-done" id="share-done" aria-labelledby="share-done-title" data-outcome="open" hidden>
         <div class="share-done-head">
-          <span class="share-big-tick" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M5.5 12.5l4.2 4.2L18.5 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="share-big-tick" aria-hidden="true"><svg class="tick" width="24" height="24" viewBox="0 0 24 24"><path d="M5.5 12.5l4.2 4.2L18.5 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="cross" width="20" height="20" viewBox="0 0 20 20"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span>
           <div>
             <h2 id="share-done-title"></h2>
             <p id="share-done-sub"></p>
@@ -132,7 +132,7 @@ const working = [
         </div>
         <div class="share-done-go">
           <a class="btn primary" id="share-pr" href="/">View it on GitHub</a>
-          <a class="btn" href="/you/#shared">Follow it on your page</a>
+          <a class="btn" id="share-follow" href="/you/#shared">Follow it on your page</a>
         </div>
       </section>
 
@@ -148,10 +148,10 @@ const working = [
       <section class="share-after" id="share-after" hidden>
         <div>
           <p><strong>Change it</strong></p>
-          <p>Edit the motion, then share it again: while this pull request is open, the new version joins it.</p>
+          <p id="share-change">Edit the motion, then share it again: while this pull request is open, the new version joins it.</p>
           <code>npx @motionhub/cli share &lt;dir&gt;</code>
         </div>
-        <div>
+        <div id="share-takeback">
           <p><strong>Take it back</strong></p>
           <p>Withdraw on <a href="/you/#shared">your page</a> closes the pull request and deletes its branch.</p>
         </div>
@@ -167,7 +167,7 @@ const working = [
     name: Record<string, string> | null; line: Record<string, string> | null; authors: {name: string; github: string}[];
     published: string | null; files: {path: string; bytes: number}[]; motionMd: string; may: boolean; why?: string;
     changes: {base: string; files: Change[]; members: string[]} | null; me: {login: string};
-    pr: number | null; prUrl: string | null;
+    pr: number | null; prUrl: string | null; outcome: 'open' | 'merged' | 'closed' | 'published' | null;
   };
   const root = document.getElementById('share')!;
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -188,14 +188,31 @@ const working = [
   };
   let share: Share;
 
-  const done = (n: number, url: string) => {
+  /** The pull request `n` at `url`, and where it stands: open (just now, or as GitHub says), merged, closed, published. */
+  const done = (n: number, url: string, outcome: Share['outcome'] = 'open') => {
     for (const s of ['share-form', 'share-working', 'share-changes', 'share-no', 'share-motion']) $(s).hidden = true;
-    for (const s of ['share-done', 'share-next', 'share-after']) $(s).hidden = false;
+    const settled = outcome === 'merged' || outcome === 'published' || outcome === 'closed';
+    $('share-done').hidden = false; $('share-after').hidden = false;
+    $('share-next').hidden = settled; $('share-takeback').hidden = settled;
+    $('share-done').dataset.outcome = outcome ?? 'open';
     step(3, true);
-    const name = en(share.name) || share.motion;
-    $('share-done-title').textContent = `Pull request #${n} is open`;
-    $('share-done-sub').textContent = `${name} ${share.version} · opened by motionhub's GitHub App for @${share.me.login}`;
-    $<HTMLAnchorElement>('share-pr').href = url;
+    const name = `${en(share.name) || share.motion} ${share.version}`;
+    const page = `/m/${share.motion}/`;
+    const [title, sub] = {
+      open: [`Pull request #${n} is open`, `${name} · opened by motionhub's GitHub App for @${share.me.login}`],
+      merged: [`Pull request #${n} is merged`, `${name} goes live on motionhub.dev in a few minutes.`],
+      published: [`${name} is published`, `Pull request #${n} was merged, and it is live on motionhub.dev.`],
+      closed: [`Pull request #${n} was closed`, `Closed without merging: the comments on it say why.`],
+    }[outcome ?? 'open'];
+    $('share-done-title').textContent = title;
+    $('share-done-sub').textContent = sub;
+    const primary = $<HTMLAnchorElement>('share-pr'), follow = $<HTMLAnchorElement>('share-follow');
+    if (outcome === 'published') {
+      primary.href = page; primary.textContent = 'View the motion';
+      follow.href = url; follow.textContent = 'View the pull request';
+    } else { primary.href = url; primary.textContent = settled ? 'View the pull request' : 'View it on GitHub'; }
+    if (outcome === 'closed') $('share-change').textContent = 'Change what its comments ask for, then share it again: a new pull request opens.';
+    else if (settled) $('share-change').textContent = 'Raise its version in motion.json, then share it again: a new pull request opens.';
     $<HTMLAnchorElement>('share-live').href = `/m/${share.motion}/`;
     $<HTMLAnchorElement>('share-live').textContent = `motionhub.dev/m/${share.motion}`;
   };
@@ -253,7 +270,7 @@ const working = [
     $('share-sha').textContent = s.sha256;
     $('share-created').textContent = when(s.created);
     $('share-expires').textContent = when(s.expires);
-    if (s.pr && s.prUrl) return done(s.pr, s.prUrl);
+    if (s.pr && s.prUrl) return done(s.pr, s.prUrl, s.outcome);
     if (s.status === 'withdrawn') {
       $('share-no').hidden = false; $('share-no-do').hidden = true; $('share-changes').hidden = true;
       $('share-no-title').textContent = 'This share was withdrawn';

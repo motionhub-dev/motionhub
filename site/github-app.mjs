@@ -216,3 +216,10 @@ export async function sweepBranches(env) {
   }
   return gone;
 }
+
+/** Where pull request `n` stands on GitHub: 'open', 'merged' or 'closed' (closed without merging), or null. */
+export async function pullState(env, n) {
+  const pr = await api(env, 'GET', `/repos/${REPO}/pulls/${n}`, undefined, {missing: true}).catch(() => null);
+  if (!pr) return null;
+  return pr.merged_at ? 'merged' : pr.state === 'open' ? 'open' : 'closed';
+}

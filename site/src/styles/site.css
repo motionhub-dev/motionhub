@@ -709,6 +709,10 @@ pre { margin: 0; padding: 12px 14px; background: var(--color-code); color: var(-
 .share-no-do code { font-family: var(--font-mono); font-size: var(--size-sm); }
 .share-link { padding: 0; border: 0; background: none; font: inherit; color: var(--color-text); text-decoration: underline; cursor: pointer; }
 .share-big-tick { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: var(--radius-pill); background: var(--color-text); color: var(--color-bg); }
+.share-big-tick .cross { display: none; }
+.share-done[data-outcome="closed"] .share-big-tick { box-sizing: border-box; border: 2px solid var(--color-text); background: transparent; color: var(--color-text); }
+.share-done[data-outcome="closed"] .share-big-tick .tick { display: none; }
+.share-done[data-outcome="closed"] .share-big-tick .cross { display: block; }
 .share-done h2 { font-size: var(--size-xl); line-height: 1.2; letter-spacing: -0.01em; }
 .share-done { padding: 28px; gap: 20px; }
 .share-done-go { display: flex; flex-wrap: wrap; gap: 10px; }
