@@ -715,7 +715,6 @@ export async function checkAccounts(dir, {was, lookup} = {}) {
   return issues;
 }
 
-/** The command line: `args` as after `node tools/check.mjs`. Resolves to the exit status. */
 /**
  * The commits a pull request's list (GitHub's REST API, /pulls/<n>/commits) holds that carry no Signed-off-by line, by
  * sha. A merge commit carries none of its own and is left out.
@@ -743,6 +742,7 @@ export function submitter(commits) {
   return {id: Number(id), login};
 }
 
+/** The command line: `args` as after `node tools/check.mjs`. Resolves to the exit status. */
 export async function main(args) {
   const hub = !args.includes('--format-only');
   const value = (flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : undefined; };
