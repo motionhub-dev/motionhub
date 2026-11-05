@@ -193,7 +193,7 @@ export async function shareLink(dir, {wait = false, log = () => {}, ask = 5000, 
   const id = motionId(manifest);
   const published = (await index(base)).find((m) => m.slug === id);
   const was = published ? await (await get(`${base}/m/${id}/motion.json`)).json() : undefined;
-  const issues = checkMotion(dir, {was});
+  const issues = checkMotion(dir, {was, shared: true});
   if (issues.length) throw new Error(`${dir} does not pass the hub's checks:\n${issues.map((i) => `${i.at}  ${i.code}  ${i.message}`).join('\n')}`);
   const bytes = tgz(filesOf(dir).map((n) => [`${id}/${n}`, readFileSync(join(dir, n))]));
   if (bytes.length > 1024 * 1024) throw new Error(`${id} packs to ${bytes.length} bytes: a motion is at most 1 MB, its poster included`);

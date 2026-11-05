@@ -214,6 +214,10 @@ test('the hub\'s rules: licences, author, size, media and unsafe code', () => {
   assert.ok(hub({extra: {'react/my file.tsx': ''}}).includes('hub.path'));
   assert.ok(hub({extra: {'react/图.png': ''}}).includes('hub.path'));
   assert.ok(hub({extra: {'react/A.js': '', 'react/a.js': ''}}).includes('hub.path'));
+  // shared through motionhub.dev, at most 40 files that are not text; with --pr, any number
+  const pictures = Object.fromEntries(Array.from({length: 41}, (_, i) => [`react/p${i}.png`, Buffer.from([0x89, 0x50, 0, 1])]));
+  assert.ok(hub({extra: pictures}, {shared: true}).includes('hub.share'));
+  assert.ok(!hub({extra: pictures}).includes('hub.share'));
   assert.ok(!hub({extra: {'react/a_b-1.@x.js': ''}}).includes('hub.path'));
   const code = (src) => hub({extra: {'react/parts/a.tsx': src}, manifest: {...MANIFEST, license: {text: 'CC-BY-4.0', code: 'MIT'}}});
   for (const src of ['fetch("/x")', 'new WebSocket(u)', 'eval(s)', 'new Function("a")', 'setTimeout("go()", 1)', 'await import("./x")', 'document.cookie', 'localStorage.setItem(a, b)']) {

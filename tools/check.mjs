@@ -69,6 +69,14 @@ const FORBIDDEN_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'out', 
 export const SEGMENT = /^(?!\.+$)[A-Za-z0-9@._-]{1,100}$/;
 /** The files a motion holds at most, as its package carries them (site/tar.mjs). */
 export const MOTION_FILES = 300;
+/** The files that are not text a motion shared through motionhub.dev holds at most (site/github-app.mjs BINARIES). */
+export const SHARED_BINARIES = 40;
+
+/** Whether bytes read as UTF-8 text with no NUL, as motionhub's GitHub App commits text (site/github-app.mjs isText). */
+export function isText(data) {
+  if (data.includes(0)) return false;
+  try { new TextDecoder('utf-8', {fatal: true}).decode(data); return true; } catch { return false; }
+}
 const UNSAFE = [
   [/\bfetch\s*\(/, 'reaches the network (fetch)'],
   [/\bXMLHttpRequest\b/, 'reaches the network (XMLHttpRequest)'],
@@ -84,7 +92,7 @@ const UNSAFE = [
 ];
 
 /** Check one motion directory; returns its issues, each `{code, at, message}` with `at` relative to the directory. */
-export function checkMotion(dir, {hub = true, author, authorId, was, accounts} = {}) {
+export function checkMotion(dir, {hub = true, author, authorId, was, accounts, shared = false} = {}) {
   const issues = [];
   const add = (code, at, message) => issues.push({code, at, message});
   // a link is refused before anything is read: it could name a file outside the motion (a runner's environment, a
@@ -122,6 +130,11 @@ export function checkMotion(dir, {hub = true, author, authorId, was, accounts} =
   const who = {author, authorId: authorId === undefined || authorId === null || authorId === '' ? undefined : Number(authorId), accounts};
   if (hub) checkHub(dir, manifest, {...who, was}, add);
   if (hub && was) checkUpdate(manifest, was, who, add);
+  // shared through motionhub.dev (share without --pr), each file that is not text is a call of its own to GitHub
+  if (shared) {
+    const binary = walk(dir).filter((f) => !f.endsWith('/') && !isText(readFileSync(join(dir, f))));
+    if (binary.length > SHARED_BINARIES) add('hub.share', '.', `${binary.length} files that are not text (pictures, fonts, sounds): shared through motionhub.dev a motion holds at most ${SHARED_BINARIES}; open its pull request yourself with --pr`);
+  }
   return issues;
 }
 
