@@ -554,6 +554,7 @@ pre { margin: 0; padding: 12px 14px; background: var(--color-code); color: var(-
 .shared-v { font-family: var(--font-mono); font-size: var(--size-sm); font-weight: var(--weight-regular); color: var(--color-text-2); }
 .shared-status { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: var(--radius-pill); font-size: var(--size-xs); font-weight: var(--weight-medium); background: var(--color-surface-2); color: var(--color-text-2); }
 .shared-status.is-review { box-sizing: border-box; border: 1.5px solid var(--color-text); background: transparent; color: var(--color-text); font-weight: var(--weight-semibold); }
+.shared-status.is-merged { box-sizing: border-box; border: 1.5px dashed var(--color-text); background: transparent; color: var(--color-text); font-weight: var(--weight-semibold); }
 .shared-status.is-published { background: var(--color-text); color: var(--color-bg); font-weight: var(--weight-semibold); }
 .shared-acts { display: flex; gap: 8px; }
 .shared-list > li .share-error { flex-basis: 100%; margin: 0; }

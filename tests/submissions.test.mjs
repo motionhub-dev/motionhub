@@ -13,7 +13,7 @@ import {DatabaseSync} from 'node:sqlite';
 import worker from '../site/worker.mjs';
 import {sha256} from '../site/people.mjs';
 import {untgz, PackageError, SEGMENT as SITE_SEGMENT} from '../site/tar.mjs';
-import {appJwt, allowed, forgetToken, pkcs8, oneLine, plain, BINARIES, isText} from '../site/github-app.mjs';
+import {appJwt, allowed, forgetToken, forgetClosed, pkcs8, oneLine, plain, BINARIES, isText} from '../site/github-app.mjs';
 import {compareVersions as siteCompare, eligibility} from '../site/submissions.mjs';
 import {compareVersions, SEGMENT, SHARED_BINARIES, isText as checkerText} from '../tools/check.mjs';
 import {tgz} from '../tools/pack.mjs';
@@ -51,6 +51,7 @@ let env, realFetch, github, store, uploaded;
 const ctx = {waitUntil() {}};
 beforeEach(() => {
   forgetToken();
+  forgetClosed();
   store = new Map();
   uploaded = new Map();
   github = {calls: [], published: null, branch: null, open: null, users: {bo: {id: 8, type: 'User'}}};
@@ -403,10 +404,30 @@ test('a person\'s shares: waiting ones, and submitted ones with their pull reque
   assert.equal((await submit(share.id, ana, {code: share.code, mine: true, dco: true})).status, 200);
   body = await (await mine()).json();
   assert.deepEqual(body.waiting, []);
-  assert.deepEqual(body.submitted.map((s) => [s.id, s.status, s.pr, s.published]), [[share.id, 'submitted', 77, false]]);
+  assert.deepEqual(body.submitted.map((s) => [s.id, s.status, s.pr, s.state]), [[share.id, 'submitted', 77, null]], 'open: the page tells it from its open pull requests');
+  // merged, and the deploy not done yet: merged, not closed
+  github.closed = [{number: 77, merged_at: '2026-11-05T03:00:00Z'}];
+  forgetClosed();
+  assert.equal((await (await mine()).json()).submitted[0].state, 'merged');
+  // closed without merging
+  github.closed = [{number: 77, merged_at: null}];
+  forgetClosed();
+  assert.equal((await (await mine()).json()).submitted[0].state, 'closed');
+  github.closed = [{number: 77, merged_at: '2026-11-05T03:00:00Z'}];
+  forgetClosed();
   github.published = {version: '1.0.0', authors: [{name: 'Ana', github: 'ana'}]};
   body = await (await mine()).json();
-  assert.deepEqual(body.submitted.map((s) => [s.published, s.name?.en, s.poster]), [[true, 'Ledger', '/m/@ana/ledger/poster.jpg']], 'merged and on the site');
+  assert.deepEqual(body.submitted.map((s) => [s.state, s.name?.en, s.poster]), [['published', 'Ledger', '/m/@ana/ledger/poster.jpg']], 'merged and on the site');
+  // closed without merging, and a later version published by another pull request: still closed
+  github.published = {version: '1.0.1', authors: [{name: 'Ana', github: 'ana'}]};
+  github.closed = [{number: 77, merged_at: null}];
+  forgetClosed();
+  assert.equal((await (await mine()).json()).submitted[0].state, 'closed');
+  // its own version on the site asks GitHub nothing
+  github.published = {version: '1.0.0', authors: [{name: 'Ana', github: 'ana'}]};
+  forgetClosed(); github.calls = [];
+  assert.equal((await (await mine()).json()).submitted[0].state, 'published');
+  assert.ok(!github.calls.some((c) => c.path.includes('state=closed')));
   assert.deepEqual(await (await mine(await session(8, 'bo'))).json(), {waiting: [], submitted: []}, 'no one else\'s');
   // one stopped while GitHub was asked still waits on the page
   const stuck = await (await upload()).json();

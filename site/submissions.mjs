@@ -21,7 +21,7 @@
 
 import {person, sameOrigin, sha256} from './people.mjs';
 import {LIMITS, PackageError, untgz} from './tar.mjs';
-import {BINARIES, commitSubmission, isText, pullState, sweepBranches, withdrawPull} from './github-app.mjs';
+import {BINARIES, closedPulls, commitSubmission, isText, pullState, sweepBranches, withdrawPull} from './github-app.mjs';
 
 const DAY = 86400;
 /** Seconds after which a submit that never finished (the Worker stopped mid-way) may be tried again. */
@@ -250,9 +250,30 @@ async function onSite(request, env) {
 
 /**
  * GET /api/me/shares: the shares this person opened, newest first. Waiting ones (opened, not submitted, the link still
- * good) and submitted ones, each with its pull request, whether it was withdrawn, and whether its version (or a
- * later one) is published now. Whether a pull request is still open is GitHub's: the page has it from /api/me/pulls.
+ * good) and submitted ones, each with its pull request, whether it was withdrawn, and its `state`: published (its
+ * version is on the site, or it was merged and a later one is), merged (merged, its version not live yet: the deploy
+ * is on its way), closed (closed without merging), or null when it is neither on the site nor recently closed, which
+ * leaves open for the page to tell from /api/me/pulls.
  */
+/** Each submitted share with where it stands; GitHub is asked once, and only when a share is not settled on the site. */
+async function submittedStates(env, rows, site, about) {
+  const live = (r) => site.get(r.motion)?.version;
+  // its own version on the site settles it; anything else may be merged and on its way, or closed without merging
+  const unsettled = rows.some((r) => r.status === 'submitted' && r.pr && live(r) !== r.version);
+  const merged = unsettled && ready(env) ? await closedPulls(env).catch(() => null) : null;
+  return rows.map((r) => {
+    const now = live(r), later = Boolean(now) && compareVersions(now, r.version) >= 0;
+    let state = null;
+    if (r.status === 'submitted') {
+      if (now === r.version) state = 'published';
+      else if (merged?.has(r.pr)) state = merged.get(r.pr) ? (later ? 'published' : 'merged') : 'closed';
+      // not among the recently closed: open, or closed long ago (then a later version on the site is all there is to go on)
+      else if (later) state = 'published';
+    }
+    return {...about(r), status: r.status, pr: r.pr, prUrl: prUrl(r), at: new Date((r.dco_at ?? r.created_at) * 1000).toISOString(), state};
+  });
+}
+
 async function myShares(request, env, now) {
   const me = await person(request, env, now);
   if (!me) return json({error: 'sign in to see your shares'}, 401);
@@ -264,10 +285,7 @@ async function myShares(request, env, now) {
   const about = (r) => ({id: r.id, motion: r.motion, version: r.version, name: site.get(r.motion)?.name ?? null, poster: site.get(r.motion)?.poster ?? null});
   return json({
     waiting: results.filter((r) => (r.status === 'viewed' || r.status === 'submitting') && r.expires_at > at).map((r) => ({...about(r), url: `/share/${r.id}`, created: new Date(r.created_at * 1000).toISOString(), expires: new Date(r.expires_at * 1000).toISOString()})),
-    submitted: results.filter((r) => r.status === 'submitted' || r.status === 'withdrawn').map((r) => {
-      const now = site.get(r.motion)?.version;
-      return {...about(r), status: r.status, pr: r.pr, prUrl: prUrl(r), at: new Date((r.dco_at ?? r.created_at) * 1000).toISOString(), published: Boolean(now) && compareVersions(now, r.version) >= 0};
-    }),
+    submitted: await submittedStates(env, results.filter((r) => r.status === 'submitted' || r.status === 'withdrawn'), site, about),
   });
 }
 

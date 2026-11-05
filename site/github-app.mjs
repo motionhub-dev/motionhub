@@ -223,3 +223,19 @@ export async function pullState(env, n) {
   if (!pr) return null;
   return pr.merged_at ? 'merged' : pr.state === 'open' ? 'open' : 'closed';
 }
+
+let closed = {until: 0, merged: new Map()};
+
+/**
+ * The app's repository's recently closed pull requests (the last hundred updated), by number: whether each was merged.
+ * One call, kept a minute in this isolate: a person's page asks it only for shares that are not settled on the site.
+ */
+export async function closedPulls(env, now = Date.now()) {
+  if (closed.until > now) return closed.merged;
+  const list = await api(env, 'GET', `/repos/${REPO}/pulls?state=closed&sort=updated&direction=desc&per_page=100`);
+  closed = {until: now + 60 * 1000, merged: new Map(list.map((pr) => [pr.number, Boolean(pr.merged_at)]))};
+  return closed.merged;
+}
+
+/** Forgets the closed pull requests kept: for tests. */
+export const forgetClosed = () => { closed = {until: 0, merged: new Map()}; };
