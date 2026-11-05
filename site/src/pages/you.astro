@@ -141,18 +141,18 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
       <button type="button" role="tab" id="nv-tab-cli" aria-controls="nv-cli" aria-selected="false" tabindex="-1" data-way="cli">Command line</button>
     </div>
     <div role="tabpanel" id="nv-agent" aria-labelledby="nv-tab-agent">
-      <p>In the project where you changed the look, ask your agent. It raises the version, runs the checks and opens the pull request for you to approve.</p>
+      <p>In the project where you changed the look, ask your agent. It raises the version, runs the checks and gives you a link and a code to open the pull request with.</p>
       <pre data-copy id="nv-prompt"></pre>
       <p class="note">Needs the motionhub skill: <code>{skillInstall}</code></p>
     </div>
     <div role="tabpanel" id="nv-cli" aria-labelledby="nv-tab-cli" hidden>
       <p>Take the published files into <code>./motion</code>, change them, raise <code>version</code> in <code>motion.json</code>, then share.</p>
       <pre data-copy id="nv-cmd"></pre>
-      <p class="note">With gh signed in as you, it opens the pull request from your fork, signed off.</p>
+      <p class="note">It prints a link and a code: open the link, sign in with GitHub and type the code, and the pull request opens under your name. While your pull request for it is open, sharing again adds to it.</p>
     </div>
     <ol class="steps">
-      <li>The pull request runs the checks, then the reviewer agent leaves notes.</li>
-      <li>You follow it under In review on this page.</li>
+      <li>The pull request runs the checks, and a maintainer reviews it.</li>
+      <li>You follow it under Shared on this page.</li>
       <li>Once it is merged, the published version stays at its address for the films made in it, and the motion's page shows the new one.</li>
     </ol>
   </dialog>
@@ -446,7 +446,7 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
         $('nv-id').textContent = `${id} · published ${li.dataset.version}`;
         $<HTMLImageElement>('nv-poster').src = li.dataset.poster!;
         $('nv-prompt').textContent = `/motionhub publish a new version of ${id} from this project`;
-        $('nv-cmd').textContent = `npx @motionhub/cli get ${id}\nnpx @motionhub/cli share motion --pr`;
+        $('nv-cmd').textContent = `npx @motionhub/cli get ${id}\nnpx @motionhub/cli share motion`;
         way('agent');
         nv.showModal();
       });
