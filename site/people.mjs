@@ -51,7 +51,7 @@ export async function person(request, env, now = Date.now()) {
 }
 
 /** A request that changes something must come from a page of this site. */
-function sameOrigin(request) {
+export function sameOrigin(request) {
   const origin = request.headers.get('origin');
   return origin !== null && origin === new URL(request.url).origin;
 }
@@ -116,7 +116,8 @@ async function logout(request, env) {
 /** Everything motionhub keeps about the signed-in person, gone: their likes, sessions and record. */
 async function forget(request, env) {
   const me = await person(request, env);
-  if (me) await env.DB.batch(['likes', 'sessions'].map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE person = ?`).bind(me.id)).concat(env.DB.prepare('DELETE FROM people WHERE id = ?').bind(me.id)));
+  // their shares too (site/submissions.mjs): the pull requests already opened are GitHub's, public, and stay
+  if (me) await env.DB.batch(['likes', 'sessions', 'submissions'].map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE person = ?`).bind(me.id)).concat(env.DB.prepare('DELETE FROM people WHERE id = ?').bind(me.id)));
   return signedOut({ok: true, forgotten: Boolean(me)});
 }
 

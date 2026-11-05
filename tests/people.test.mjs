@@ -2,7 +2,7 @@
 // for D1, with GitHub's two endpoints faked.
 import {test, beforeEach, afterEach} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync, readdirSync} from 'node:fs';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {DatabaseSync} from 'node:sqlite';
@@ -15,7 +15,7 @@ const SITE = 'https://motionhub.dev';
 /** The part of D1's API the Worker uses, over node:sqlite. */
 function d1() {
   const db = new DatabaseSync(':memory:');
-  db.exec('PRAGMA foreign_keys = ON;' + readFileSync(join(ROOT, 'site/migrations/0001_people_and_likes.sql'), 'utf8'));
+  db.exec('PRAGMA foreign_keys = ON;' + readdirSync(join(ROOT, 'site/migrations')).filter((f) => f.endsWith('.sql')).sort().map((f) => readFileSync(join(ROOT, 'site/migrations', f), 'utf8')).join('\n'));
   const statement = (sql, args = []) => ({
     sql, args,
     bind: (...a) => statement(sql, a),

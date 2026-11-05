@@ -7,7 +7,7 @@
 //   motionhub get <id> [--out <dir>]
 //   motionhub init <slug> [--github <login>]
 //   motionhub tokens [MOTION.md] [--out <file>]
-//   motionhub share <dir> [--github <login>] [--pr]
+//   motionhub share <dir> [--wait] | motionhub share <dir> --pr [--github <login>]
 
 import {readFileSync} from 'node:fs';
 import {main as check} from '../tools/check.mjs';
@@ -18,7 +18,8 @@ const USAGE = `usage: motionhub check [dir or MOTION.md ...] [--format-only] [--
        motionhub get <id> [--out <dir>]
        motionhub init <slug> [--github <login>]
        motionhub tokens [MOTION.md] [--out <file>]
-       motionhub share <dir> [--github <login>] [--pr]
+       motionhub share <dir> [--wait]
+       motionhub share <dir> --pr [--github <login>]
 
 check   a motion against the motion format (https://github.com/motionhub-dev/motions/blob/main/SPEC.md) and motionhub's
         rules; with no directory, the current directory when it is a motion, else every motion under ./motions/
@@ -27,9 +28,10 @@ get     the newest version of a motion (@iamsuosi/lab-notebook) into ./motion (o
 init    a new motion @<you>/<slug> in ./<slug>/, every required file but the poster, to fill in
 tokens  a motion in one file's tokens as tokens.json, to standard output or --out; with no file, the project's
         (./MOTION.md, else ./motion/MOTION.md)
-share   a motion through the checks its pull request will run, as you (gh, or --github) and against what is published;
-        with --pr, open that pull request from your fork of github.com/motionhub-dev/motions, signed off, as the
-        account gh is signed in as`;
+share   a motion through the checks its pull request will run, against what is published, then uploaded to
+        motionhub.dev: open the link it prints, sign in with GitHub and type its code to open the pull request under
+        your name (no git, gh or token needed; --wait waits for it). With --pr, open the pull request yourself from
+        your fork of github.com/motionhub-dev/motions with git and gh, signed off, as the account gh is signed in as`;
 
 const [command, ...args] = process.argv.slice(2);
 try {

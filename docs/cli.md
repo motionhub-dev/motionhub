@@ -49,7 +49,10 @@ A motion against the [specification](../SPEC.md) and motionhub's rules. With no 
 ## share
 
 ```sh
-npx @motionhub/cli share <dir> [--github <login>] [--pr]
+npx @motionhub/cli share <dir> [--wait]
+npx @motionhub/cli share <dir> --pr [--github <login>]
 ```
 
-A motion through the checks its pull request will run, as you and against what is published. With `--pr` it opens that pull request from your fork of the repository, signed off, as the account `gh` is signed in as. [Share a motion](../CONTRIBUTING.md) explains what happens next.
+A motion through the checks its pull request will run, against what is published, then uploaded to motionhub.dev. It prints a link and a code. Open the link and sign in with GitHub; motionhub asks for no permissions. Check the motion and type the code: motionhub's GitHub App opens the pull request on your behalf, with your name on the commit, signed off. No git, `gh` or GitHub token is needed, so it works from a cloud agent too. `--wait` waits for the pull request, up to 30 minutes, and prints its address. A link works for a day. Shared again while your pull request is open, the new version is added to it.
+
+With `--pr` it opens the pull request itself, from your fork, with git and `gh`, signed off, as the account `gh` is signed in as. `--github <login>` alone runs the checks as that account and opens nothing. [Share a motion](../CONTRIBUTING.md) explains what happens next.

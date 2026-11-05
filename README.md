@@ -130,10 +130,11 @@ Made a film whose look others should have? With the skill installed, ask your ag
 By hand:
 
 ```sh
-npx @motionhub/cli init <slug>         # ./<slug>/ with every required file to fill in, scoped to you
-npx @motionhub/cli share <slug>        # the checks the pull request will run, as your GitHub account (gh)
-npx @motionhub/cli share <slug> --pr   # the pull request, from your fork, signed off
+npx @motionhub/cli init <slug> --github <you>   # ./<slug>/ with every required file to fill in, scoped to you
+npx @motionhub/cli share <slug>                 # the checks, then a link: sign in with GitHub to open the pull request
 ```
+
+No git, gh or GitHub token is needed: the link opens the pull request under your name. `--pr` opens it from your fork with gh instead.
 
 Your motion is published as `@<your GitHub name>/<slug>`, and building on someone else's motion is welcome. [CONTRIBUTING.md](CONTRIBUTING.md) has what is accepted and how it is reviewed.
 

@@ -90,11 +90,11 @@ Adapt your own copy freely for one film. A changed copy is no longer that versio
 
 To publish a look the person made (only when they ask):
 
-1. `npx @motionhub/cli init <slug>` writes `./<slug>/` with every required file to fill in, as the motion `@<their login>/<slug>`.
+1. `npx @motionhub/cli init <slug> --github <their GitHub login>` writes `./<slug>/` with every required file to fill in, as the motion `@<their login>/<slug>` (ask them for their login; with gh signed in, `--github` can be left out).
 2. Take the look from their project, never the film: the theme's colours and faces into `tokens.json` (with the durations and curves the project uses); `MOTION.md` in the five sections, saying what any film in this look shares and nothing of this film's story; `CREDITS.md` naming every face and asset with its licence; `fit` in `motion.json`, honestly: `general` only if it would carry three unrelated subjects, otherwise `topic` with the subject it is made for, or `overlay` when it draws over their own footage.
 3. `poster.jpg`: one frame of their film, a JPEG 960 to 3840 pixels wide and at most 500 KB (Remotion: `npx remotion still <composition> poster.jpg --frame=<n> --image-format=jpeg`).
 4. Optionally the reusable components, in `react/parts/` as [CONTRIBUTING.md](https://github.com/motionhub-dev/motions/blob/main/CONTRIBUTING.md) describes: React components that import only `react` and `@motionhub/runtime` (in Remotion, `useTime()` and `useVideoConfig()` from it instead of Remotion's), take what changes as props, and hold nothing of this film's story.
-5. `npx @motionhub/cli share <slug>` runs the checks its pull request will run, as the person's GitHub account. Show them the result; with their yes, `npx @motionhub/cli share <slug> --pr` opens the pull request from their fork, recording each login the motion names in `accounts/` with its GitHub id if it is not there yet.
+5. With their yes, `npx @motionhub/cli share <slug> --wait` runs the checks its pull request will run and uploads it to motionhub.dev. No git, gh or GitHub token is needed. Give the person the link and the code it prints, exactly as printed. They open the link, sign in with GitHub, check the motion, type the code and certify the DCO, and motionhub opens the pull request under their name. The command then prints the pull request's address: give them that too. Never type the code or submit on their behalf. If they would rather use their own fork with gh, `npx @motionhub/cli share <slug> --pr` does it.
 
 A motion in one file publishes the same way, from step 1. Then `npx @motionhub/cli tokens --out <slug>/tokens.json` writes its values, its `name` and `lang` go into `motion.json`, and its body goes into `<slug>/MOTION.md` without the front matter. The rest of `motion.json`, `CREDITS.md` and `poster.jpg` are filled in as below.
 
@@ -103,7 +103,9 @@ To publish a new version of a motion the person published (only when they ask, a
 1. Have the motion at hand: their copy in the project, or `npx @motionhub/cli get @<scope>/<slug>` into `./motion`.
 2. Make the change they want, from their project, holding to what `MOTION.md` says the look is; a new look is a new motion.
 3. Raise `version` in `motion.json` above the published one: the patch for a fix, the minor for something added (a component, a section), the major for a change films already made in it would not survive. A published version never changes.
-4. `npx @motionhub/cli share <dir>` runs the checks, then with their yes `npx @motionhub/cli share <dir> --pr`. Only one of the motion's authors can change it.
+4. `npx @motionhub/cli share <dir> --wait`, as above: they open the link and submit; if their pull request for it is open already, the new version is added to it. Only one of the motion's authors can change it; another author's share opens a pull request of its own. `--wait` waits up to 30 minutes.
+
+To change a motion after review notes on its pull request, read the notes (`https://api.github.com/repos/motionhub-dev/motions/issues/<n>/comments` and `.../pulls/<n>/comments`, no token needed), make the changes they ask for, and share again the same way.
 
 To build on someone else's motion, publish yours under your own scope, name theirs in `motion.json`'s `basedOn` (`[{"id": "@iamsuosi/lab-notebook", "version": "1.0.2"}]`) and say in `CREDITS.md` what you took and changed; only its authors change the original.
 

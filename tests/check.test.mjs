@@ -210,6 +210,15 @@ test('the hub\'s rules: licences, author, size, media and unsafe code', () => {
   assert.ok(hub({extra: {'react/demo/clip.mp4': 'x'}}).includes('hub.video'));
   assert.ok(hub({extra: {'react/node_modules/a.js': ''}, manifest: {...MANIFEST, license: {text: 'CC-BY-4.0', code: 'MIT'}}}).includes('hub.build'));
   assert.ok(hub({extra: {'react/big.bin': Buffer.alloc(1024 * 1024 + 1)}}).includes('hub.size'));
+  // names a package and a git tree carry the same everywhere
+  assert.ok(hub({extra: {'react/my file.tsx': ''}}).includes('hub.path'));
+  assert.ok(hub({extra: {'react/图.png': ''}}).includes('hub.path'));
+  assert.ok(hub({extra: {'react/A.js': '', 'react/a.js': ''}}).includes('hub.path'));
+  // shared through motionhub.dev, at most 40 files that are not text; with --pr, any number
+  const pictures = Object.fromEntries(Array.from({length: 41}, (_, i) => [`react/p${i}.png`, Buffer.from([0x89, 0x50, 0, 1])]));
+  assert.ok(hub({extra: pictures}, {shared: true}).includes('hub.share'));
+  assert.ok(!hub({extra: pictures}).includes('hub.share'));
+  assert.ok(!hub({extra: {'react/a_b-1.@x.js': ''}}).includes('hub.path'));
   const code = (src) => hub({extra: {'react/parts/a.tsx': src}, manifest: {...MANIFEST, license: {text: 'CC-BY-4.0', code: 'MIT'}}});
   for (const src of ['fetch("/x")', 'new WebSocket(u)', 'eval(s)', 'new Function("a")', 'setTimeout("go()", 1)', 'await import("./x")', 'document.cookie', 'localStorage.setItem(a, b)']) {
     assert.ok(code(src).includes('hub.code'), src);
@@ -524,4 +533,16 @@ test('main\'s checker on a pull request: its new accounts, links refused, motion
     assert.equal(await main(['--removed', '--was', wasFile, '--author', 'bo', '--author-id', '8']), 1);
     assert.equal(await main(['--removed', '--was', wasFile, '--author', 'tester', '--author-id', '7']), 0);
   } finally { console.log = log; }
+});
+
+test('a pull request motionhub opened for someone is theirs: every commit that names a submitter names the same one', async () => {
+  const {submitter} = await import('../tools/check.mjs');
+  const c = (message) => ({commit: {message}});
+  const by = 'Add X 1.0.0\n\nSigned-off-by: Ana <7+ana@users.noreply.github.com>\nMotionhub-Submitted-By: 7 ana\nMotionhub-Submission: abc\n';
+  assert.deepEqual(submitter([c(by), c('Fix a typo\n\nSigned-off-by: Maintainer <m@example.com>'), c(by.replace('Add X 1.0.0', 'Update X 1.0.1'))]), {id: 7, login: 'ana'}, 'a maintainer\'s commit names no one and changes nothing');
+  assert.ok(submitter([c('x')]).error, 'no line');
+  assert.ok(submitter([c(by), c(by.replace('7 ana', '8 bo'))]).error, 'two submitters');
+  assert.ok(submitter([c(by.replace('7 ana', '7 ana\nAUTHOR=evil'))]).id === 7, 'a line ends where it ends');
+  assert.ok(submitter([c(by.replace('7 ana', '0x7 ana'))]).error, 'an id is digits');
+  assert.ok(submitter([c(by.replace('7 ana', '7 an$a'))]).error, 'a login is a GitHub login');
 });

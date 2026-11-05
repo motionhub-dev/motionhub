@@ -5,7 +5,9 @@
 #
 # It judges: the accounts the pull request records (accounts/, against GitHub), the motions it adds or changes against
 # its author's account (and a change against the version on main), the published motions it takes out or moves away
-# (only one of their authors may), and a sign-off on each of its commits. Anything it cannot see whole fails.
+# (only one of their authors may), and a sign-off on each of its commits. Anything it cannot see whole fails. A pull
+# request motionhub's GitHub App opened for someone is judged as theirs (the repository variable MOTIONHUB_BOT names
+# the app's account, e.g. motionhub[bot]).
 name: ownership
 
 on:
@@ -69,11 +71,26 @@ jobs:
           if [ "$(jq -r '.[-1].sha' "$RUNNER_TEMP/commits.json")" != "$HEAD_SHA" ]; then
             echo "The pull request moved on since this run began; the run for its newest push judges it."; exit 1
           fi
+      # a pull request motionhub's GitHub App opened for someone (sharing from motionhub.dev, site/submissions.mjs) is
+      # theirs: the app names them in its commits. Taken only from the app's own pull request on a branch of this
+      # repository, which no one but the app and the maintainers can push to; anyone else's line is ignored
+      - name: Who submitted it, when motionhub opened it for them
+        if: >-
+          github.event.pull_request.user.type == 'Bot' && vars.MOTIONHUB_BOT != '' &&
+          github.event.pull_request.user.login == vars.MOTIONHUB_BOT &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          who=$(node tools/check.mjs --submitter "$RUNNER_TEMP/commits.json")
+          echo "Submitted by $who"
+          # names of their own: the job's env (AUTHOR, AUTHOR_ID) would win over GITHUB_ENV's
+          echo "SUBMITTER_ID=${who%% *}" >> "$GITHUB_ENV"
+          echo "SUBMITTER=${who#* }" >> "$GITHUB_ENV"
       - name: The accounts it records, against what GitHub says
         run: node tools/check.mjs --accounts-was accounts --accounts pr/accounts
       - name: The motions it adds, changes or takes out, against its author and what is published
         run: |
           set -f
+          author="${SUBMITTER:-$AUTHOR}" author_id="${SUBMITTER_ID:-$AUTHOR_ID}"
           status=0
           # a motion is motions/@<scope>/<slug>/ (or an old motions/<slug>/): a file anywhere else under motions/ is
           # no one's to judge, so it is refused
@@ -84,12 +101,12 @@ jobs:
           while IFS= read -r d; do
             if [ -d "pr/motions/$d" ]; then
               if [ -f "motions/$d/motion.json" ]; then
-                node tools/check.mjs "pr/motions/$d" --author "$AUTHOR" --author-id "$AUTHOR_ID" --accounts pr/accounts --was "motions/$d/motion.json" || status=1
+                node tools/check.mjs "pr/motions/$d" --author "$author" --author-id "$author_id" --accounts pr/accounts --was "motions/$d/motion.json" || status=1
               else
-                node tools/check.mjs "pr/motions/$d" --author "$AUTHOR" --author-id "$AUTHOR_ID" --accounts pr/accounts || status=1
+                node tools/check.mjs "pr/motions/$d" --author "$author" --author-id "$author_id" --accounts pr/accounts || status=1
               fi
             elif [ -f "motions/$d/motion.json" ]; then
-              node tools/check.mjs --removed --was "motions/$d/motion.json" --author "$AUTHOR" --author-id "$AUTHOR_ID" --accounts pr/accounts || status=1
+              node tools/check.mjs --removed --was "motions/$d/motion.json" --author "$author" --author-id "$author_id" --accounts pr/accounts || status=1
             elif [ -e "pr/motions/$d" ] || [ -e "motions/$d" ]; then
               echo "motions/$d is not a motion's directory."; status=1
             fi

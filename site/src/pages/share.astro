@@ -1,0 +1,131 @@
+---
+// /share/<id>: where a person submits a motion they shared from the command line (site/submissions.mjs). One static
+// page for every share; the Worker serves it at each share's address, and its script reads the id from there. It
+// shows what was uploaded, says whether this GitHub account may submit it, and asks for the code the terminal shows,
+// that the person started it, and the DCO. Then motionhub's GitHub App opens the pull request for them.
+import Base from '../layouts/Base.astro';
+---
+<Base title="Share a motion: motionhub" description="Check a motion you shared from your terminal and open its pull request." path="/share/">
+  <meta slot="head" name="robots" content="noindex">
+
+  <div class="share" id="share" data-state="loading">
+    <p class="note" data-show="loading">Loading the share…</p>
+
+    <section class="you-out" data-show="out" hidden>
+      <h1>Share a motion</h1>
+      <p>Sign in with GitHub to check this motion and open its pull request under your name. motionhub asks GitHub for no permissions.</p>
+      <a class="btn primary" id="share-signin" href="/auth/login" rel="nofollow">Sign in with GitHub</a>
+    </section>
+
+    <section class="you-out" data-show="gone" hidden>
+      <h1>This share link has expired</h1>
+      <p id="share-gone">A share link works for a day. Share the motion again from your terminal for a new one.</p>
+      <pre data-copy>npx @motionhub/cli share &lt;dir&gt;</pre>
+    </section>
+
+    <div class="share-body" data-show="ready" hidden>
+      <p class="share-warn">Only submit a share you started yourself, from your own terminal, just now. If someone sent you this link, close it.</p>
+
+      <section class="share-head">
+        <img id="share-poster" alt="" width="960" height="540">
+        <div>
+          <h1 id="share-name"></h1>
+          <p class="mid" id="share-id"></p>
+          <p class="share-line" id="share-line"></p>
+          <p class="note" id="share-kind"></p>
+          <p class="note" id="share-authors"></p>
+        </div>
+      </section>
+
+      <details class="share-files">
+        <summary>Files <span class="n" id="share-count"></span></summary>
+        <ul id="share-list"></ul>
+        <p class="note">Package SHA-256 <code id="share-sha"></code>, uploaded <span id="share-created"></span>, link valid until <span id="share-expires"></span>.</p>
+      </details>
+      <details class="share-files">
+        <summary>MOTION.md</summary>
+        <pre class="share-doc" id="share-doc"></pre>
+      </details>
+
+      <section class="share-no" id="share-no" hidden>
+        <h2>You can't submit this one</h2>
+        <p id="share-why"></p>
+      </section>
+
+      <form class="share-form" id="share-form" hidden>
+        <h2>Open the pull request</h2>
+        <label class="share-code">The code your terminal shows for this share
+          <input id="share-code" name="code" autocomplete="off" spellcheck="false" placeholder="WORD-00" required>
+        </label>
+        <label class="share-check"><input type="checkbox" id="share-mine" required> I started this share myself, from my own project, just now.</label>
+        <label class="share-check"><input type="checkbox" id="share-dco" required> I certify the <a href="https://developercertificate.org" target="_blank" rel="noopener">Developer Certificate of Origin 1.1</a> for this motion: I have the right to contribute it under its licence. My GitHub name goes on the commit, signed off.</label>
+        <p class="share-error" id="share-error" role="alert" hidden></p>
+        <button type="submit" class="btn accent" id="share-go">Open the pull request</button>
+        <p class="note">motionhub's GitHub App opens it on github.com/motionhub-dev/motions as your contribution. It is checked and reviewed there, then a maintainer merges it.</p>
+      </form>
+
+      <section class="share-done" id="share-done" hidden>
+        <h2>The pull request is open</h2>
+        <p><a id="share-pr" href="/"></a>. Follow it on <a href="/you/#review">your page</a>; to change it, share the motion again and it is added to this pull request.</p>
+      </section>
+    </div>
+  </div>
+</Base>
+
+<script>
+  type Share = {
+    id: string; status: string; motion: string; version: string; sha256: string; created: string; expires: string;
+    name: Record<string, string> | null; line: Record<string, string> | null; authors: {name: string; github: string}[];
+    published: string | null; files: {path: string; bytes: number}[]; motionMd: string; may: boolean; why?: string;
+    pr: number | null; prUrl: string | null;
+  };
+  const root = document.getElementById('share')!;
+  const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+  const show = (state: string) => { for (const el of root.querySelectorAll<HTMLElement>('[data-show]')) el.hidden = el.dataset.show !== state; };
+  const id = location.pathname.split('/').filter(Boolean)[1] ?? '';
+  const en = (l: Record<string, string> | null) => (l ? l.en ?? Object.values(l)[0] ?? '' : '');
+  const when = (iso: string) => new Date(iso).toLocaleString('en', {dateStyle: 'medium', timeStyle: 'short'});
+  const kb = (n: number) => (n < 1024 ? `${n} B` : `${(n / 1024).toFixed(1)} KB`);
+  const done = (n: number, url: string) => { $('share-form').hidden = true; $('share-done').hidden = false; const a = $<HTMLAnchorElement>('share-pr'); a.href = url; a.textContent = `Pull request #${n}`; };
+
+  fetch(`/api/submissions/${encodeURIComponent(id)}`, {credentials: 'same-origin'}).then(async (r) => {
+    if (r.status === 401) { $<HTMLAnchorElement>('share-signin').href = `/auth/login?next=${encodeURIComponent(location.pathname)}`; return show('out'); }
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) { if (body.error) $('share-gone').textContent = body.error; return show('gone'); }
+    const s = body as Share;
+    show('ready');
+    $<HTMLImageElement>('share-poster').src = `/api/submissions/${encodeURIComponent(id)}/files/poster.jpg`;
+    $('share-name').textContent = en(s.name) || s.motion;
+    $('share-id').textContent = `${s.motion} · ${s.version}`;
+    $('share-line').textContent = en(s.line);
+    $('share-kind').textContent = s.published ? `A new version: ${s.published} is published now.` : 'A new motion.';
+    $('share-authors').textContent = `By ${s.authors.map((a) => `${a.name} (@${a.github})`).join(', ')}`;
+    $('share-count').textContent = String(s.files.length);
+    for (const f of s.files) { const li = document.createElement('li'); li.textContent = `${f.path} · ${kb(f.bytes)}`; $('share-list').append(li); }
+    $('share-sha').textContent = s.sha256;
+    $('share-created').textContent = when(s.created);
+    $('share-expires').textContent = when(s.expires);
+    $('share-doc').textContent = s.motionMd;
+    if (s.pr && s.prUrl) return done(s.pr, s.prUrl);
+    if (!s.may) { $('share-no').hidden = false; $('share-why').textContent = s.why ?? ''; return; }
+    $('share-form').hidden = false;
+  }).catch(() => show('gone'));
+
+  $<HTMLFormElement>('share-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const go = $<HTMLButtonElement>('share-go'), error = $('share-error');
+    go.disabled = true; error.hidden = true;
+    go.textContent = 'Opening the pull request…';
+    try {
+      const r = await fetch(`/api/submissions/${encodeURIComponent(id)}/submit`, {
+        method: 'POST', credentials: 'same-origin', headers: {'content-type': 'application/json'},
+        body: JSON.stringify({code: $<HTMLInputElement>('share-code').value, mine: $<HTMLInputElement>('share-mine').checked, dco: $<HTMLInputElement>('share-dco').checked}),
+      });
+      const body = await r.json().catch(() => ({}));
+      if (r.ok || (r.status === 409 && body.pr)) return done(body.pr, body.prUrl);
+      error.textContent = body.error ?? 'That did not work. Try again.';
+      error.hidden = false;
+    } catch { error.textContent = 'motionhub.dev could not be reached. Try again.'; error.hidden = false; }
+    go.disabled = false; go.textContent = 'Open the pull request';
+  });
+</script>

@@ -6,6 +6,7 @@
 //   node tools/check.mjs --accounts-was <dir> [--accounts <dir>]
 //   node tools/check.mjs --removed --was <motion.json> --author <github-login> --author-id <github-id> [--accounts <dir>]
 //   node tools/check.mjs --signoff <commits.json>
+//   node tools/check.mjs --submitter <commits.json>
 //   npx @motionhub/cli check ...                  the same, from the published package (bin/motionhub.mjs)
 //
 // With no directory it checks the current directory when it is a motion, else every motion under ./motions/ (a scoped
@@ -22,7 +23,8 @@
 // must name the id GitHub gives that login now. `--accounts` names the accounts to judge by when they are not ./accounts/:
 // main's checker reading a pull request's files (.github/workflows/ownership.yml). `--signoff` names a pull request's
 // commits as GitHub lists them, each of which must be signed off. `--removed` judges a published motion a pull request
-// takes out or moves away: only one of its authors may. Exit status 1 when any issue is found.
+// takes out or moves away: only one of its authors may. `--submitter` prints the account a pull request motionhub's
+// GitHub App opened was submitted by (its commits' Motionhub-Submitted-By line). Exit status 1 when any issue is found.
 
 import {readFileSync, readdirSync, statSync, lstatSync, existsSync} from 'node:fs';
 import {join, basename, dirname, resolve, relative, extname} from 'node:path';
@@ -63,6 +65,18 @@ const VIDEO = new Set(['.mp4', '.webm', '.mov', '.mkv', '.avi', '.m4v']);
 const AUDIO = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac', '.opus']);
 const CODE = new Set(['.js', '.mjs', '.cjs', '.ts', '.tsx', '.jsx', '.mts', '.cts', '.html', '.htm', '.svg']);
 const FORBIDDEN_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'out', '.next']);
+/** A name in a motion's path, as its package carries it (site/tar.mjs): letters, digits, @ . _ - (not only dots). */
+export const SEGMENT = /^(?!\.+$)[A-Za-z0-9@._-]{1,100}$/;
+/** The files a motion holds at most, as its package carries them (site/tar.mjs). */
+export const MOTION_FILES = 300;
+/** The files that are not text a motion shared through motionhub.dev holds at most (site/github-app.mjs BINARIES). */
+export const SHARED_BINARIES = 40;
+
+/** Whether bytes read as UTF-8 text with no NUL, as motionhub's GitHub App commits text (site/github-app.mjs isText). */
+export function isText(data) {
+  if (data.includes(0)) return false;
+  try { new TextDecoder('utf-8', {fatal: true}).decode(data); return true; } catch { return false; }
+}
 const UNSAFE = [
   [/\bfetch\s*\(/, 'reaches the network (fetch)'],
   [/\bXMLHttpRequest\b/, 'reaches the network (XMLHttpRequest)'],
@@ -78,7 +92,7 @@ const UNSAFE = [
 ];
 
 /** Check one motion directory; returns its issues, each `{code, at, message}` with `at` relative to the directory. */
-export function checkMotion(dir, {hub = true, author, authorId, was, accounts} = {}) {
+export function checkMotion(dir, {hub = true, author, authorId, was, accounts, shared = false} = {}) {
   const issues = [];
   const add = (code, at, message) => issues.push({code, at, message});
   // a link is refused before anything is read: it could name a file outside the motion (a runner's environment, a
@@ -116,6 +130,11 @@ export function checkMotion(dir, {hub = true, author, authorId, was, accounts} =
   const who = {author, authorId: authorId === undefined || authorId === null || authorId === '' ? undefined : Number(authorId), accounts};
   if (hub) checkHub(dir, manifest, {...who, was}, add);
   if (hub && was) checkUpdate(manifest, was, who, add);
+  // shared through motionhub.dev (share without --pr), each file that is not text is a call of its own to GitHub
+  if (shared) {
+    const binary = walk(dir).filter((f) => !f.endsWith('/') && !isText(readFileSync(join(dir, f))));
+    if (binary.length > SHARED_BINARIES) add('hub.share', '.', `${binary.length} files that are not text (pictures, fonts, sounds): shared through motionhub.dev a motion holds at most ${SHARED_BINARIES}; open its pull request yourself with --pr`);
+  }
   return issues;
 }
 
@@ -571,8 +590,14 @@ function checkHub(dir, manifest, {author, authorId, accounts, was}, add) {
       add('hub.account', 'motion.json', `${name} is not recorded: add accounts/${name}.json with ${mine ? `{"login": "${name}", "id": ${authorId}}` : `{"login": "${name}", "id": <the numeric id of that GitHub account>}`} (npx @motionhub/cli share --pr adds it)`);
     }
   }
-  let total = 0;
+  let total = 0, count = 0;
+  const names = new Set();
   for (const rel of walk(dir)) {
+    // every name is one a package and a git tree carry the same everywhere, and no two differ only in case
+    const bad = rel.replace(/\/$/, '').split('/').find((n) => !SEGMENT.test(n));
+    if (bad !== undefined) add('hub.path', rel, `"${bad}": a file or directory in a motion is named with letters, digits, @ . _ and - only`);
+    if (names.has(rel.toLowerCase())) add('hub.path', rel, 'another file has this name but for its case');
+    names.add(rel.toLowerCase());
     if (rel.endsWith('/')) {
       const name = rel.slice(0, -1).split('/').pop();
       if (FORBIDDEN_DIRS.has(name)) add('hub.build', rel, 'no build output, dependencies or repositories in a motion');
@@ -580,6 +605,7 @@ function checkHub(dir, manifest, {author, authorId, accounts, was}, add) {
     }
     const size = statSync(join(dir, rel)).size;
     total += size;
+    count++;
     const ext = extname(rel).toLowerCase();
     if (VIDEO.has(ext)) add('hub.video', rel, 'no video in the repository: samples are published by the hub');
     if (AUDIO.has(ext) && size > AUDIO_BYTES) add('hub.audio', rel, `${size} bytes: audio is at most ${AUDIO_BYTES}`);
@@ -593,6 +619,7 @@ function checkHub(dir, manifest, {author, authorId, accounts, was}, add) {
     }
   }
   if (total > MOTION_BYTES) add('hub.size', '.', `${total} bytes: a motion is at most ${MOTION_BYTES}`);
+  if (count > MOTION_FILES) add('hub.size', '.', `${count} files: a motion holds at most ${MOTION_FILES}`);
   // faces a motion carries for its components (react/fonts/): WOFF2, each named in fonts.json and credited
   const fontDir = join(dir, 'react/fonts');
   if (existsSync(fontDir)) {
@@ -710,11 +737,35 @@ export function unsigned(commits) {
   return (Array.isArray(commits) ? commits : []).filter((c) => (c?.parents?.length ?? 1) <= 1 && !/^Signed-off-by: \S/m.test(body(c))).map((c) => c?.sha);
 }
 
+/**
+ * Who submitted a pull request that motionhub's GitHub App opened for them (site/github-app.mjs): the account its
+ * commits name in a `Motionhub-Submitted-By: <id> <login>` line. Every commit that carries one names the same account,
+ * and at least one does; else {error}. ownership.yml asks only for the app's own pull requests from this repository,
+ * whose branches no one but the app and the maintainers can push to.
+ */
+export function submitter(commits) {
+  const named = [];
+  for (const c of Array.isArray(commits) ? commits : []) {
+    for (const m of String(c?.commit?.message ?? '').matchAll(/^Motionhub-Submitted-By: (\S+) (\S+)\s*$/gm)) named.push([m[1], m[2]]);
+  }
+  if (!named.length) return {error: 'no commit says who submitted it (Motionhub-Submitted-By)'};
+  const [id, login] = named[0];
+  if (!/^[1-9]\d{0,11}$/.test(id) || !GITHUB.test(login)) return {error: `Motionhub-Submitted-By names no GitHub account: ${id} ${login}`};
+  if (named.some(([i, l]) => i !== id || l.toLowerCase() !== login.toLowerCase())) return {error: 'its commits name different submitters'};
+  return {id: Number(id), login};
+}
+
 /** The command line: `args` as after `node tools/check.mjs`. Resolves to the exit status. */
 export async function main(args) {
   const hub = !args.includes('--format-only');
   const value = (flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : undefined; };
   const author = value('--author'), authorId = value('--author-id'), wasPath = value('--was'), accountsWas = value('--accounts-was');
+  if (value('--submitter') !== undefined) {
+    const who = submitter(JSON.parse(readFileSync(value('--submitter'), 'utf8')));
+    if (who.error) { console.error(who.error); return 1; }
+    console.log(`${who.id} ${who.login}`);
+    return 0;
+  }
   if (value('--signoff') !== undefined) {
     const missing = unsigned(JSON.parse(readFileSync(value('--signoff'), 'utf8')));
     if (missing.length) console.log(`These commits have no Signed-off-by line (git commit -s):\n${missing.join('\n')}`);
@@ -738,7 +789,7 @@ export async function main(args) {
     console.log(`taken out, ${issues.length} issue(s)`);
     return issues.length ? 1 : 0;
   }
-  let dirs = args.filter((a, i) => !a.startsWith('--') && !['--author', '--author-id', '--was', '--accounts', '--accounts-was', '--signoff'].includes(args[i - 1]));
+  let dirs = args.filter((a, i) => !a.startsWith('--') && !['--author', '--author-id', '--was', '--accounts', '--accounts-was', '--signoff', '--submitter'].includes(args[i - 1]));
   let count = 0;
   if (!dirs.length) {
     const root = resolve('motions');
