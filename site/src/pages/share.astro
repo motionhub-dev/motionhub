@@ -8,7 +8,7 @@ import Base from '../layouts/Base.astro';
 const tick = '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.2l2.3 2.3 4.7-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const steps = ['Uploaded from your terminal', 'Check and confirm', 'Pull request opened'];
 const working = [
-  ['Code and certification checked', 'You may submit this motion.'],
+  ['Your code and certification', 'Checked before anything is committed.'],
   ['Committing your files', 'Signed off under your GitHub name.'],
   ['Opening the pull request', 'On github.com/motionhub-dev/motions, as your contribution.'],
 ];
@@ -77,7 +77,7 @@ const working = [
             <p id="share-why"></p>
           </div>
         </div>
-        <div class="share-no-do">
+        <div class="share-no-do" id="share-no-do">
           <p><strong>What you can do</strong></p>
           <ul>
             <li>Build on it as your own: give it your scope and a slug of your own in motion.json, name this motion in <code>basedOn</code>, then share again.</li>
@@ -194,7 +194,7 @@ const working = [
     step(3, true);
     const name = en(share.name) || share.motion;
     $('share-done-title').textContent = `Pull request #${n} is open`;
-    $('share-done-sub').textContent = `${share.published ? 'Update' : 'Add'} ${name} ${share.version} · opened by motionhub's GitHub App for @${share.me.login}`;
+    $('share-done-sub').textContent = `${name} ${share.version} · opened by motionhub's GitHub App for @${share.me.login}`;
     $<HTMLAnchorElement>('share-pr').href = url;
     $<HTMLAnchorElement>('share-live').href = `/m/${share.motion}/`;
     $<HTMLAnchorElement>('share-live').textContent = `motionhub.dev/m/${share.motion}`;
@@ -212,7 +212,7 @@ const working = [
     if (s.changes) {
       const b = el('strong', '', `${count('changed')} changed`);
       summary.append(b, ` · ${count('added')} added · ${count('removed')} removed · ${s.files.length} files, ${kb(total)}`);
-    } else summary.textContent = `A new motion · ${s.files.length} files, ${kb(total)}`;
+    } else summary.textContent = `${s.published ? `Not compared with ${s.published}` : 'A new motion'} · ${s.files.length} files, ${kb(total)}`;
     const MARK = {changed: ['M', 'changed'], added: ['A', 'added'], removed: ['D', 'removed']} as const;
     for (const f of listed) {
       const li = el('li', `is-${f.change}`);
@@ -242,9 +242,11 @@ const working = [
     $('share-name').textContent = en(s.name) || s.motion;
     $('share-id').textContent = s.motion;
     $('share-line').textContent = en(s.line);
-    $('share-kind').textContent = s.published ? 'New version' : 'New motion';
+    // a version published already is this one when the share was merged: then it is just its version
+    const newer = Boolean(s.published) && s.published !== s.version;
+    $('share-kind').textContent = newer ? 'New version' : s.published ? 'Published' : 'New motion';
     const versions = $('share-versions');
-    if (s.published) versions.append(`${s.published} → `, el('strong', '', s.version)); else versions.textContent = s.version;
+    if (newer) versions.append(`${s.published} → `, el('strong', '', s.version)); else versions.textContent = s.version;
     $('share-authors').textContent = s.authors.length ? `By ${s.authors.map((a) => `${a.name} (@${a.github})`).join(', ')}` : '';
     if (s.files.length) changes(s); else $('share-changes').hidden = true;
     $('share-doc').textContent = s.motionMd;
@@ -252,6 +254,12 @@ const working = [
     $('share-created').textContent = when(s.created);
     $('share-expires').textContent = when(s.expires);
     if (s.pr && s.prUrl) return done(s.pr, s.prUrl);
+    if (s.status === 'withdrawn') {
+      $('share-no').hidden = false; $('share-no-do').hidden = true; $('share-changes').hidden = true;
+      $('share-no-title').textContent = 'This share was withdrawn';
+      $('share-why').textContent = s.why ?? '';
+      return;
+    }
     if (!s.may) {
       $('share-no').hidden = false;
       $('share-no-title').textContent = `Signed in as @${s.me.login}, you can't submit this one`;

@@ -60,7 +60,7 @@ beforeEach(() => {
     GITHUB_APP_ID: '1234', GITHUB_APP_PRIVATE_KEY: privateKey, SUBMISSIONS: 'on',
     PACKAGES: {
       put: async (k, v) => { store.set(k, Buffer.from(v)); },
-      get: async (k) => (store.has(k) ? {arrayBuffer: async () => store.get(k)} : null),
+      get: async (k) => (store.has(k) ? {size: store.get(k).length, arrayBuffer: async () => store.get(k)} : null),
       list: async ({prefix}) => ({objects: [...store.keys()].filter((k) => k.startsWith(prefix)).map((key) => ({key, uploaded: uploaded.get(key) ?? new Date()})), truncated: false}),
       delete: async (keys) => { for (const k of [keys].flat()) store.delete(k); },
     },
@@ -355,6 +355,8 @@ test('a person withdraws a pull request motionhub opened for them, and only that
   ]);
   assert.equal(env.DB.raw.prepare('SELECT status FROM submissions WHERE id = ?').get(share.id).status, 'withdrawn');
   assert.match((await (await submit(share.id, ana, {code: share.code, mine: true, dco: true})).json()).error, /withdrawn/);
+  const again = await (await call('GET', `/api/submissions/${share.id}`, {cookie: ana})).json();
+  assert.deepEqual([again.status, again.may, again.pr], ['withdrawn', false, null], 'its page says it was withdrawn, not that it is open');
 });
 
 test('the daily sweep lets go of old packages, shares never submitted, and closed pull requests\' branches', async () => {
@@ -406,12 +408,18 @@ test('a person\'s shares: waiting ones, and submitted ones with their pull reque
   body = await (await mine()).json();
   assert.deepEqual(body.submitted.map((s) => [s.published, s.name?.en, s.poster]), [[true, 'Ledger', '/m/@ana/ledger/poster.jpg']], 'merged and on the site');
   assert.deepEqual(await (await mine(await session(8, 'bo'))).json(), {waiting: [], submitted: []}, 'no one else\'s');
+  // one stopped while GitHub was asked still waits on the page
+  const stuck = await (await upload()).json();
+  await call('GET', `/api/submissions/${stuck.id}`, {cookie: ana});
+  env.DB.raw.prepare("UPDATE submissions SET status = 'submitting', person = 42, dco_at = 1 WHERE id = ?").run(stuck.id);
+  assert.deepEqual((await (await mine()).json()).waiting.map((w) => w.id), [stuck.id]);
 });
 
 test('a new version shows what it changes from the published one', async () => {
   github.published = {version: '1.0.0', authors: [{name: 'Ana', github: 'ana'}]};
-  // the published package, as the build writes it to R2
-  const old = manifest();
+  // the published package, as the build writes it to R2, its motion.json's members in another order
+  const {authors, ...rest} = manifest();
+  const old = {authors: authors.map(({github, name}) => ({github, name})), ...rest};
   store.set('m/@ana/ledger/1.0.0.tgz', tgz([
     ['@ana/ledger/MOTION.md', Buffer.from('# Ledger\n\n<script>alert(1)</script>\n')],
     ['@ana/ledger/gone.txt', Buffer.from('x')],
@@ -422,8 +430,13 @@ test('a new version shows what it changes from the published one', async () => {
   const share = await (await upload(pkg(manifest({version: '1.0.1'}), [['@ana/ledger/new.txt', Buffer.from('n')]]))).json();
   const view = await (await call('GET', `/api/submissions/${share.id}`, {cookie: ana})).json();
   assert.equal(view.changes.base, '1.0.0');
-  assert.deepEqual(view.changes.members, ['version']);
+  assert.deepEqual(view.changes.members, ['version'], 'a member whose keys only moved is the same');
   assert.deepEqual(Object.fromEntries(view.changes.files.map((f) => [f.path, f.change])), {'MOTION.md': 'same', 'motion.json': 'changed', 'poster.jpg': 'changed', 'new.txt': 'added', 'gone.txt': 'removed'});
+  // too big to be a package: not read
+  const big = store.get('m/@ana/ledger/1.0.0.tgz');
+  store.set('m/@ana/ledger/1.0.0.tgz', Buffer.alloc(1024 * 1024 + 1));
+  assert.equal((await (await call('GET', `/api/submissions/${share.id}`, {cookie: ana})).json()).changes, null);
+  store.set('m/@ana/ledger/1.0.0.tgz', big);
   github.published = null;
   const fresh = await (await upload()).json();
   assert.equal((await (await call('GET', `/api/submissions/${fresh.id}`, {cookie: ana})).json()).changes, null, 'a new motion changes nothing published');
