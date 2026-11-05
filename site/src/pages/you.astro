@@ -41,6 +41,7 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
     <div class="tabs" role="tablist" aria-label="Yours">
       <button type="button" role="tab" id="tab-motions" aria-controls="panel-motions" aria-selected="true" data-tab="motions">Your motions <span class="n" data-n="motions"></span></button>
       <button type="button" role="tab" id="tab-review" aria-controls="panel-review" aria-selected="false" tabindex="-1" data-tab="review">In review <span class="n" data-n="review"></span></button>
+      <button type="button" role="tab" id="tab-shared" aria-controls="panel-shared" aria-selected="false" tabindex="-1" data-tab="shared">Shared <span class="n" data-n="shared"></span></button>
       <button type="button" role="tab" id="tab-liked" aria-controls="panel-liked" aria-selected="false" tabindex="-1" data-tab="liked">Liked <span class="n" data-n="liked"></span></button>
     </div>
 
@@ -83,14 +84,33 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
 
     <section class="you-panel" id="panel-review" role="tabpanel" aria-labelledby="tab-review" hidden>
       <p class="note">Your open pull requests on github.com/motionhub-dev/motions, read from GitHub when this page opens. The work happens there.</p>
-      <section class="shares" id="shares" hidden>
-        <h2>Waiting for you to submit</h2>
-        <ul class="prs" id="shares-list"></ul>
-      </section>
       <ul class="prs" id="prs"></ul>
       <p class="note" id="prs-wait">Asking GitHub…</p>
       <p class="note" id="prs-empty" hidden>Nothing in review.</p>
       <p class="note" id="prs-down" hidden>GitHub could not be asked just now. <a id="prs-all" href={`${REPO}/pulls`}>Your pull requests on GitHub</a></p>
+    </section>
+
+    <section class="you-panel" id="panel-shared" role="tabpanel" aria-labelledby="tab-shared" hidden>
+      <p class="note">Every motion you shared from your terminal, and where it stands. motionhub keeps the record; the pull requests are on GitHub.</p>
+      <section class="shared-group" id="waiting" aria-labelledby="waiting-title" hidden>
+        <h2 id="waiting-title">Waiting for you to submit</h2>
+        <ul class="shared-list waiting" id="waiting-list"></ul>
+      </section>
+      <section class="shared-group" id="submitted" aria-labelledby="submitted-title" hidden>
+        <div class="shared-head">
+          <h2 id="submitted-title">Submitted</h2>
+          <div class="shared-filter" role="group" aria-label="Show">
+            <button type="button" aria-pressed="true" data-show-only="all">All</button>
+            <button type="button" aria-pressed="false" data-show-only="review">In review</button>
+            <button type="button" aria-pressed="false" data-show-only="published">Published</button>
+            <button type="button" aria-pressed="false" data-show-only="closed">Closed</button>
+          </div>
+        </div>
+        <ul class="shared-list" id="submitted-list"></ul>
+        <p class="note" id="submitted-none" hidden>None of these.</p>
+      </section>
+      <p class="note" id="shared-wait">Asking motionhub…</p>
+      <p class="note" id="shared-empty" hidden>Nothing shared from your terminal yet. <code>npx @motionhub/cli share &lt;dir&gt;</code> starts one.</p>
     </section>
 
     <section class="you-panel" id="panel-liked" role="tabpanel" aria-labelledby="tab-liked" hidden>
@@ -156,7 +176,9 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
 <script>
   type Me = {person: {id: number; login: string; name: string | null; avatar: string | null} | null; likes?: string[]};
   type Pull = {number: number; title: string; url: string; motions: string[]; checks: 'passed' | 'failed' | 'running' | 'none'; reviewed: boolean; next: 'change' | 'checks' | 'maintainer' | 'draft'; shared?: boolean};
-  type Share = {id: string; motion: string; version: string; url: string; expires: string};
+  type Shared = {id: string; motion: string; version: string; name: Record<string, string> | null; poster: string | null};
+  type Waiting = Shared & {url: string; created: string; expires: string};
+  type Submitted = Shared & {status: 'submitted' | 'withdrawn'; pr: number | null; prUrl: string | null; at: string; published: boolean};
   const root = document.getElementById('you')!;
   const repo = root.dataset.repo!;
   const pages = JSON.parse(root.dataset.pages!) as {ids: Record<string, string>; logins: Record<string, string>};
@@ -235,28 +257,30 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
     // pull requests: GitHub's, read through the Worker
     const CHECKS = {passed: ['✓', 'Checks passed'], failed: ['✕', 'Checks failed'], running: ['…', 'Checks running'], none: ['…', 'Checks not started']} as const;
     const NEXT = {change: 'Needs your change', checks: 'Waiting for the checks', maintainer: 'Waiting for a maintainer', draft: 'Draft'} as const;
-    fetch('/api/me/pulls', {credentials: 'same-origin'}).then(async (r) => ({ok: r.ok, body: await r.json()})).then(({ok, body}) => {
+    /** A Withdraw button for pull request `n`, which motionhub opened: a second click to be sure, then `gone`. */
+    const withdrawButton = (n: number, gone: () => void) => {
+      const back = document.createElement('button'); back.type = 'button'; back.className = 'btn'; back.textContent = 'Withdraw';
+      const said = document.createElement('p'); said.className = 'share-error'; said.setAttribute('role', 'alert'); said.hidden = true;
+      let sure = false;
+      back.addEventListener('click', async () => {
+        if (!sure) { sure = true; back.textContent = 'Withdraw: close it on GitHub?'; return; }
+        back.disabled = true; said.hidden = true;
+        const r = await fetch(`/api/me/pulls/${n}/withdraw`, {method: 'POST', credentials: 'same-origin'}).catch(() => undefined);
+        const answer = r ? await r.json().catch(() => ({})) : {};
+        if (r?.ok) return gone();
+        said.textContent = answer.error ?? 'motionhub.dev could not be reached. Try again.'; said.hidden = false;
+        back.disabled = false; sure = false; back.textContent = 'Withdraw';
+      });
+      return [back, said] as const;
+    };
+    const withdrawn = new Set<number>();
+    /** The numbers of their open pull requests, once GitHub answers; null when it could not be asked. */
+    const open = fetch('/api/me/pulls', {credentials: 'same-origin'}).then(async (r) => ({ok: r.ok, body: await r.json()})).then(({ok, body}) => {
       $('prs-wait').hidden = true;
-      // shares opened on motionhub.dev and not submitted yet: motionhub's own, so shown even when GitHub is down
-      const shares = (body.shares ?? []) as Share[];
-      $('shares').hidden = shares.length === 0;
-      for (const s of shares) {
-        const li = document.createElement('li');
-        const head = document.createElement('div'); head.className = 'mmain';
-        const a = document.createElement('a'); a.className = 'mname'; a.href = s.url; a.textContent = `${s.motion} ${s.version}`;
-        const until = document.createElement('span'); until.className = 'mid';
-        until.textContent = `Link valid until ${new Date(s.expires).toLocaleString('en', {dateStyle: 'medium', timeStyle: 'short'})}`;
-        head.append(a, until);
-        const go = document.createElement('a'); go.className = 'btn'; go.href = s.url; go.textContent = 'Check and submit';
-        li.append(head, go);
-        $('shares-list').append(li);
-      }
-      count('review', shares.length);
-      $('prs-empty').hidden = shares.length > 0;
-      if (!ok || !body.pulls) { $('prs-empty').hidden = true; $('prs-down').hidden = false; $<HTMLAnchorElement>('prs-all').href = body.all ?? `${repo}/pulls`; return; }
+      if (!ok || !body.pulls) { $('prs-down').hidden = false; $<HTMLAnchorElement>('prs-all').href = body.all ?? `${repo}/pulls`; return null; }
       const pulls = body.pulls as Pull[];
-      count('review', pulls.length + shares.length);
-      $('prs-empty').hidden = pulls.length + shares.length > 0;
+      count('review', pulls.length);
+      $('prs-empty').hidden = pulls.length > 0;
       const list = $('prs');
       for (const pr of pulls) {
         const li = document.createElement('li');
@@ -276,25 +300,13 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
         li.append(head, steps, open);
         // one motionhub opened for them: they may take it back here, with a second click to be sure
         if (pr.shared) {
-          const back = document.createElement('button'); back.type = 'button'; back.className = 'btn'; back.textContent = 'Withdraw';
-          const said = document.createElement('p'); said.className = 'share-error'; said.setAttribute('role', 'alert'); said.hidden = true;
-          let sure = false;
-          back.addEventListener('click', async () => {
-            if (!sure) { sure = true; back.textContent = 'Withdraw: close it on GitHub?'; return; }
-            back.disabled = true; said.hidden = true;
-            const r = await fetch(`/api/me/pulls/${pr.number}/withdraw`, {method: 'POST', credentials: 'same-origin'}).catch(() => undefined);
-            const answer = r ? await r.json().catch(() => ({})) : {};
-            if (r?.ok) {
-              li.remove();
-              count('review', $('prs').children.length + shares.length);
-              $('prs-empty').hidden = $('prs').children.length + shares.length > 0;
-              for (const chip of document.querySelectorAll<HTMLAnchorElement>('.pr-chip')) if (chip.href === pr.url) chip.hidden = true;
-              return;
-            }
-            said.textContent = answer.error ?? 'motionhub.dev could not be reached. Try again.'; said.hidden = false;
-            back.disabled = false; sure = false; back.textContent = 'Withdraw';
-          });
-          li.append(back, said);
+          li.append(...withdrawButton(pr.number, () => {
+            withdrawn.add(pr.number);
+            li.remove();
+            count('review', $('prs').children.length);
+            $('prs-empty').hidden = $('prs').children.length > 0;
+            for (const chip of document.querySelectorAll<HTMLAnchorElement>('.pr-chip')) if (chip.href === pr.url) chip.hidden = true;
+          }));
         }
         list.append(li);
         // the motions it changes show it on their row
@@ -305,9 +317,80 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
           chip.textContent = `${pr.next === 'change' ? '✕ Needs a change' : 'In review'} · #${pr.number}`;
         }
       }
-    }).catch(() => { $('prs-wait').hidden = true; $('prs-down').hidden = false; });
+      return new Set(pulls.map((pr) => pr.number));
+    }).catch(() => { $('prs-wait').hidden = true; $('prs-down').hidden = false; return null; });
 
-    // tabs, one per address: /you/, /you/#review, /you/#liked
+    // shared from the terminal: motionhub's record, with where each stands (open on GitHub, published on the site)
+    const ago = (iso: string) => new Date(iso).toLocaleDateString('en', {month: 'short', day: 'numeric'});
+    const LABEL = {review: 'In review', published: 'Published', withdrawn: 'Withdrawn', closed: 'Closed', submitted: 'Submitted'} as const;
+    const thumb = (poster: string | null) => {
+      if (!poster) { const s = document.createElement('span'); s.className = 'shared-thumb'; s.setAttribute('aria-hidden', 'true'); return s; }
+      const img = document.createElement('img'); img.className = 'shared-thumb'; img.src = poster; img.alt = ''; img.loading = 'lazy';
+      img.addEventListener('error', () => img.replaceWith(thumb(null)));
+      return img;
+    };
+    const title = (s: Shared) => {
+      const p = document.createElement('p'); p.className = 'shared-name';
+      const v = document.createElement('span'); v.className = 'shared-v'; v.textContent = s.version;
+      p.append(`${s.name ? s.name.en ?? Object.values(s.name)[0] : s.motion} `, v);
+      return p;
+    };
+    Promise.all([fetch('/api/me/shares', {credentials: 'same-origin'}).then((r) => (r.ok ? r.json() : Promise.reject())), open]).then(([mine, openPrs]: [{waiting: Waiting[]; submitted: Submitted[]}, Set<number> | null]) => {
+      $('shared-wait').hidden = true;
+      count('shared', mine.waiting.length + mine.submitted.length);
+      $('shared-empty').hidden = mine.waiting.length + mine.submitted.length > 0;
+      $('waiting').hidden = mine.waiting.length === 0;
+      for (const w of mine.waiting) {
+        const li = document.createElement('li');
+        const text = document.createElement('div'); text.className = 'shared-text';
+        const when = document.createElement('p'); when.className = 'shared-meta';
+        when.textContent = `Opened ${ago(w.created)} · the link works until ${new Date(w.expires).toLocaleString('en', {dateStyle: 'medium', timeStyle: 'short'})}`;
+        text.append(title(w), when);
+        const go = document.createElement('a'); go.className = 'btn primary'; go.href = w.url; go.textContent = 'Check and submit';
+        li.append(thumb(w.poster), text, go);
+        $('waiting-list').append(li);
+      }
+      $('submitted').hidden = mine.submitted.length === 0;
+      const rows: {li: HTMLLIElement; kind: string}[] = [];
+      for (const s of mine.submitted) {
+        const kind = s.status === 'withdrawn' || (s.pr && withdrawn.has(s.pr)) ? 'withdrawn' : s.published ? 'published' : !openPrs ? 'submitted' : s.pr && openPrs.has(s.pr) ? 'review' : 'closed';
+        const li = document.createElement('li');
+        const text = document.createElement('div'); text.className = 'shared-text';
+        const about = document.createElement('p'); about.className = 'shared-meta';
+        about.append(`Shared ${ago(s.at)}`);
+        if (s.prUrl) { const a = document.createElement('a'); a.href = s.prUrl; a.textContent = `#${s.pr}`; about.append(' · ', a); }
+        text.append(title(s), about);
+        const badge = document.createElement('span'); badge.className = `shared-status is-${kind}`; badge.textContent = LABEL[kind as keyof typeof LABEL];
+        const acts = document.createElement('div'); acts.className = 'shared-acts';
+        if (kind === 'published') { const a = document.createElement('a'); a.className = 'btn'; a.href = `/m/${s.motion}/`; a.textContent = 'View the motion'; acts.append(a); }
+        else if (s.prUrl) { const a = document.createElement('a'); a.className = 'btn'; a.href = s.prUrl; a.textContent = 'Open on GitHub'; acts.append(a); }
+        li.append(thumb(s.poster), text, badge, acts);
+        const row = {li, kind};
+        if (kind === 'review' && s.pr) {
+          const n = s.pr;
+          li.append(...withdrawButton(n, () => {
+            withdrawn.add(n);
+            badge.className = 'shared-status is-withdrawn'; badge.textContent = LABEL.withdrawn;
+            li.querySelector('.btn:not(a)')?.remove();
+            row.kind = 'withdrawn';
+            for (const p of $('prs').querySelectorAll('li')) if (p.querySelector(`a[href$="/pull/${n}"]`)) p.remove();
+          }));
+        }
+        rows.push(row);
+        $('submitted-list').append(li);
+      }
+      // the filter: closed takes in withdrawn
+      const chips = [...document.querySelectorAll<HTMLButtonElement>('.shared-filter [data-show-only]')];
+      for (const chip of chips) chip.addEventListener('click', () => {
+        const only = chip.dataset.showOnly!;
+        for (const c of chips) c.setAttribute('aria-pressed', String(c === chip));
+        let shown = 0;
+        for (const r of rows) { const on = only === 'all' || r.kind === only || (only === 'closed' && r.kind === 'withdrawn'); r.li.hidden = !on; if (on) shown++; }
+        $('submitted-none').hidden = shown > 0;
+      });
+    }).catch(() => { $('shared-wait').textContent = 'motionhub could not be asked just now. Try again in a moment.'; });
+
+    // tabs, one per address: /you/, /you/#review, /you/#shared, /you/#liked
     const tabs = [...document.querySelectorAll<HTMLButtonElement>('#you .tabs [data-tab]')];
     const show = (name: string, focus = false) => {
       const tab = tabs.find((t) => t.dataset.tab === name && !t.hidden) ?? tabs[0];

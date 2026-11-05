@@ -5,11 +5,10 @@
 // this shows what anyone could see on github.com, gathered in one place. A pull request is the person's when GitHub's
 // numeric id for its author is theirs, so a renamed account still finds its own. Each answer is kept for a minute,
 // per person; GITHUB_TOKEN, a secret on the Worker, raises GitHub's rate limit when it is set and is never required.
-// A pull request motionhub's GitHub App opened for the person (sharing from motionhub.dev) is theirs too, with the
-// shares they opened and have not submitted yet (submissions.mjs), which are motionhub's and never kept.
+// A pull request motionhub's GitHub App opened for the person (sharing from motionhub.dev) is theirs too.
 
 import {REPO} from './repo.mjs';
-import {sharedPulls, waiting} from './submissions.mjs';
+import {sharedPulls} from './submissions.mjs';
 import {sharedFor} from './github-app.mjs';
 
 export {REPO};
@@ -83,17 +82,15 @@ export async function pulls(request, env, ctx, me) {
   if (!me) return json({error: 'sign in to see your pull requests'}, 401);
   const cache = globalThis.caches?.default;
   const key = new Request(new URL(`/api/me/pulls?person=${me.id}`, request.url));
-  // the shares waiting for them are motionhub's own, and asked for fresh
-  const shares = await waiting(env, me).catch(() => []);
   const hit = await cache?.match(key);
-  if (hit) return json({...(await hit.json()), shares});
+  if (hit) return json(await hit.json());
   try {
     const body = {pulls: await gather(env, me), all: `https://github.com/${REPO}/pulls?q=${encodeURIComponent(`is:pr is:open author:${me.login}`)}`};
     const keep = new Response(JSON.stringify(body), {headers: {'content-type': 'application/json', 'cache-control': `max-age=${SECONDS}`}});
     if (cache) ctx?.waitUntil?.(cache.put(key, keep));
-    return json({...body, shares});
+    return json(body);
   } catch {
     // GitHub could not be asked: the page says so and links to the same list on github.com
-    return json({pulls: null, shares, all: `https://github.com/${REPO}/pulls?q=${encodeURIComponent(`is:pr is:open author:${me.login}`)}`}, 502);
+    return json({pulls: null, all: `https://github.com/${REPO}/pulls?q=${encodeURIComponent(`is:pr is:open author:${me.login}`)}`}, 502);
   }
 }
