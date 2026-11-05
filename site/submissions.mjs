@@ -21,7 +21,7 @@
 
 import {person, sameOrigin, sha256} from './people.mjs';
 import {LIMITS, PackageError, untgz} from './tar.mjs';
-import {BINARIES, commitSubmission, isText, sweepBranches, withdrawPull} from './github-app.mjs';
+import {BINARIES, commitSubmission, isText, pullState, sweepBranches, withdrawPull} from './github-app.mjs';
 
 const DAY = 86400;
 /** Seconds after which a submit that never finished (the Worker stopped mid-way) may be tried again. */
@@ -193,6 +193,14 @@ async function preview(request, env, id, now) {
   // the first person who may submit it and opens it: their page lists it as waiting
   if (verdict.may && r.status === 'uploaded') await env.DB.prepare("UPDATE submissions SET status = 'viewed', person = ? WHERE id = ? AND status = 'uploaded'").bind(me.id, id).run();
   const doc = pkg?.files.find((f) => f.path === 'MOTION.md');
+  // a submitted share's page says where its pull request stands: published once its version (or a later one) is on
+  // the site, else as GitHub says (merged, closed, open)
+  const mine = r.person === me.id && r.status === 'submitted' && r.pr;
+  let outcome = null;
+  if (mine) {
+    const live = (await onSite(request, env)).get(r.motion)?.version;
+    outcome = live && compareVersions(live, r.version) >= 0 ? 'published' : ready(env) ? await pullState(env, r.pr) : null;
+  }
   return json({
     id, status: r.status, motion: r.motion, version: r.version, sha256: r.sha256, bytes: r.bytes,
     created: new Date(r.created_at * 1000).toISOString(), expires: new Date(r.expires_at * 1000).toISOString(),
@@ -202,7 +210,7 @@ async function preview(request, env, id, now) {
     changes: pkg && r.status !== 'submitted' ? await changesFrom(env, pkg, published) : null,
     motionMd: doc ? new TextDecoder().decode(doc.data.subarray(0, 64 * 1024)) : '',
     me: {login: me.login}, ...verdict,
-    pr: r.person === me.id && r.status === 'submitted' ? r.pr : null, prUrl: r.person === me.id && r.status === 'submitted' ? prUrl(r) : null,
+    pr: mine ? r.pr : null, prUrl: mine ? prUrl(r) : null, outcome,
   });
 }
 
