@@ -1,0 +1,39 @@
+{
+  "spec": "motion/0.4",
+  "scope": "camilaon",
+  "slug": "idea-map",
+  "version": "1.0.0",
+  "name": {
+    "en": "Idea Map",
+    "zh-CN": "概念图"
+  },
+  "line": {
+    "en": "A concept map set in type on a cool layout sheet: each term on its own underline, which runs on as the line to the next, drawn to say the relation."
+  },
+  "authors": [
+    {
+      "name": "camilaon",
+      "github": "camilaon"
+    }
+  ],
+  "license": {
+    "text": "CC-BY-4.0",
+    "code": "MIT"
+  },
+  "lang": "en",
+  "tags": [
+    "line-art",
+    "minimal",
+    "modern",
+    "light"
+  ],
+  "fit": {
+    "kind": "general",
+    "for": {
+      "en": "Explainers about how things relate: cycles and processes, chains of causes, root-cause reviews, how the parts of a system relate, decisions and their side effects."
+    },
+    "not": {
+      "en": "Stories told through people and places, mood pieces, and films carried by photographs."
+    }
+  }
+}
