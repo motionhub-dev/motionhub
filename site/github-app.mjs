@@ -5,7 +5,7 @@
 // GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY are secrets on the Worker. The key may be the PKCS#1 PEM GitHub gives
 // ("BEGIN RSA PRIVATE KEY") or PKCS#8. No dependencies: WebCrypto signs the app's JWT.
 
-import {REPO} from './pulls.mjs';
+import {REPO} from './repo.mjs';
 
 const API = 'https://api.github.com';
 const [OWNER] = REPO.split('/');
@@ -36,29 +36,40 @@ export async function appJwt(env, now = Date.now()) {
   return `${head}.${claims}.${b64url(signature)}`;
 }
 
-let cached = {token: '', until: 0};
+let cached = {token: '', until: 0, app: ''};
 
-/** An installation token for the catalogue's repository, kept until ten minutes before it expires. */
-async function installationToken(env, now = Date.now()) {
-  if (cached.token && cached.until > now) return cached.token;
+/**
+ * An installation token for the catalogue's repository, kept until ten minutes before it expires, with the app's own
+ * account (<slug>[bot]) it acts as: {token, app}. Each caller keeps its own copy, so a token forgotten meanwhile by
+ * another request never leaves it without the app.
+ */
+async function installation(env, now = Date.now()) {
+  if (cached.token && cached.until > now) return {token: cached.token, app: cached.app};
   const jwt = await appJwt(env, now);
   const headers = {authorization: `Bearer ${jwt}`, accept: 'application/vnd.github+json', 'user-agent': 'motionhub.dev', 'x-github-api-version': '2022-11-28'};
   const inst = await fetch(`${API}/repos/${REPO}/installation`, {headers});
   if (!inst.ok) throw new Error(`the GitHub App is not installed on ${REPO} (${inst.status})`);
-  const {id} = await inst.json();
+  const {id, app_slug: slug} = await inst.json();
   const res = await fetch(`${API}/app/installations/${id}/access_tokens`, {method: 'POST', headers, body: JSON.stringify({repositories: [REPO.split('/')[1]], permissions: {contents: 'write', pull_requests: 'write'}})});
   if (!res.ok) throw new Error(`GitHub gave no installation token (${res.status})`);
   const body = await res.json();
-  cached = {token: body.token, until: Date.parse(body.expires_at) - 10 * 60 * 1000};
-  return body.token;
+  cached = {token: body.token, until: Date.parse(body.expires_at) - 10 * 60 * 1000, app: slug ? `${slug}[bot]` : ''};
+  return {token: cached.token, app: cached.app};
+}
+
+/** The app's own account, which its pull requests are opened by: <slug>[bot]. Without it nothing is judged the app's. */
+async function appLogin(env) {
+  const {app} = await installation(env);
+  if (!app) throw new Error('GitHub did not say which app this is');
+  return app;
 }
 
 /** Forgets the cached token: for tests, and after a 401. */
-export const forgetToken = () => { cached = {token: '', until: 0}; };
+export const forgetToken = () => { cached = {token: '', until: 0, app: ''}; };
 
 /** A call to GitHub's REST API as the app's installation: the JSON answer, or null for a 404 when `missing` is allowed. */
 async function api(env, method, path, body, {missing = false} = {}) {
-  const token = await installationToken(env);
+  const {token} = await installation(env);
   const res = await fetch(`${API}${path}`, {method, headers: {authorization: `Bearer ${token}`, accept: 'application/vnd.github+json', 'user-agent': 'motionhub.dev', 'x-github-api-version': '2022-11-28', ...(body ? {'content-type': 'application/json'} : {})}, body: body ? JSON.stringify(body) : undefined});
   if (missing && res.status === 404) return null;
   if (res.status === 401) forgetToken();
@@ -153,4 +164,55 @@ export async function commitSubmission(env, {id, manifest, published, files, me,
   // a label helps the maintainers find it; the pull request is open without one
   await api(env, 'POST', `/repos/${REPO}/issues/${pr.number}/labels`, {labels: ['submission']}).catch(() => {});
   return {pr: pr.number, url: pr.html_url, branch, added};
+}
+
+/** A branch the app keeps for one person: share/<scope>/<slug>/<their account id>. */
+const SHARE_BRANCH = /^share\/[a-z0-9-]+\/[a-z0-9-]+\/([1-9]\d*)$/;
+
+/**
+ * Whether a pull request is one the app (its account `app`, <slug>[bot]) opened for the person with the account id
+ * `id`: opened by the app, in this repository, from the app's branch for them. Without `id`, for anyone.
+ */
+export function sharedFor(pr, id, app) {
+  const branch = SHARE_BRANCH.exec(pr?.head?.ref ?? '');
+  return Boolean(app) && pr?.user?.type === 'Bot' && pr.user.login === app && pr.head?.repo?.full_name === REPO && pr.base?.repo?.full_name === REPO &&
+    Boolean(branch) && (id === undefined || branch[1] === String(Number(id)));
+}
+
+/** Closes the pull request `number` the app opened for `me`, and deletes its branch: {closed, branch} or {error, status}. */
+export async function withdrawPull(env, number, me) {
+  const app = await appLogin(env);
+  const pr = await api(env, 'GET', `/repos/${REPO}/pulls/${number}`, undefined, {missing: true});
+  if (!pr || !sharedFor(pr, me.id, app)) return {error: 'motionhub opened no such pull request for you', status: 404};
+  if (pr.state !== 'open') return {error: 'that pull request is closed already', status: 409};
+  await api(env, 'PATCH', `/repos/${REPO}/pulls/${number}`, {state: 'closed'});
+  await api(env, 'POST', `/repos/${REPO}/issues/${number}/comments`, {body: `@${me.login} withdrew it on motionhub.dev.`}).catch(() => {});
+  // the branch only held it; gone already, or refused, it is the daily sweep's to try again
+  await api(env, 'DELETE', `/repos/${REPO}/git/refs/heads/${pr.head.ref}`, undefined, {missing: true}).catch(() => {});
+  return {closed: number, branch: pr.head.ref};
+}
+
+/** At most this many branches are deleted in one sweep: each is a call to GitHub. */
+const SWEEP = 20;
+
+/**
+ * Deletes the branches of the app's pull requests that are closed (merged, closed by a maintainer, withdrawn), each
+ * only while it still points at the closed pull request's last commit: a branch a new share has moved on (its pull
+ * request opening, or reopened) stays. Returns the branches deleted.
+ */
+export async function sweepBranches(env) {
+  const app = await appLogin(env);
+  const refs = await api(env, 'GET', `/repos/${REPO}/git/matching-refs/heads/share/`);
+  const at = new Map(refs.map((r) => [r.ref.replace(/^refs\/heads\//, ''), r.object?.sha]));
+  if (!at.size) return [];
+  const gone = [];
+  for (const pr of await api(env, 'GET', `/repos/${REPO}/pulls?state=closed&sort=updated&direction=desc&per_page=100`)) {
+    if (gone.length >= SWEEP) break;
+    const ref = pr.head?.ref;
+    if (!sharedFor(pr, undefined, app) || !pr.head?.sha || at.get(ref) !== pr.head.sha) continue;
+    await api(env, 'DELETE', `/repos/${REPO}/git/refs/heads/${ref}`, undefined, {missing: true});
+    at.delete(ref);
+    gone.push(ref);
+  }
+  return gone;
 }
