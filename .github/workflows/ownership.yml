@@ -1,0 +1,99 @@
+# Who may change what, judged by main. A pull_request workflow runs the pull request's own copy of itself, which the
+# pull request could rewrite to pass; this one runs on pull_request_target, so it is always main's copy, and it runs
+# main's checker. The pull request's files are checked out beside it as data: nothing of the pull request is installed
+# or run. Its only credential is the read-only GITHUB_TOKEN.
+#
+# It judges: the accounts the pull request records (accounts/, against GitHub), the motions it adds or changes against
+# its author's account (and a change against the version on main), the published motions it takes out or moves away
+# (only one of their authors may), and a sign-off on each of its commits. Anything it cannot see whole fails.
+name: ownership
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ownership-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  ownership:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GITHUB_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      PR: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      COMMITS: ${{ github.event.pull_request.commits }}
+      CHANGED: ${{ github.event.pull_request.changed_files }}
+      AUTHOR: ${{ github.event.pull_request.user.login }}
+      AUTHOR_ID: ${{ github.event.pull_request.user.id }}
+    steps:
+      - name: Main, whose checker judges
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      # the head this event names, not whatever the branch holds by now: a later push runs this again
+      - name: The pull request's files, to read and never run
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: No links in the pull request's files
+        run: |
+          if find pr -path pr/.git -prune -o -type l -print | grep .; then
+            echo "These are symbolic links; a pull request holds files, never links to them."; exit 1
+          fi
+      - name: What the pull request changes, and its commits, whole
+        run: |
+          gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[]' | jq -s . > "$RUNNER_TEMP/files.json"
+          gh api "repos/$REPO/pulls/$PR/commits" --paginate --jq '.[]' | jq -s . > "$RUNNER_TEMP/commits.json"
+          # a file moved counts under both of its names
+          jq -r '.[] | .filename, (.previous_filename // empty)' "$RUNNER_TEMP/files.json" > "$RUNNER_TEMP/files"
+          # GitHub lists at most 3000 files and 250 commits: what it does not list could not be judged, so it fails
+          files=$(jq length "$RUNNER_TEMP/files.json")
+          commits=$(jq length "$RUNNER_TEMP/commits.json")
+          if [ "$files" -ne "$CHANGED" ] || [ "$commits" -ne "$COMMITS" ]; then
+            echo "GitHub listed $files of $CHANGED files and $commits of $COMMITS commits: split the pull request."; exit 1
+          fi
+          if [ "$(jq -r '.[-1].sha' "$RUNNER_TEMP/commits.json")" != "$HEAD_SHA" ]; then
+            echo "The pull request moved on since this run began; the run for its newest push judges it."; exit 1
+          fi
+      - name: The accounts it records, against what GitHub says
+        run: node tools/check.mjs --accounts-was accounts --accounts pr/accounts
+      - name: The motions it adds, changes or takes out, against its author and what is published
+        run: |
+          set -f
+          status=0
+          # a motion is motions/@<scope>/<slug>/ (or an old motions/<slug>/): a file anywhere else under motions/ is
+          # no one's to judge, so it is refused
+          if grep '^motions/' "$RUNNER_TEMP/files" | awk -F/ '($2 ~ /^@/) ? NF < 4 : NF < 3' | grep .; then
+            echo "These are under motions/ but in no motion's directory (motions/@<scope>/<slug>/)."; status=1
+          fi
+          grep '^motions/' "$RUNNER_TEMP/files" | awk -F/ '{print ($2 ~ /^@/) ? $2"/"$3 : $2}' | sort -u > "$RUNNER_TEMP/motions"
+          while IFS= read -r d; do
+            if [ -d "pr/motions/$d" ]; then
+              if [ -f "motions/$d/motion.json" ]; then
+                node tools/check.mjs "pr/motions/$d" --author "$AUTHOR" --author-id "$AUTHOR_ID" --accounts pr/accounts --was "motions/$d/motion.json" || status=1
+              else
+                node tools/check.mjs "pr/motions/$d" --author "$AUTHOR" --author-id "$AUTHOR_ID" --accounts pr/accounts || status=1
+              fi
+            elif [ -f "motions/$d/motion.json" ]; then
+              node tools/check.mjs --removed --was "motions/$d/motion.json" --author "$AUTHOR" --author-id "$AUTHOR_ID" --accounts pr/accounts || status=1
+            elif [ -e "pr/motions/$d" ] || [ -e "motions/$d" ]; then
+              echo "motions/$d is not a motion's directory."; status=1
+            fi
+          done < "$RUNNER_TEMP/motions"
+          exit $status
+      - name: Every commit is signed off
+        run: node tools/check.mjs --signoff "$RUNNER_TEMP/commits.json"

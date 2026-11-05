@@ -456,3 +456,72 @@ test('a motion in a directory keeps its values in tokens.json alone', () => {
   assert.deepEqual(raised({}, PART(), (t) => `---\nname: A look\n---\n\n${t}`), []);
   assert.ok(raised({}, PART(), (t) => `---\na: &x y\n---\n\n${t}`).includes('doc.frontmatter'));
 });
+
+test('main\'s checker judges a pull request\'s files: its accounts by --accounts, its commits by --signoff', async () => {
+  const {main, unsigned} = await import('../tools/check.mjs');
+  const commit = (sha, message, parents = 1) => ({sha, commit: {message}, parents: Array.from({length: parents}, () => ({}))});
+  assert.deepEqual(unsigned([
+    commit('a', 'Add a motion\n\nSigned-off-by: Ana <ana@example.com>'),
+    commit('b', 'Fix a typo'),
+    commit('c', 'Merge main', 2),
+    commit('d', 'Mentions Signed-off-by: in passing'),
+    commit('e', 'Signed-off-by: Ana <ana@example.com>'),
+  ]), ['b', 'd', 'e'], 'a sign-off is its own line under the subject; a merge commit is left out');
+
+  const dir = mkdtempSync(join(tmpdir(), 'ownership-'));
+  const pr = join(dir, 'pr');
+  cpSync(motion(), join(pr, 'motions', '@tester', 'test-motion'), {recursive: true});
+  mkdirSync(join(pr, 'accounts'), {recursive: true});
+  const log = console.log, lines = [];
+  console.log = (l) => lines.push(l);
+  try {
+    const run = (...args) => { lines.length = 0; return main([join(pr, 'motions', '@tester', 'test-motion'), '--author', 'tester', '--author-id', '7', ...args]); };
+    assert.equal(await run('--accounts', join(pr, 'accounts')), 1, 'judged by the pull request\'s accounts: tester is not recorded there');
+    assert.ok(lines.some((l) => l.includes('hub.account')));
+    writeFileSync(join(pr, 'accounts', 'tester.json'), JSON.stringify({login: 'tester', id: 7}));
+    assert.equal(await run('--accounts', join(pr, 'accounts')), 0, 'recorded with the opener\'s id');
+    writeFileSync(join(pr, 'accounts', 'tester.json'), JSON.stringify({login: 'tester', id: 99}));
+    assert.equal(await run('--accounts', join(pr, 'accounts')), 1, 'the scope belongs to another account');
+    assert.ok(lines.some((l) => l.includes('hub.scope')));
+    const commits = join(dir, 'commits.json');
+    writeFileSync(commits, JSON.stringify([commit('b', 'Fix a typo')]));
+    assert.equal(await main(['--signoff', commits]), 1);
+    writeFileSync(commits, JSON.stringify([commit('a', 'x\n\nSigned-off-by: T <t@example.com>')]));
+    assert.equal(await main(['--signoff', commits]), 0);
+  } finally { console.log = log; }
+});
+
+test('main\'s checker on a pull request: its new accounts, links refused, motions taken out only by an author', async () => {
+  const {main, checkRemoval, links} = await import('../tools/check.mjs');
+  const {symlinkSync} = await import('node:fs');
+  const dir = mkdtempSync(join(tmpdir(), 'ownership-'));
+  const was = join(dir, 'was'), now = join(dir, 'now');
+  mkdirSync(was); mkdirSync(now);
+  writeFileSync(join(was, 'tester.json'), JSON.stringify({login: 'tester', id: 7}));
+  writeFileSync(join(now, 'tester.json'), JSON.stringify({login: 'tester', id: 7}));
+  const log = console.log;
+  console.log = () => {};
+  try {
+    assert.equal(await main(['--accounts-was', was, '--accounts', now]), 0, 'nothing added, nothing to ask GitHub');
+    writeFileSync(join(now, 'tester.json'), JSON.stringify({login: 'tester', id: 8}));
+    assert.equal(await main(['--accounts-was', was, '--accounts', now]), 1, 'the pull request\'s records are the ones judged');
+    writeFileSync(join(now, 'tester.json'), JSON.stringify({login: 'tester', id: 7}));
+    symlinkSync('/etc/hostname', join(now, 'bo.json'));
+    assert.equal(await main(['--accounts-was', was, '--accounts', now]), 1, 'a record that is a link is refused, never read');
+
+    const m = motion();
+    symlinkSync('/etc/hostname', join(m, 'CREDITS.link'));
+    assert.deepEqual(links(m), ['CREDITS.link']);
+    assert.deepEqual(checkMotion(m).map((i) => i.code), ['format.symlink'], 'a motion with a link is refused before anything is read');
+
+    const published = {authors: [{name: 'Tester', github: 'tester'}]};
+    const accounts = new Map([['tester', 7]]);
+    assert.deepEqual(checkRemoval(published, {author: 'tess', authorId: 7, accounts}), [], 'an author, renamed, may take it out');
+    assert.deepEqual(checkRemoval(published, {author: 'tester', authorId: 99, accounts}).map((i) => i.code), ['hub.owner'], 'whoever took the old login may not');
+    assert.deepEqual(checkRemoval(published, {}).map((i) => i.code), ['hub.owner']);
+    const wasFile = join(dir, 'motion.json');
+    writeFileSync(wasFile, JSON.stringify(published));
+    assert.equal(await main(['--removed', '--was', wasFile, '--author', 'bo', '--author-id', '8']), 1);
+    assert.equal(await main(['--removed', '--was', wasFile, '--author', 'tester', '--author-id', '7']), 0);
+  } finally { console.log = log; }
+});

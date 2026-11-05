@@ -99,7 +99,7 @@ A tool may add rules of its own for its directory.
 
 ## Review
 
-1. The checks run on every pull request and post the result.
+1. The checks run on every pull request and post the result: `check` (the format, the tests and the builds) and `ownership` (your account, your motion's authors, the sign-off), which is always judged by the main branch's rules, whatever the pull request changes.
 2. A reviewer agent reads the motion for originality, safety and whether `MOTION.md` lets someone make a film in it, and leaves its notes as comments ([REVIEW.md](REVIEW.md) is what it looks for). It advises; it does not merge. A pull request from a fork is reviewed when a maintainer asks for it.
 3. A maintainer merges. A first-time contributor's pull request always waits for a person.
 
