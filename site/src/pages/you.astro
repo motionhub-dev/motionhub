@@ -178,7 +178,7 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
   type Pull = {number: number; title: string; url: string; motions: string[]; checks: 'passed' | 'failed' | 'running' | 'none'; reviewed: boolean; next: 'change' | 'checks' | 'maintainer' | 'draft'; shared?: boolean};
   type Shared = {id: string; motion: string; version: string; name: Record<string, string> | null; poster: string | null};
   type Waiting = Shared & {url: string; created: string; expires: string};
-  type Submitted = Shared & {status: 'submitted' | 'withdrawn'; pr: number | null; prUrl: string | null; at: string; published: boolean};
+  type Submitted = Shared & {status: 'submitted' | 'withdrawn'; pr: number | null; prUrl: string | null; at: string; state: 'published' | 'merged' | 'closed' | null};
   const root = document.getElementById('you')!;
   const repo = root.dataset.repo!;
   const pages = JSON.parse(root.dataset.pages!) as {ids: Record<string, string>; logins: Record<string, string>};
@@ -326,7 +326,7 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
 
     // shared from the terminal: motionhub's record, with where each stands (open on GitHub, published on the site)
     const ago = (iso: string) => new Date(iso).toLocaleDateString('en', {month: 'short', day: 'numeric'});
-    const LABEL = {review: 'In review', published: 'Published', withdrawn: 'Withdrawn', closed: 'Closed', submitted: 'Submitted'} as const;
+    const LABEL = {review: 'In review', merged: 'Merged · going live', published: 'Published', withdrawn: 'Withdrawn', closed: 'Closed', submitted: 'Submitted'} as const;
     const thumb = (poster: string | null) => {
       if (!poster) { const s = document.createElement('span'); s.className = 'shared-thumb'; s.setAttribute('aria-hidden', 'true'); return s; }
       const img = document.createElement('img'); img.className = 'shared-thumb'; img.src = poster; img.alt = ''; img.loading = 'lazy';
@@ -357,10 +357,10 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
       $('submitted').hidden = mine.submitted.length === 0;
       const rows: {li: HTMLLIElement; kind: string; pr: number | null}[] = [];
       let only = 'all';
-      /** The filter: closed takes in withdrawn. */
+      /** The filter: closed takes in withdrawn, and published takes in merged (on its way to the site). */
       const filter = () => {
         let shown = 0;
-        for (const r of rows) { const on = only === 'all' || r.kind === only || (only === 'closed' && r.kind === 'withdrawn'); r.li.hidden = !on; if (on) shown++; }
+        for (const r of rows) { const on = only === 'all' || r.kind === only || (only === 'closed' && r.kind === 'withdrawn') || (only === 'published' && r.kind === 'merged'); r.li.hidden = !on; if (on) shown++; }
         $('submitted-none').hidden = shown > 0 || rows.length === 0;
       };
       // every row of that pull request (a share again joins it), wherever the withdraw was asked
@@ -374,7 +374,8 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
         filter();
       };
       for (const s of mine.submitted) {
-        const kind = s.status === 'withdrawn' || (s.pr && withdrawn.has(s.pr)) ? 'withdrawn' : s.published ? 'published' : !openPrs ? 'submitted' : s.pr && openPrs.has(s.pr) ? 'review' : 'closed';
+        // where it stands, from motionhub's record and the site (state), else from their open pull requests
+        const kind = s.status === 'withdrawn' || (s.pr && withdrawn.has(s.pr)) ? 'withdrawn' : s.state ?? (!openPrs ? 'submitted' : s.pr && openPrs.has(s.pr) ? 'review' : 'closed');
         const li = document.createElement('li');
         const text = document.createElement('div'); text.className = 'shared-text';
         const about = document.createElement('p'); about.className = 'shared-meta';
