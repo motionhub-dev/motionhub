@@ -103,7 +103,7 @@ motions/@<scope>/<slug>/   一个 motion，id 为 @<scope>/<slug>：创作者的
   "license": {"text": "CC-BY-4.0", "code": "MIT"},
   "lang": "en",
   "tags": ["hand-drawn", "line-art", "light"],
-  "fit": {"kind": "general", "for": {"en": "How things work and what the numbers mean, worked out by hand: science and engineering principles, money and consumer explainers, comparisons and step-by-step reasoning.", "zh-CN": "手算推导的讲解：理工原理、财经与消费类解释、对比和分步推理。"}, "not": {"en": "Stories carried by people and places: it has no map and no characters. Brand films.", "zh-CN": "靠人物和地点推动的故事：它没有地图，也没有角色。品牌片。"}}
+  "fit": {"for": {"en": "How things work and what the numbers mean, worked out by hand: science and engineering principles, money and consumer explainers, comparisons and step-by-step reasoning.", "zh-CN": "手算推导的讲解：理工原理、财经与消费类解释、对比和分步推理。"}, "not": {"en": "Stories carried by people and places: it has no map and no characters. Brand films.", "zh-CN": "靠人物和地点推动的故事：它没有地图，也没有角色。品牌片。"}}
 }
 ```
 

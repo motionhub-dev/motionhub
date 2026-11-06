@@ -14,7 +14,7 @@ test('a search reads words, phrases, exclusions and fields', () => {
     {value: 'clay'}, {value: 'small world'}, {value: 'retro', not: true}, {value: 'dark', field: 'tag'}, {value: 'me', field: 'by', not: true},
   ]);
   assert.deepEqual(parseQuery('color:blue'), [{value: 'blue', field: 'colour'}]);
-  assert.deepEqual(parseQuery('kind:topic'), [{value: 'topic', field: 'kind'}]);
+  assert.deepEqual(parseQuery('catalog:tutorials'), [{value: 'tutorials', field: 'catalog'}]);
   assert.deepEqual(parseQuery(''), []);
   assert.deepEqual(parseQuery(undefined), []);
 });

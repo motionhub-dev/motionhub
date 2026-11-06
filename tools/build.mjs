@@ -7,7 +7,9 @@
 // It writes:
 //   api/accounts.json                each recorded login and its GitHub account id (accounts/), for the avatars
 //   api/motions.json                 the index, one row per motion, ordered by id (`slug` in a row is the motion's id:
-//                                    `<slug>` or `@<scope>/<slug>`, so clients that only know motion/0.1 never confuse two)
+//                                    `<slug>` or `@<scope>/<slug>`, so clients that only know motion/0.1 never confuse two),
+//                                    each row with the ids of the catalogs it is in (catalogs.json)
+//   api/catalogs.json                the catalogs, in the home page's order (catalogs.json, HUB.md "Catalogs")
 //   m/<id>/<file>                    the newest version's motion.json, MOTION*.md, tokens.json, CREDITS.md, poster.jpg
 //   m/<id>/<version>.tgz             the whole motion, its paths under <id>/; the same files always give the same bytes
 //   llms.txt                         the generic skill, for agents (skills/motionhub/SKILL.md without its front matter),
@@ -26,7 +28,7 @@ import {createHash} from 'node:crypto';
 import {copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync} from 'node:fs';
 import {dirname, join, relative, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {checkMotion, listMotions, motionId, readAccounts} from './check.mjs';
+import {checkCatalogs, checkMotion, listMotions, motionId, readAccounts} from './check.mjs';
 import {files, tgz} from './pack.mjs';
 
 export {tgz};
@@ -59,7 +61,11 @@ export function pack(dir) {
 export function build(out, root = ROOT) {
   const motions = join(root, 'motions');
   const dirs = listMotions(motions);
-  const issues = dirs.flatMap((d) => checkMotion(join(motions, d)).map((i) => `motions/${d}/${i.at}  ${i.code}  ${i.message}`));
+  const catalogsFile = join(root, 'catalogs.json');
+  const issues = [
+    ...dirs.flatMap((d) => checkMotion(join(motions, d)).map((i) => `motions/${d}/${i.at}  ${i.code}  ${i.message}`)),
+    ...checkCatalogs(catalogsFile, new Set(dirs)).map((i) => `${i.at}  ${i.code}  ${i.message}`),
+  ];
   if (issues.length) throw new Error(`not built, the motions have issues:\n${issues.join('\n')}`);
 
   rmSync(out, {recursive: true, force: true});
@@ -73,8 +79,11 @@ export function build(out, root = ROOT) {
     writeFileSync(join(at, `${row.version}.tgz`), archive);
     rows.push(row);
   }
+  const catalogs = existsSync(catalogsFile) ? JSON.parse(readFileSync(catalogsFile, 'utf8')).catalogs : [];
+  for (const row of rows) row.catalogs = catalogs.filter((c) => c.motions.includes(row.slug)).map((c) => c.id);
   mkdirSync(join(out, 'api'), {recursive: true});
   writeFileSync(join(out, 'api/motions.json'), JSON.stringify({spec: INDEX_SPEC, motions: rows}, null, 2) + '\n');
+  writeFileSync(join(out, 'api/catalogs.json'), JSON.stringify({catalogs}, null, 2) + '\n');
   // the recorded accounts, login → GitHub id: whose avatars the site serves (site/avatars.mjs)
   writeFileSync(join(out, 'api/accounts.json'), JSON.stringify(Object.fromEntries([...readAccounts(join(ROOT, 'accounts'))].sort()), null, 2) + '\n');
   const skill = readFileSync(join(root, 'skills/motionhub/SKILL.md'), 'utf8');

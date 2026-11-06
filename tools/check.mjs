@@ -40,8 +40,6 @@ const GITHUB = /^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$/;
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
 const MEMBERS = new Set(['spec', 'slug', 'version', 'name', 'line', 'authors', 'license', 'lang', 'tags']);
 const MEMBERS_SINCE = {scope: 'motion/0.2', basedOn: 'motion/0.3', fit: 'motion/0.4'};
-/** What sort of motion it is (SPEC.md §3, What it is for) */
-export const FIT_KINDS = ['general', 'topic', 'overlay'];
 export const ID = /^(?:@[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,38}\/)?[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const FILES = ['motion.json', 'MOTION.md', 'tokens.json', 'poster.jpg', 'CREDITS.md'];
 const HEADINGS = [['essence'], ['colour', 'color'], ['type'], ['motion'], ['avoid']];
@@ -197,11 +195,12 @@ function checkManifest(m, add) {
     }
   }
   if (m.fit !== undefined) {
-    if (!m.fit || typeof m.fit !== 'object' || Array.isArray(m.fit)) add('manifest.fit', at, 'fit is {kind, for, not}');
+    if (!m.fit || typeof m.fit !== 'object' || Array.isArray(m.fit)) add('manifest.fit', at, 'fit is {for, not}');
     else {
-      for (const key of Object.keys(m.fit)) if (!['kind', 'for', 'not'].includes(key)) add('manifest.fit', at, `fit has only "kind", "for" and "not", not "${key}"`);
-      if (!FIT_KINDS.includes(m.fit.kind)) add('manifest.fit', at, `fit.kind is one of ${FIT_KINDS.map((k) => `"${k}"`).join(', ')}`);
-      localized(m.fit.for, 'fit.for', 200, at, add, 'manifest.fit');
+      // "kind" was taken out of the format; a copy taken before then may still carry it, and a reader ignores it
+      for (const key of Object.keys(m.fit)) if (!['for', 'not', 'kind'].includes(key)) add('manifest.fit', at, `fit has only "for" and "not", not "${key}"`);
+      if (m.fit.for === undefined && m.fit.not === undefined) add('manifest.fit', at, 'fit has "for", "not" or both; leave fit out when it says neither');
+      if (m.fit.for !== undefined) localized(m.fit.for, 'fit.for', 200, at, add, 'manifest.fit');
       if (m.fit.not !== undefined) localized(m.fit.not, 'fit.not', 200, at, add, 'manifest.fit');
     }
   }
@@ -603,8 +602,8 @@ function checkHub(dir, manifest, {author, authorId, accounts, was}, add) {
     const login = author ? author.toLowerCase() : '<your GitHub login>';
     if (manifest.scope === undefined) add('hub.scope', 'motion.json', `a motion on motionhub is published under its author's GitHub name: give it "scope": "${login}", for the id @${login}/${manifest.slug ?? '<slug>'}`);
     else if (author && !was && typeof manifest.scope === 'string' && !isAccount(manifest.scope, who)) add('hub.scope', 'motion.json', `the scope "${manifest.scope}" belongs to that GitHub account; publish yours as @${login}/${manifest.slug ?? '<slug>'}`);
-    // every motion says what it is for, so a person or an agent choosing one can tell (CONTRIBUTING.md, "What makes a good motion")
-    if (manifest.fit === undefined) add('hub.fit', 'motion.json', `say what the motion is for: "spec": "${SPEC}" and "fit": {"kind": "general" | "topic" | "overlay", "for": {"en": "…"}} (SPEC.md §3, What it is for)`);
+    // fit.kind was taken out of the format: the hub sorts motions into its catalogs itself (HUB.md, "Catalogs")
+    if (manifest.fit && typeof manifest.fit === 'object' && 'kind' in manifest.fit) add('hub.fit', 'motion.json', 'fit.kind is no longer part of the format: take it out (motionhub sorts motions into catalogs.json)');
   }
   // in this repository every login a motion names is recorded with its account's id, so that a login given up and
   // taken by someone else never brings the motion with it
@@ -693,6 +692,42 @@ function checkHub(dir, manifest, {author, authorId, accounts, was}, add) {
     if (!/export\s+default\b/.test(reel)) add('hub.reel', 'react/reel.tsx', 'a reel has a default export: the component the player draws');
     if (!(seconds > 0 && seconds <= REEL_SECONDS)) add('hub.reel', 'react/reel.tsx', `a reel exports \`const reel = {seconds}\`, at most ${REEL_SECONDS}`);
   }
+}
+
+/**
+ * The catalogs file's issues (HUB.md, "Catalogs"), each `{code, at, message}`: `catalogs.json` is
+ * `{"catalogs": [{"id", "name", "line", "motions": [<id>, …]}, …]}`, in the order the home page shows them. Every id it
+ * names is a motion in `ids` (the catalogue's), at most once in a catalog; a motion may sit in several catalogs, or in
+ * none until a maintainer sorts it.
+ */
+export function checkCatalogs(file, ids) {
+  const issues = [];
+  const add = (message) => issues.push({code: 'hub.catalogs', at: 'catalogs.json', message});
+  if (!existsSync(file)) return issues;
+  let body;
+  try { body = JSON.parse(readFileSync(file, 'utf8')); } catch (e) { add(`not valid JSON: ${e.message}`); return issues; }
+  if (!body || typeof body !== 'object' || Array.isArray(body) || !Array.isArray(body.catalogs)) { add('catalogs.json is {"catalogs": [...]}'); return issues; }
+  for (const key of Object.keys(body)) if (key !== 'catalogs' && key !== '$comment') add(`it has only "catalogs", not "${key}"`);
+  const seen = new Set();
+  body.catalogs.forEach((c, i) => {
+    const at = `catalogs[${i}]`;
+    if (!c || typeof c !== 'object' || Array.isArray(c)) return add(`${at} is {"id", "name", "line", "motions"}`);
+    for (const key of Object.keys(c)) if (!['id', 'name', 'line', 'motions'].includes(key)) add(`${at} has only "id", "name", "line" and "motions", not "${key}"`);
+    if (typeof c.id !== 'string' || !NAME.test(c.id)) add(`${at}.id is a keyword of a-z, 0-9 and single hyphens`);
+    else if (seen.has(c.id)) add(`the catalog "${c.id}" is there twice`);
+    seen.add(c.id);
+    if (typeof c.name !== 'string' || !c.name.trim() || c.name.length > 40) add(`${at}.name is text of at most 40 characters`);
+    if (typeof c.line !== 'string' || !c.line.trim() || c.line.length > 120) add(`${at}.line is text of at most 120 characters`);
+    if (!Array.isArray(c.motions)) return add(`${at}.motions is an array of motion ids`);
+    const mine = new Set();
+    for (const id of c.motions) {
+      if (typeof id !== 'string' || !ID.test(id)) add(`${at}.motions: "${id}" is not a motion's id`);
+      else if (mine.has(id)) add(`${at}.motions names ${id} twice`);
+      else if (!ids.has(id)) add(`${at}.motions names ${id}, which is not in the catalogue: take it out with the motion`);
+      mine.add(id);
+    }
+  });
+  return issues;
 }
 
 /** The accounts recorded in a directory, as a Map of login in lowercase to numeric id; files that are not records are left out (checkAccounts reports them). */
@@ -817,7 +852,8 @@ export async function main(args) {
   }
   let dirs = args.filter((a, i) => !a.startsWith('--') && !['--author', '--author-id', '--was', '--accounts', '--accounts-was', '--signoff', '--submitter'].includes(args[i - 1]));
   let count = 0;
-  if (!dirs.length) {
+  const whole = !dirs.length;
+  if (whole) {
     const root = resolve('motions');
     dirs = existsSync('motion.json') || (existsSync('MOTION.md') && oneFileSpec('MOTION.md')) ? ['.'] : listMotions(root).map((d) => join(root, d));
     if (hub && accountsDir && !existsSync('motion.json')) {
@@ -825,6 +861,10 @@ export async function main(args) {
     }
   }
   const accounts = hub && accountsDir ? readAccounts(accountsDir) : undefined;
+  // the catalogue as a whole: its catalogs name only motions it holds
+  if (hub && whole && existsSync('catalogs.json') && existsSync('motions')) {
+    for (const i of checkCatalogs(resolve('catalogs.json'), new Set(listMotions(resolve('motions'))))) { console.log(`${i.at}  ${i.code}  ${i.message}`); count++; }
+  }
   for (const dir of dirs) {
     const issues = checkMotion(dir, {hub, author, authorId, was, accounts});
     const name = relative(process.cwd(), basename(dir) === 'MOTION.md' ? dirname(resolve(dir)) : resolve(dir)) || '.';

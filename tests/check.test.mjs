@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {cpSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {PURPOSES, SPEC, listMotions, checkMotion, checkAccounts, expandTokens, parseFrontMatter, readAccounts, compareVersions, spdx, jpegSize} from '../tools/check.mjs';
+import {PURPOSES, SPEC, listMotions, checkMotion, checkAccounts, checkCatalogs, expandTokens, parseFrontMatter, readAccounts, compareVersions, spdx, jpegSize} from '../tools/check.mjs';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
@@ -22,7 +22,7 @@ const BASE = {
   name: {en: 'Test Motion', 'zh-CN': '测试风格'}, line: {en: 'A plain motion for the checker\'s tests.'},
   authors: [{name: 'Tester', github: 'tester'}], license: {text: 'CC-BY-4.0'}, tags: ['light'],
 };
-const FIT = {kind: 'general', for: {en: 'Any plain explainer.', 'zh-CN': '任何朴素的讲解。'}, not: {en: 'Anything loud.'}};
+const FIT = {for: {en: 'Any plain explainer.', 'zh-CN': '任何朴素的讲解。'}, not: {en: 'Anything loud.'}};
 const MANIFEST = {...BASE, spec: 'motion/0.4', fit: FIT};
 const {scope: _scope, ...UNSCOPED} = {...BASE, spec: 'motion/0.1'};
 const TOKENS = {
@@ -156,19 +156,39 @@ test('every motion on the hub has a scope, and only its owner publishes a new on
   assert.deepEqual(codes(motion({manifest: {...MANIFEST, version: '1.0.1'}}), {author: 'Tester', was: MANIFEST}), [], 'a change is the published authors\' (checkUpdate)');
 });
 
-test('fit says what a motion is for, since motion/0.4, and every motion on the hub has it', () => {
+test('fit says what a motion is for and what it handles badly, since motion/0.4, both optional', () => {
   const fmt = (m) => codes(motion({manifest: m}), {hub: false});
   assert.deepEqual(fmt(MANIFEST), []);
-  assert.deepEqual(fmt({...MANIFEST, fit: {kind: 'overlay', for: {en: 'Labels over your own footage.'}}}), [], 'not is optional');
+  assert.deepEqual(fmt({...MANIFEST, fit: {for: {en: 'Labels over your own footage.'}}}), [], 'not is optional');
+  assert.deepEqual(fmt({...MANIFEST, fit: {not: {en: 'Anything loud.'}}}), [], 'for is optional');
+  assert.ok(fmt({...MANIFEST, fit: {}}).includes('manifest.fit'), 'an empty fit says nothing');
   assert.ok(fmt({...MANIFEST, spec: 'motion/0.3'}).includes('manifest.member'), 'fit is not a 0.3 member');
   assert.ok(fmt({...MANIFEST, fit: 'general'}).includes('manifest.fit'));
-  assert.ok(fmt({...MANIFEST, fit: {...FIT, kind: 'niche'}}).includes('manifest.fit'));
-  assert.ok(fmt({...MANIFEST, fit: {kind: 'topic'}}).includes('manifest.fit'), 'for is required');
   assert.ok(fmt({...MANIFEST, fit: {...FIT, for: {'zh-CN': '只有中文'}}}).includes('manifest.fit'), 'for has en');
   assert.ok(fmt({...MANIFEST, fit: {...FIT, not: {en: 'x'.repeat(201)}}}).includes('manifest.fit'));
   assert.ok(fmt({...MANIFEST, fit: {...FIT, needs: {en: 'footage'}}}).includes('manifest.fit'));
-  assert.ok(codes(motion({manifest: {...BASE, spec: 'motion/0.3'}})).includes('hub.fit'), 'the hub asks for it');
-  assert.deepEqual(fmt({...BASE, spec: 'motion/0.3'}), [], 'the format does not');
+  assert.deepEqual(fmt({...MANIFEST, fit: {...FIT, kind: 'overlay'}}), [], 'a copy taken while fit had a kind still reads');
+  assert.ok(codes(motion({manifest: {...MANIFEST, fit: {...FIT, kind: 'general'}}})).includes('hub.fit'), 'the hub takes no kind');
+  assert.deepEqual(codes(motion({manifest: {...BASE, spec: 'motion/0.3'}})), [], 'nor asks for fit');
+});
+
+test('catalogs.json names only motions in the catalogue, each once in a catalog', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'catalogs-'));
+  const file = join(dir, 'catalogs.json');
+  const ids = new Set(['@a/one', '@a/two']);
+  const issues = (body) => { writeFileSync(file, typeof body === 'string' ? body : JSON.stringify(body)); return checkCatalogs(file, ids).map((i) => i.message); };
+  const good = {id: 'explainers', name: 'Explainers', line: 'How things work.', motions: ['@a/one', '@a/two']};
+  assert.deepEqual(issues({catalogs: [good, {...good, id: 'more', motions: ['@a/one']}]}), [], 'a motion may sit in several');
+  assert.deepEqual(issues({catalogs: [{...good, motions: []}]}), [], 'a motion in no catalog is not an issue');
+  assert.equal(issues('{').length, 1);
+  assert.equal(issues({}).length, 1);
+  assert.equal(issues({catalogs: [good, good]}).length, 1, 'an id twice');
+  assert.equal(issues({catalogs: [{...good, id: 'Explainers'}]}).length, 1);
+  assert.equal(issues({catalogs: [{...good, motions: ['@a/one', '@a/one']}]}).length, 1);
+  assert.match(issues({catalogs: [{...good, motions: ['@a/gone']}]})[0], /not in the catalogue/);
+  assert.equal(issues({catalogs: [{...good, name: ''}]}).length, 1);
+  assert.equal(issues({catalogs: [{...good, extra: 1}]}).length, 1);
+  assert.deepEqual(checkCatalogs(join(dir, 'none.json'), ids), [], 'no file, nothing to check');
 });
 
 test('a component\'s meta names its purpose in the hub\'s words', () => {

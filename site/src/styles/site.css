@@ -133,6 +133,20 @@ pre .nb { white-space: nowrap; }
 .lead.wall { justify-content: space-between; margin-top: 32px; }
 .lead.wall a { font-size: var(--size-sm); font-weight: var(--weight-medium); color: var(--color-text-2); text-decoration: none; }
 .lead.wall a:hover { color: var(--color-text); }
+.shelf { margin: 0 0 32px; }
+.shelf-head { display: flex; align-items: baseline; gap: 4px 12px; margin: 0 0 12px; padding-top: 16px; border-top: 1px solid var(--color-line); }
+.shelf-head h3 { margin: 0; font-size: var(--size-md); font-weight: var(--weight-semibold); white-space: nowrap; }
+.shelf-head p { margin: 0; flex: 1; min-width: 0; font-size: var(--size-sm); color: var(--color-muted); }
+.shelf-head a { flex: none; font-size: var(--size-sm); font-weight: var(--weight-medium); color: var(--color-text-2); text-decoration: none; }
+.shelf-head a:hover { color: var(--color-text); }
+.shelf-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 860px) {
+  .shelf-head { flex-wrap: wrap; }
+  .shelf-head p { order: 3; flex-basis: 100%; }
+  .shelf-head a { margin-left: auto; }
+  .shelf-row { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(200px, 62%); overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; scrollbar-width: thin; }
+  .shelf-row > .card { scroll-snap-align: start; }
+}
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--color-line); }
 .chip { height: 30px; padding: 0 11px; border-radius: var(--radius-pill); border: 1px solid var(--color-line); background: transparent; color: var(--color-text-2); font-size: var(--size-sm); font-weight: var(--weight-medium); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
 .chip:hover { background: var(--color-surface); color: var(--color-text); }

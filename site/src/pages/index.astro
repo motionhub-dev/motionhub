@@ -5,15 +5,15 @@ import Engine from '../components/Engine.astro';
 import Agents from '../components/Agents.astro';
 import Prompt from '../components/Prompt.astro';
 import ShareCard from '../components/ShareCard.astro';
-import {ENGINE_LINKS, FEATURED, REPO, en, motionTree, recommended, rows, toolEngines} from '../lib/catalogue.mjs';
+import {ENGINE_LINKS, FEATURED, REPO, catalogs, en, motionTree, rows, toolEngines} from '../lib/catalogue.mjs';
 
 // the looks the try card offers are the featured ones; any that is gone is left out
 const tries = FEATURED.map((id) => rows.find((r) => r.slug === id)).filter(Boolean).slice(0, 5);
 if (tries.length === 0) tries.push(...rows.slice(0, 5));
 const first = tries[0];
 const engines = [...new Set(rows.flatMap((r) => r.tools.flatMap(toolEngines)))];
-// the home page shows a taste of the gallery: the first of its recommended order
-const featured = recommended.slice(0, 10);
+// the home page shows each catalog as a row of its first motions (HUB.md, "Catalogs")
+const PER_CATALOG = 5;
 ---
 <Base title="motionhub: open looks for AI-made video" description="Open looks for AI-made video: a visual style written down. Hand one to your agent with your story and get a film in that look, in Remotion, HyperFrames or any code-video engine." path="/">
   <section class="intro" aria-labelledby="intro-title">
@@ -66,9 +66,18 @@ const featured = recommended.slice(0, 10);
     <a href="/motions/">Browse all {rows.length} <span aria-hidden="true">→</span></a>
   </div>
 
-  <div class="grid">
-    {featured.map((r, i) => <Card row={r} eager={i < 5} bare />)}
-  </div>
+  {catalogs.map((c, i) => (
+    <section class="shelf" aria-labelledby={`shelf-${c.id}`}>
+      <div class="shelf-head">
+        <h3 id={`shelf-${c.id}`}>{c.name}</h3>
+        <p>{c.line}</p>
+        <a href={`/motions/?catalog=${c.id}`} aria-label={`All ${c.rows.length} ${c.name}`}>All {c.rows.length} <span aria-hidden="true">→</span></a>
+      </div>
+      <div class="shelf-row">
+        {c.rows.slice(0, PER_CATALOG).map((r) => <Card row={r} eager={i === 0} small />)}
+      </div>
+    </section>
+  ))}
 
   <section class="format" aria-labelledby="format-title">
     <div class="format-words">
@@ -95,7 +104,7 @@ const featured = recommended.slice(0, 10);
 
 <script>
   // the gallery's searches used to live here: an old address with one goes on to the gallery
-  if (/[?&](q|tag|kind|tool|view|sort)=/.test(location.search)) location.replace(`/motions/${location.search}`);
+  if (/[?&](q|tag|catalog|tool|view|sort)=/.test(location.search)) location.replace(`/motions/${location.search}`);
 
   // the try card: picking a look puts it in the prompt. Without the script the prompt names the first look.
   const target = document.querySelector<HTMLElement>('#prompt .target')!;
