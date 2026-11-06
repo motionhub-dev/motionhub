@@ -2,7 +2,7 @@
   "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "lab-notebook",
-  "version": "1.1.1",
+  "version": "1.1.0",
   "name": {
     "en": "Lab Notebook",
     "zh-CN": "实验手记"
@@ -27,6 +27,7 @@
     "light"
   ],
   "fit": {
+    "kind": "general",
     "for": {
       "en": "How things work and what the numbers mean, worked out by hand: science and engineering principles, money and consumer explainers, comparisons and step-by-step reasoning.",
       "zh-CN": "手算推导的讲解：理工原理、财经与消费类解释、对比和分步推理。"

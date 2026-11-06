@@ -2,7 +2,7 @@
   "spec": "motion/0.4",
   "scope": "camilaon",
   "slug": "origami",
-  "version": "0.1.1",
+  "version": "0.1.0",
   "name": {
     "en": "Origami",
     "zh-CN": "折纸"
@@ -28,6 +28,7 @@
     "light"
   ],
   "fit": {
+    "kind": "topic",
     "for": {
       "en": "Anything made or explained by folding one sheet, one model to a film: origami models step by step, a procedure told as folds, a model opened back to its crease pattern."
     },

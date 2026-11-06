@@ -63,7 +63,7 @@ A motion made from another names it in `basedOn`, by its id and the version it s
 - `for` says, in a sentence, the subjects and kinds of film it is for, and any footage the maker must bring (a person speaking, a screen recording) when it is drawn over that.
 - `not` says what it handles badly, where that is not obvious from `for`.
 
-A tool choosing a motion matches the film's subject against `for` and leaves out a motion whose `not` covers it. Earlier drafts of `fit` had a `kind`; a reader ignores it where a copy still carries it.
+A tool choosing a motion matches the film's subject against `for` and leaves out a motion whose `not` covers it. `fit` may also carry a `kind`, which earlier said what sort of motion it was; it is no longer used, a writer leaves it out, and a reader ignores it, whatever its value.
 
 An SPDX value is an [SPDX license expression](https://spdx.github.io/spdx-spec/v2.3/SPDX-license-expressions/), for example `"CC-BY-4.0"` or `"MIT"`.
 
@@ -176,7 +176,7 @@ A motion's `version` changes whenever any of its files change. A published versi
 | `motion/0.1` | The format: five files, `motion.json`, `tokens.json`, `MOTION.md`, extensions, languages |
 | `motion/0.2` | `scope`, and a motion's id `@<scope>/<slug>` (§3, Identity) |
 | `motion/0.3` | `basedOn`: the motions a motion builds on (§3, Building on another motion) |
-| `motion/0.4` | `fit`: what a motion is for and what it handles badly (§3, What it is for) |
+| `motion/0.4` | `fit`: what a motion is for and what it handles badly (§3, What it is for). Changed in place while the format is below 1.0, by its maintainers' decision: `fit.kind` is no longer used and `fit.for` is optional; every motion valid before is valid still |
 | `motion/0.5` | A motion in one file (§11), components as part of the format (§12), and a `Components` section and recommended sections in `MOTION.md` (§5) |
 
 ## 11. A motion in one file

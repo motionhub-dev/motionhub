@@ -2,7 +2,7 @@
   "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "earth-block",
-  "version": "1.0.3",
+  "version": "1.0.2",
   "name": {
     "en": "Earth Block",
     "zh-CN": "大地块"
@@ -27,6 +27,7 @@
     "light"
   ],
   "fit": {
+    "kind": "topic",
     "for": {
       "en": "Anything in layers, cut open: geology, soil and groundwater, the tissues of the body, the structure of a building.",
       "zh-CN": "剖开看分层的一切：地质、土壤与地下水、人体组织、建筑结构。"

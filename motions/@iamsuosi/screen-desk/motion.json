@@ -2,7 +2,7 @@
   "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "screen-desk",
-  "version": "1.0.6",
+  "version": "1.0.5",
   "name": {
     "en": "Screen Desk",
     "zh-CN": "屏幕工作台"
@@ -27,6 +27,7 @@
     "light"
   ],
   "fit": {
+    "kind": "topic",
     "for": {
       "en": "Software and products: set-up tutorials, feature launches, command-line lessons, demos across devices.",
       "zh-CN": "软件与产品：设置教程、功能发布、命令行教学、多设备演示。"

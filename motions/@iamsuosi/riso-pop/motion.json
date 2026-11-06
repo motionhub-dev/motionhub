@@ -2,7 +2,7 @@
   "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "riso-pop",
-  "version": "1.0.6",
+  "version": "1.0.5",
   "name": {
     "en": "Riso Pop",
     "zh-CN": "孔版双色"
@@ -28,6 +28,7 @@
     "light"
   ],
   "fit": {
+    "kind": "general",
     "for": {
       "en": "Light explainers in two-colour print: everyday science, products and brands, culture.",
       "zh-CN": "双色套印的轻松讲解：日常科普、产品与品牌介绍、文化话题。"

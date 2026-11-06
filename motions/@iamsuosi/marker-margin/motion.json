@@ -2,7 +2,7 @@
   "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "marker-margin",
-  "version": "1.0.6",
+  "version": "1.0.5",
   "name": {
     "en": "Marker Margin",
     "zh-CN": "马克笔批注"
@@ -27,6 +27,7 @@
     "playful"
   ],
   "fit": {
+    "kind": "overlay",
     "for": {
       "en": "Hand-drawn highlighter marks over your own footage or screen recording: unboxings, tutorials, commentary. Needs your own video.",
       "zh-CN": "叠在你自己画面或录屏上的手绘荧光笔标注：开箱、教程、解说。需要你自己的视频。"

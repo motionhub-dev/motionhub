@@ -2,7 +2,7 @@
   "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "drafting-table",
-  "version": "1.0.6",
+  "version": "1.0.5",
   "name": {
     "en": "Drafting Table",
     "zh-CN": "绘图台"
@@ -27,6 +27,7 @@
     "dark"
   ],
   "fit": {
+    "kind": "topic",
     "for": {
       "en": "Engineering and mechanisms as blueprints: structures, assemblies, dimensions, plans and elevations.",
       "zh-CN": "蓝图式的工程与机械原理：结构、装配、尺寸、建筑平立面。"

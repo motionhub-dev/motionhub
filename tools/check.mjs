@@ -197,7 +197,7 @@ function checkManifest(m, add) {
   if (m.fit !== undefined) {
     if (!m.fit || typeof m.fit !== 'object' || Array.isArray(m.fit)) add('manifest.fit', at, 'fit is {for, not}');
     else {
-      // "kind" was taken out of the format; a copy taken before then may still carry it, and a reader ignores it
+      // "kind" is no longer used: a motion may still carry it, and a reader ignores it (SPEC.md §3, What it is for)
       for (const key of Object.keys(m.fit)) if (!['for', 'not', 'kind'].includes(key)) add('manifest.fit', at, `fit has only "for" and "not", not "${key}"`);
       if (m.fit.for === undefined && m.fit.not === undefined) add('manifest.fit', at, 'fit has "for", "not" or both; leave fit out when it says neither');
       if (m.fit.for !== undefined) localized(m.fit.for, 'fit.for', 200, at, add, 'manifest.fit');
@@ -602,8 +602,6 @@ function checkHub(dir, manifest, {author, authorId, accounts, was}, add) {
     const login = author ? author.toLowerCase() : '<your GitHub login>';
     if (manifest.scope === undefined) add('hub.scope', 'motion.json', `a motion on motionhub is published under its author's GitHub name: give it "scope": "${login}", for the id @${login}/${manifest.slug ?? '<slug>'}`);
     else if (author && !was && typeof manifest.scope === 'string' && !isAccount(manifest.scope, who)) add('hub.scope', 'motion.json', `the scope "${manifest.scope}" belongs to that GitHub account; publish yours as @${login}/${manifest.slug ?? '<slug>'}`);
-    // fit.kind was taken out of the format: the hub sorts motions into its catalogs itself (HUB.md, "Catalogs")
-    if (manifest.fit && typeof manifest.fit === 'object' && 'kind' in manifest.fit) add('hub.fit', 'motion.json', 'fit.kind is no longer part of the format: take it out (motionhub sorts motions into catalogs.json)');
   }
   // in this repository every login a motion names is recorded with its account's id, so that a login given up and
   // taken by someone else never brings the motion with it

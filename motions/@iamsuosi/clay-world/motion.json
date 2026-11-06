@@ -2,7 +2,7 @@
   "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "clay-world",
-  "version": "1.0.6",
+  "version": "1.0.5",
   "name": {
     "en": "Clay World",
     "zh-CN": "黏土小世界"
@@ -28,6 +28,7 @@
     "light"
   ],
   "fit": {
+    "kind": "general",
     "for": {
       "en": "Nature and life science, children's science, growth and cycles, in a small real-3D clay world.",
       "zh-CN": "自然与生命科学、儿童科普、生长与循环过程，在一个真 3D 的黏土小世界里。"

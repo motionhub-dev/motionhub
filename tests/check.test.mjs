@@ -167,8 +167,8 @@ test('fit says what a motion is for and what it handles badly, since motion/0.4,
   assert.ok(fmt({...MANIFEST, fit: {...FIT, for: {'zh-CN': '只有中文'}}}).includes('manifest.fit'), 'for has en');
   assert.ok(fmt({...MANIFEST, fit: {...FIT, not: {en: 'x'.repeat(201)}}}).includes('manifest.fit'));
   assert.ok(fmt({...MANIFEST, fit: {...FIT, needs: {en: 'footage'}}}).includes('manifest.fit'));
-  assert.deepEqual(fmt({...MANIFEST, fit: {...FIT, kind: 'overlay'}}), [], 'a copy taken while fit had a kind still reads');
-  assert.ok(codes(motion({manifest: {...MANIFEST, fit: {...FIT, kind: 'general'}}})).includes('hub.fit'), 'the hub takes no kind');
+  assert.deepEqual(fmt({...MANIFEST, fit: {...FIT, kind: 'overlay'}}), [], 'a motion that still carries a kind reads');
+  assert.deepEqual(codes(motion({manifest: {...MANIFEST, fit: {...FIT, kind: 'anything'}}})), [], 'and the hub ignores it');
   assert.deepEqual(codes(motion({manifest: {...BASE, spec: 'motion/0.3'}})), [], 'nor asks for fit');
 });
 

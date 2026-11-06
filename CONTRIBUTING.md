@@ -50,8 +50,8 @@ Write `MOTION.md` in English if you can, or add an English translation next to i
 - **Scope and directory.** A motion has a `scope` (`hub.scope`) and sits in `motions/@<scope>/<slug>/`, named by its id (`hub.slug`).
 - **Accounts.** Every login a motion names, its scope and each author's `github`, is recorded once in `accounts/<login>.json` as `{"login", "id"}`, with the numeric id GitHub gives that account (`hub.account`). `npx @motionhub/cli share --pr` adds the records; by hand, the checks say what to add. A record is only ever added, never changed or removed, and an added one must match what GitHub says (`hub.accounts`).
 - **Built on.** Every motion named in `basedOn` is one in this catalogue (`hub.basedOn`).
-- **What it is for.** `motion.json` says in `fit` ([SPEC.md](SPEC.md) §3, What it is for) what the motion is for and, where it helps, what it is not for; both are optional but most motions should have `for`. A motion drawn over footage says there what footage it needs. `fit` has no `kind` (`hub.fit`).
-- **Catalogs.** You may add a new motion to the catalogs it belongs in, in `catalogs.json` (HUB.md, "Catalogs"); if you leave it out, a maintainer sorts it. A catalog names only motions in the catalogue (`hub.catalogs`).
+- **What it is for.** `motion.json` says in `fit` ([SPEC.md](SPEC.md) §3, What it is for) what the motion is for and, where it helps, what it is not for; both are optional, but the review asks for `for`: it is what search and agents match a film against. A motion drawn over footage says there what footage it needs. `fit.kind` is no longer used; leave it out.
+- **Catalogs.** You may propose the catalogs a new motion belongs in, in `catalogs.json` (HUB.md, "Catalogs"); a maintainer reviews every change to it, and sorts a motion you leave out. A catalog names only motions in the catalogue (`hub.catalogs`).
 - **Signed commits.** Every commit carries a `Signed-off-by:` line (`git commit -s`), certifying the [Developer Certificate of Origin](https://developercertificate.org): you have the right to contribute what it contains under its licence.
 
 ## What makes a good motion

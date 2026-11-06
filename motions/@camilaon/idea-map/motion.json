@@ -2,7 +2,7 @@
   "spec": "motion/0.4",
   "scope": "camilaon",
   "slug": "idea-map",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "name": {
     "en": "Idea Map",
     "zh-CN": "概念图"
@@ -28,6 +28,7 @@
     "light"
   ],
   "fit": {
+    "kind": "general",
     "for": {
       "en": "Explainers about how things relate: cycles and processes, chains of causes, root-cause reviews, how the parts of a system relate, decisions and their side effects."
     },

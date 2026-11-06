@@ -68,6 +68,8 @@ A reel is also rendered to a video (`site/player/render.mjs`): 1920×1080 at 30 
 
 - Each catalog has an `id` (a-z, 0-9 and hyphens), a `name` and a `line` for the page, and `motions`, the ids in it in the order it shows them. The file's order is the home page's.
 - A motion may be in several catalogs, and is in none until a maintainer sorts it: it is still in the gallery and the index. A pull request adding a motion may add it to the catalogs; the review says where it belongs.
+- The file sorts everyone's motions, so it is the maintainers': like every file outside `motions/` and `accounts/`, a change to it needs a maintainer's review (`.github/CODEOWNERS`), and `ownership.yml` does not judge it.
+- What a motion is for stays the motion's own words, in `fit` (SPEC.md §3). `fit` is optional in the format so that a motion is valid while its author works it out; the review asks for `fit.for`, since search and agents match on it, but the checks do not, so a hub-opened share is never held up by it.
 - A catalog names only motions in the catalogue, each once (`hub.catalogs`): a motion taken out leaves its catalogs in the same pull request.
 - The home page shows each catalog that has motions as a row of its first few, linking to the gallery filtered to it. The gallery filters by catalog, and the index gives each motion's `catalogs`.
 

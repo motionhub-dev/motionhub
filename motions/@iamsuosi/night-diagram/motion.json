@@ -2,7 +2,7 @@
   "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "night-diagram",
-  "version": "1.1.2",
+  "version": "1.1.1",
   "name": {
     "en": "Night Diagram",
     "zh-CN": "夜光图解"
@@ -27,6 +27,7 @@
     "dark"
   ],
   "fit": {
+    "kind": "topic",
     "for": {
       "en": "Science where light is the event: lightning, nerve signals, stars, reactions, light bent by glass, from the event to the planet it happens on.",
       "zh-CN": "以光为事件的科学：闪电、神经信号、天体、化学反应、玻璃折射的光，从事件一直拉到它所在的星球。"

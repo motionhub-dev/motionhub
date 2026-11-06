@@ -2,7 +2,7 @@
   "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "pixel-quest",
-  "version": "1.0.7",
+  "version": "1.0.6",
   "name": {
     "en": "Pixel Quest",
     "zh-CN": "像素关卡"
@@ -28,6 +28,7 @@
     "dark"
   ],
   "fit": {
+    "kind": "topic",
     "for": {
       "en": "Anything told as levels: how-to guides, onboarding, learning paths, first lessons.",
       "zh-CN": "把步骤讲成关卡：操作指南、上手引导、学习路径、入门课。"
