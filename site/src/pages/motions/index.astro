@@ -161,7 +161,8 @@ const SHOWN = 8;
     const shown = new Set(motions.filter((m) => meetsQuery(m, terms) && meetsPicks(m, picks)).map((m) => m.id));
     for (const el of items) el.hidden = !shown.has(el.dataset.id!);
 
-    // each filter says what picking it would leave; one that would leave nothing is off, unless it is what is picked
+    // each filter says how many motions it has given the search and the other facets (tags: given the tags picked too);
+    // one with none is off, unless it is what is picked
     for (const b of boxes) {
       const n = countWith(motions, terms, picks, b.dataset.facet!, b.value);
       const row = b.closest('label')!;
