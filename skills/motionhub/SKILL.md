@@ -24,7 +24,7 @@ A motion can also be one file: a `MOTION.md` that starts with front matter holdi
 ## 1. Choose the motion
 
 - **The person named one** (a name, an id, or a `motionhub.dev/m/<id>` link): use it.
-- **The project has one**: `MOTION.md` at the project's root, or else `motion/MOTION.md`: use it, and go to section 3. A project may also hold other design files, such as `frame.md` or `design.md`. The motion decides how the film looks and moves; follow the others for what it does not say, and tell the person where they disagree.
+- **The project has one**: `MOTION.md` at the project's root, or else `motion/MOTION.md`: use it, and go to section 3. A project may hold several in `motions/`: copies from motionhub at `motions/@<scope>/<slug>/`, and its own at `motions/<name>/`. Use the one each scene is planned in; if the plan does not say, ask which. A project may also hold other design files, such as `frame.md` or `design.md`. The motion decides how the film looks and moves; follow the others for what it does not say, and tell the person where they disagree.
 - **Otherwise** search: `npx @motionhub/cli search <words>` (no words lists them all), or read the index, `https://motionhub.dev/api/motions.json`, whose rows have `slug` (the id), `name`, `line`, `fit`, `tags`, `lang`, `poster` and `package`, with paths relative to `https://motionhub.dev`. Match the subject and the medium (a screen recording, a person's own footage, a dataset, a story) against each motion's `fit`: `fit.for` says what it is for and `fit.not` what it handles badly. A `general` motion carries many subjects, a `topic` motion is made for one and is the better choice when the film is about it, and an `overlay` motion is drawn over footage the person brings, so offer one only when they have that footage. Offer two or three with their posters, and let the person choose. Choose yourself only when they asked you to.
 
 ## 2. Get it
@@ -32,8 +32,11 @@ A motion can also be one file: a `MOTION.md` that starts with front matter holdi
 Copy the whole motion into the project, so the film keeps the version it was made in:
 
 ```sh
-npx @motionhub/cli get <id>            # into ./motion, checked against the index's SHA-256
+npx @motionhub/cli get <id>            # into ./motions/<id>/, checked against the index's SHA-256, recorded in motions.lock.json
+npx @motionhub/cli get                 # every motion motions.lock.json records, when the project has one and they are missing
 ```
+
+A film may be made in several motions, one for each part or each kind of scene: get each, and they sit side by side in `./motions/`. Never change a copy in `./motions/@<scope>/`: to adapt one, copy it to `./motions/<name>/` and change that.
 
 Without Node: download `https://motionhub.dev/m/<id>/<version>.tgz`, check it against the row's `package.sha256`, and unpack it. Without a shell, fetch `https://motionhub.dev/m/<id>/MOTION.md`, `tokens.json`, `motion.json` and `CREDITS.md` one by one.
 
@@ -58,8 +61,8 @@ Read all of `MOTION.md` before drawing anything, and `tokens.json` beside it, or
 
 | Engine | Binding | How |
 | --- | --- | --- |
-| Remotion | `npm i @motionhub/remotion` | Wrap the composition in `<MotionProvider tokens={tokens}>` (`import tokens from '../motion/tokens.json'`), add `<MotionFonts />`, and import components from `../motion/react/parts/<file>.tsx` |
-| HyperFrames | `npm i @motionhub/hyperframes`, then `npx motionhub-hyperframes motion --out assets/motion` | Load `assets/motion/motion.css` and `motion.js`; `Motion.mount(el, (t) => [...])` draws `Motion.components` from your GSAP timeline |
+| Remotion | `npm i @motionhub/remotion` | Wrap the composition in `<MotionProvider tokens={tokens}>` (`import tokens from '../motions/<id>/tokens.json'`), add `<MotionFonts />`, and import components from `../motions/<id>/react/parts/<file>.tsx`. In several motions, wrap each scene in `<MotionScope tokens>` from `@motionhub/runtime` |
+| HyperFrames | `npm i @motionhub/hyperframes`, then `npx motionhub-hyperframes --out assets/motion` (every motion in `./motions/`) | Load `assets/motion/motion.css` and `motion.js`; `Motion.mount(el, (t) => [...])` draws `Motion.components` from your GSAP timeline. In several motions, `Motions[<id>]` is each |
 
 Read the binding's README first. Each component's `meta` says what it is for (`purpose`, `line`, `fits`) and what each parameter means, and `react/previews/<file>.jpg` shows it; read a component's code only when you use it. A parameter of type `progress` runs from 0 to 1: animate it in your engine, on the words that call for it. A component that draws in 3D imports `three`, which you install. `Caption` (from `@motionhub/runtime`) draws a spoken line in the motion's caption skin. Lay out each scene for your story; the components are the look, not the film.
 
@@ -86,21 +89,21 @@ If the motion also has a directory for your engine (`remotion/`), its pieces add
 
 ## 7. Changing it, and sharing a look of your own
 
-Adapt your own copy freely for one film. A changed copy is no longer that version: do not publish it under the same id and version.
+Adapt a motion freely for one film, in a copy of your own (`./motions/<name>/`). A changed copy is no longer that version: do not publish it under the same id and version.
 
 To publish a look the person made (only when they ask):
 
-1. `npx @motionhub/cli init <slug> --github <their GitHub login>` writes `./<slug>/` with every required file to fill in, as the motion `@<their login>/<slug>` (ask them for their login; with gh signed in, `--github` can be left out).
+1. `npx @motionhub/cli init <slug> --github <their GitHub login>` writes `./motions/<slug>/` with every required file to fill in, as the motion `@<their login>/<slug>` (ask them for their login; with gh signed in, `--github` can be left out).
 2. Take the look from their project, never the film: the theme's colours and faces into `tokens.json` (with the durations and curves the project uses); `MOTION.md` in the five sections, saying what any film in this look shares and nothing of this film's story; `CREDITS.md` naming every face and asset with its licence; `fit` in `motion.json`, honestly: `general` only if it would carry three unrelated subjects, otherwise `topic` with the subject it is made for, or `overlay` when it draws over their own footage.
 3. `poster.jpg`: one frame of their film, a JPEG 960 to 3840 pixels wide and at most 500 KB (Remotion: `npx remotion still <composition> poster.jpg --frame=<n> --image-format=jpeg`).
 4. Optionally the reusable components, in `react/parts/` as [CONTRIBUTING.md](https://github.com/motionhub-dev/motions/blob/main/CONTRIBUTING.md) describes: React components that import only `react` and `@motionhub/runtime` (in Remotion, `useTime()` and `useVideoConfig()` from it instead of Remotion's), take what changes as props, and hold nothing of this film's story.
-5. With their yes, `npx @motionhub/cli share <slug> --wait` runs the checks its pull request will run and uploads it to motionhub.dev. No git, gh or GitHub token is needed. Give the person the link and the code it prints, exactly as printed. They open the link, sign in with GitHub, check the motion, type the code and certify the DCO, and motionhub opens the pull request under their name. The command then prints the pull request's address: give them that too. Never type the code or submit on their behalf. If they would rather use their own fork with gh, `npx @motionhub/cli share <slug> --pr` does it.
+5. With their yes, `npx @motionhub/cli share motions/<slug> --wait` runs the checks its pull request will run and uploads it to motionhub.dev. No git, gh or GitHub token is needed. Give the person the link and the code it prints, exactly as printed. They open the link, sign in with GitHub, check the motion, type the code and certify the DCO, and motionhub opens the pull request under their name. The command then prints the pull request's address: give them that too. Never type the code or submit on their behalf. If they would rather use their own fork with gh, `npx @motionhub/cli share motions/<slug> --pr` does it.
 
-A motion in one file publishes the same way, from step 1. Then `npx @motionhub/cli tokens --out <slug>/tokens.json` writes its values, its `name` and `lang` go into `motion.json`, and its body goes into `<slug>/MOTION.md` without the front matter. The rest of `motion.json`, `CREDITS.md` and `poster.jpg` are filled in as below.
+A motion in one file publishes the same way, from step 1. Then `npx @motionhub/cli tokens --out motions/<slug>/tokens.json` writes its values, its `name` and `lang` go into `motion.json`, and its body goes into `motions/<slug>/MOTION.md` without the front matter. The rest of `motion.json`, `CREDITS.md` and `poster.jpg` are filled in as below.
 
 To publish a new version of a motion the person published (only when they ask, as in "publish a new version of @<scope>/<slug> from this project"):
 
-1. Have the motion at hand: their copy in the project, or `npx @motionhub/cli get @<scope>/<slug>` into `./motion`.
+1. Have the motion at hand: their own copy in `./motions/<name>/`, or `npx @motionhub/cli get @<scope>/<slug>` and copy `./motions/@<scope>/<slug>/` to `./motions/<slug>/` to change it there.
 2. Make the change they want, from their project, holding to what `MOTION.md` says the look is; a new look is a new motion.
 3. Raise `version` in `motion.json` above the published one: the patch for a fix, the minor for something added (a component, a section), the major for a change films already made in it would not survive. A published version never changes.
 4. `npx @motionhub/cli share <dir> --wait`, as above: they open the link and submit; if their pull request for it is open already, the new version is added to it. Only one of the motion's authors can change it; another author's share opens a pull request of its own. `--wait` waits up to 30 minutes.

@@ -17,7 +17,7 @@ Then, in a Remotion project or an empty folder, ask:
 /motionhub make a Remotion film about <your topic> in @iamsuosi/lab-notebook
 ```
 
-The motionhub skill fetches the motion into `./motion` and checks it against its SHA-256, reads `MOTION.md` and `tokens.json` whole, adds the [Remotion binding](../packages/remotion/README.md), and builds your story from the motion's components and tokens; Remotion's skills keep the project to Remotion's own practice. Preview and render it as any Remotion project:
+The motionhub skill fetches the motion into `./motions/<id>/` and checks it against its SHA-256, reads `MOTION.md` and `tokens.json` whole, adds the [Remotion binding](../packages/remotion/README.md), and builds your story from the motion's components and tokens; Remotion's skills keep the project to Remotion's own practice. Preview and render it as any Remotion project:
 
 ```sh
 npx remotion studio
@@ -32,4 +32,4 @@ Read https://motionhub.dev/llms.txt, then make a Remotion film about "<your topi
 
 ## By hand
 
-The [Remotion binding](../packages/remotion/README.md) is the package the skill uses: `<MotionProvider>` gives a composition the motion's tokens and fonts, and the components in `./motion/react/parts/` draw by Remotion's frame.
+The [Remotion binding](../packages/remotion/README.md) is the package the skill uses: `<MotionProvider>` gives a composition the motion's tokens and fonts, and the components in `./motions/<id>/react/parts/` draw by Remotion's frame. A film in several motions wraps each scene in `<MotionScope>`.
