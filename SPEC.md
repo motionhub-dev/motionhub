@@ -46,7 +46,7 @@ A JSON object with these members and no others, except extension members (§7).
 | `lang` | no | The [BCP 47](https://www.rfc-editor.org/info/bcp47) tag of the language `MOTION.md` is written in; `"en"` when absent |
 | `tags` | no | Up to 10 keywords, each of `a-z`, `0-9` and single hyphens, in English |
 | `basedOn` | no | The motions this one builds on: an array of 1 to 10 `{ "id": string, "version": string }`, each a motion's id (Identity) and, optionally, the version built on; no id twice, and never the motion's own (since 0.3) |
-| `fit` | no | What the motion is for: `{ "kind": "general" \| "topic" \| "overlay", "for": localized string, "not": localized string }`, each string at most 200 characters per language; `kind` and `for` are required, `not` is optional (since 0.4; What it is for) |
+| `fit` | no | What the motion is for: `{ "for": localized string, "not": localized string }`, each string at most 200 characters per language; each is optional, and a `fit` has at least one (since 0.4; What it is for) |
 
 ### Identity
 
@@ -60,11 +60,10 @@ A motion made from another names it in `basedOn`, by its id and the version it s
 
 `fit` tells a person or an agent choosing a look for a film whether this one will carry it:
 
-- `kind` is what sort of motion it is. A `general` motion carries many subjects: it is chosen for the way it explains, not for what it explains. A `topic` motion is made for one subject or one structure and goes deep in it (a cut-away earth, a map, software on a screen). An `overlay` motion is drawn over footage the maker brings (a person speaking, a screen recording) and makes nothing without it.
-- `for` says, in a sentence, the subjects and kinds of film it is for: the range of a `general` motion, the subject of a `topic` one, the footage an `overlay` needs and what it is used for.
+- `for` says, in a sentence, the subjects and kinds of film it is for, and any footage the maker must bring (a person speaking, a screen recording) when it is drawn over that.
 - `not` says what it handles badly, where that is not obvious from `for`.
 
-A tool choosing a motion matches the film's subject against `for` and leaves out a motion whose `not` covers it.
+A tool choosing a motion matches the film's subject against `for` and leaves out a motion whose `not` covers it. `fit` may also carry a `kind`, which earlier said what sort of motion it was; it is no longer used, a writer leaves it out, and a reader ignores it, whatever its value.
 
 An SPDX value is an [SPDX license expression](https://spdx.github.io/spdx-spec/v2.3/SPDX-license-expressions/), for example `"CC-BY-4.0"` or `"MIT"`.
 
@@ -80,7 +79,6 @@ An SPDX value is an [SPDX license expression](https://spdx.github.io/spdx-spec/v
   "license": { "text": "CC-BY-4.0", "code": "MIT" },
   "tags": ["hand-drawn", "line-art", "light"],
   "fit": {
-    "kind": "general",
     "for": { "en": "How things work, worked out by hand: physics, chemistry, maths and engineering, drawn as they are explained." },
     "not": { "en": "Brand films and stories with no mechanism to draw." }
   }
@@ -161,7 +159,7 @@ What several tools come to share moves into a later version of this format, as `
 
 | Part | Language |
 | --- | --- |
-| File and directory names, member names, `scope`, `slug`, `spec`, `version`, `license`, `tags`, `fit.kind`, token names, the start of the five `MOTION.md` headings | English (identifiers) |
+| File and directory names, member names, `scope`, `slug`, `spec`, `version`, `license`, `tags`, token names, the start of the five `MOTION.md` headings | English (identifiers) |
 | `name`, `line`, `fit.for`, `fit.not` | A localized string: an object whose keys are BCP 47 tags and whose values are text in that language. `en` is required; other languages are optional |
 | The body of `MOTION.md`, translations, `$description`, `authors[].name`, `CREDITS.md`, words drawn in a film | Any language |
 
@@ -178,7 +176,7 @@ A motion's `version` changes whenever any of its files change. A published versi
 | `motion/0.1` | The format: five files, `motion.json`, `tokens.json`, `MOTION.md`, extensions, languages |
 | `motion/0.2` | `scope`, and a motion's id `@<scope>/<slug>` (§3, Identity) |
 | `motion/0.3` | `basedOn`: the motions a motion builds on (§3, Building on another motion) |
-| `motion/0.4` | `fit`: what a motion is for, its kind, and what it handles badly (§3, What it is for) |
+| `motion/0.4` | `fit`: what a motion is for and what it handles badly (§3, What it is for). Changed in place while the format is below 1.0, by its maintainers' decision: `fit.kind` is no longer used and `fit.for` is optional; every motion valid before is valid still |
 | `motion/0.5` | A motion in one file (§11), components as part of the format (§12), and a `Components` section and recommended sections in `MOTION.md` (§5) |
 
 ## 11. A motion in one file

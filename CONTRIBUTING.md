@@ -50,22 +50,23 @@ Write `MOTION.md` in English if you can, or add an English translation next to i
 - **Scope and directory.** A motion has a `scope` (`hub.scope`) and sits in `motions/@<scope>/<slug>/`, named by its id (`hub.slug`).
 - **Accounts.** Every login a motion names, its scope and each author's `github`, is recorded once in `accounts/<login>.json` as `{"login", "id"}`, with the numeric id GitHub gives that account (`hub.account`). `npx @motionhub/cli share --pr` adds the records; by hand, the checks say what to add. A record is only ever added, never changed or removed, and an added one must match what GitHub says (`hub.accounts`).
 - **Built on.** Every motion named in `basedOn` is one in this catalogue (`hub.basedOn`).
-- **What it is for.** `motion.json` has `fit` ([SPEC.md](SPEC.md) §3, What it is for): its kind, what it is for and, where it helps, what it is not for (`hub.fit`). The next section says how to choose the kind.
+- **What it is for.** `motion.json` says in `fit` ([SPEC.md](SPEC.md) §3, What it is for) what the motion is for and, where it helps, what it is not for; both are optional, but the review asks for `for`: it is what search and agents match a film against. A motion drawn over footage says there what footage it needs. `fit.kind` is no longer used; leave it out.
+- **Catalogs.** You may propose the catalogs a new motion belongs in, in `catalogs.json` (HUB.md, "Catalogs"); a maintainer reviews every change to it, and sorts a motion you leave out. A catalog names only motions in the catalogue (`hub.catalogs`).
 - **Signed commits.** Every commit carries a `Signed-off-by:` line (`git commit -s`), certifying the [Developer Certificate of Origin](https://developercertificate.org): you have the right to contribute what it contains under its licence.
 
 ## What makes a good motion
 
-A motion is measured against what it says it is for. There are two rulers, one for each kind, and a floor under both. The checks see only that `fit` is there; the review and the maintainers judge the rest.
+A motion is measured against what it says it is for. There are two rulers, one for a motion that carries many subjects and one for a motion made for one, and a floor under both. The review and the maintainers judge this; the checks only read the format.
 
-**A general motion is measured by breadth.** It carries three unrelated subjects (a business story, a piece of science, a piece of history) without leaning on any of them, and its components cover most of what explanations need: a title, a figure, a comparison, steps, a term defined, a link from one thing to another, a way from one scene to the next. A strong style is welcome; `fit.not` says what it does not suit.
+**A motion that carries many subjects is measured by breadth.** It carries three unrelated subjects (a business story, a piece of science, a piece of history) without leaning on any of them, and its components cover most of what explanations need: a title, a figure, a comparison, steps, a term defined, a link from one thing to another, a way from one scene to the next. A strong style is welcome; `fit.not` says what it does not suit.
 
-**A topic motion is measured by depth.** It names one subject or one structure in `fit.for` (things in layers, software on a screen, a map, a journey told as levels) and is the best look on motionhub for it. Its components are ones only that subject needs (a cut-away, a cursor, a camera from the globe to a town), and they take the usual ways of explaining that subject. Outside its subject it owes nothing.
+**A motion made for one subject or one form is measured by depth.** It names one subject or one structure in `fit.for` (things in layers, software on a screen, a map, a journey told as levels) and is the best look on motionhub for it. Its components are ones only that subject needs (a cut-away, a cursor, a camera from the globe to a town), and they take the usual ways of explaining that subject. Outside its subject it owes nothing.
 
-**An overlay motion** is drawn over footage the maker brings, a person speaking or a screen recording. It is measured like a general motion, over that footage, and `fit.for` says what footage it needs.
+**A motion drawn over footage** the maker brings, a person speaking or a screen recording, is measured by breadth over that footage, and `fit.for` says what footage it needs.
 
-**Every motion, whatever its kind:**
+**Every motion:**
 
-- **Honest about what it is for.** `fit` matches what the motion can do: a topic motion is not called general, and `not` names what it handles badly.
+- **Honest about what it is for.** `fit` matches what the motion can do: one made for a subject does not claim many, and `not` names what it handles badly.
 - **More than one film.** It makes films about different things within its range, not one film with the words changed.
 - **Whole.** A film can open, explain and close in it, and its parts look like one system.
 - **Made with care.** Its type, pace and colour hold up full screen; anything heavy (3D, many layers) says so in `MOTION.md`.

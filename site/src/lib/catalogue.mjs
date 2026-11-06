@@ -52,20 +52,25 @@ async function loginNow(id) {
   return typeof user?.login === 'string' ? user.login : undefined;
 }
 
-/** What a motion's fit.kind means to a person browsing (SPEC.md §3, What it is for), in the order the gallery offers them */
-export const KINDS = {
-  general: {label: 'General', note: 'Carries many subjects'},
-  topic: {label: 'Topic', note: 'Made for one subject, deep in it'},
-  overlay: {label: 'Over your footage', note: 'Drawn over video you bring'},
-};
+/**
+ * The catalogs, by the form of film a motion is made for (catalogs.json, HUB.md "Catalogs"), in the home page's order,
+ * each with its motions' rows in its own order. A catalog the index has no motion of is left out.
+ */
+export const catalogs = (() => {
+  const file = join(ROOT, 'catalogs.json');
+  const list = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')).catalogs : [];
+  const bySlug = new Map(rows.map((r) => [r.slug, r]));
+  return list.map((c) => ({...c, rows: c.motions.map((id) => bySlug.get(id)).filter(Boolean)})).filter((c) => c.rows.length);
+})();
+/** A catalog by its id */
+export const catalogById = new Map(catalogs.map((c) => [c.id, c]));
 
 /**
- * The gallery's order (HUB.md, "The gallery's order"): the few motions FEATURED names first, in that order; then the rest by what they are for
- * (general, then over the maker's footage, then topic, then those that do not say) and, within a kind, by how many of the explanations' core
- * purposes their components cover; A to Z among equals. FEATURED is the only part kept by hand: a short pick for a cold start, of looks that carry most subjects and cost an agent little, and the looks the home page's try card offers.
+ * The gallery's order (HUB.md, "The gallery's order"): the few motions FEATURED names first, in that order; then the rest by their first
+ * catalog and their place in it; then those in no catalog, by how many of the explanations' core purposes their components cover; A to Z
+ * among equals. FEATURED is the only part kept by hand: a short pick for a cold start, of looks that carry most subjects and cost an agent little, and the looks the home page's try card offers.
  */
 export const FEATURED = ['@iamsuosi/lab-notebook', '@iamsuosi/watercolor-tale', '@iamsuosi/riso-pop', '@iamsuosi/red-pencil', '@iamsuosi/screen-desk'];
-const KIND_RANK = {general: 0, overlay: 1, topic: 2};
 /** What most explanations need from a motion's components (CONTRIBUTING.md, "What makes a good motion") */
 export const CORE = ['title', 'data', 'compare', 'steps', 'term', 'link', 'transition'];
 /** How many of CORE a motion's components cover, by their meta.purpose */
@@ -76,10 +81,12 @@ export function coverage(id) {
   return CORE.filter((p) => have.has(p)).length;
 }
 const featured = (r) => (FEATURED.includes(r.slug) ? FEATURED.indexOf(r.slug) : FEATURED.length);
-const rank = (r) => KIND_RANK[r.fit?.kind] ?? 3;
+const placed = new Map();
+catalogs.forEach((c, i) => c.motions.forEach((id, j) => { if (!placed.has(id)) placed.set(id, i * 1000 + j); }));
+const rank = (r) => placed.get(r.slug) ?? Infinity;
 const covered = new Map(rows.map((r) => [r.slug, coverage(r.slug)]));
 /** The index's rows in the gallery's order */
-export const recommended = [...rows].sort((a, b) => featured(a) - featured(b) || rank(a) - rank(b) || covered.get(b.slug) - covered.get(a.slug) || (a.slug < b.slug ? -1 : 1));
+export const recommended = [...rows].sort((a, b) => featured(a) - featured(b) || (rank(a) === rank(b) ? 0 : rank(a) - rank(b)) || covered.get(b.slug) - covered.get(a.slug) || (a.slug < b.slug ? -1 : 1));
 
 export const kb = (bytes) => `${Math.ceil(bytes / 1024)} KB`;
 
@@ -98,8 +105,8 @@ export const ENGINE_LINKS = {
   HyperFrames: {site: 'https://hyperframes.heygen.com', repo: 'https://github.com/heygen-com/hyperframes', skills: 'https://github.com/heygen-com/hyperframes#readme', guide: '/docs/hyperframes/'},
 };
 
-/** What a search matches: the id, every name, line and purpose in every language, the tags, the engines and the authors. */
-export const searchText = (r) => [r.slug, ...Object.values(r.name), ...Object.values(r.line), ...Object.values(r.fit?.for ?? {}), ...r.tags, ...r.tools, ...r.tools.flatMap(toolEngines), ...r.authors.flatMap((a) => [a.name, a.github])].join(' ').toLowerCase();
+/** What a search matches: the id, every name, line and purpose in every language, its catalogs, the tags, the engines and the authors. */
+export const searchText = (r) => [r.slug, ...Object.values(r.name), ...Object.values(r.line), ...Object.values(r.fit?.for ?? {}), ...(r.catalogs ?? []).map((id) => catalogById.get(id)?.name ?? id), ...r.tags, ...r.tools, ...r.tools.flatMap(toolEngines), ...r.authors.flatMap((a) => [a.name, a.github])].join(' ').toLowerCase();
 
 const GROUNDS = ['light', 'dark'];
 const TYPES = {serif: 'Serif', 'sans-serif': 'Sans', monospace: 'Mono', cursive: 'Hand'};
@@ -124,7 +131,7 @@ export function motionFacets(r) {
   let fonts = [];
   try { fonts = faces(JSON.parse(read(r.slug, 'tokens.json'))); } catch {}
   return {
-    kind: r.fit ? [r.fit.kind] : [],
+    catalog: r.catalogs ?? [],
     tag: r.tags,
     colour: [...new Set(palette(r).map((c) => family(c.hex)).filter(Boolean))],
     type: [...new Set(fonts.flatMap((f) => f.faces).filter((f) => TYPES[f]))],
@@ -148,7 +155,7 @@ export function galleryFacets() {
   const authors = new Map(rows.flatMap((r) => r.authors.map((a) => [a.github, a.name])));
   const tags = options('tag', (v) => v).sort(byCount);
   const facets = [
-    {key: 'kind', label: 'Kind', options: Object.keys(KINDS).map((k) => options('kind', (v) => KINDS[v].label).find((o) => o.value === k)).filter(Boolean).map((o) => ({...o, note: KINDS[o.value].note}))},
+    {key: 'catalog', label: 'Catalog', options: catalogs.map((c) => options('catalog', () => c.name).find((o) => o.value === c.id)).filter(Boolean).map((o) => ({...o, note: catalogById.get(o.value).line}))},
     {key: 'tag', label: 'Ground', options: tags.filter((o) => GROUNDS.includes(o.value)).map((o) => ({...o, text: title(o.value)}))},
     {key: 'tag', label: 'Style', options: tags.filter((o) => !GROUNDS.includes(o.value))},
     {key: 'colour', label: 'Colour', options: options('colour', title, swatch).sort(byCount)},

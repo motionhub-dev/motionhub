@@ -1,0 +1,73 @@
+{
+  "$comment": "The catalogs motionhub sorts its motions into, by the form of film each is made for (HUB.md, \"Catalogs\"). The home page shows them in this order, each motion in its catalog's order; a motion may be in several, or in none until a maintainer sorts it.",
+  "catalogs": [
+    {
+      "id": "explainers",
+      "name": "Explainers",
+      "line": "How something works and why, drawn as it is explained.",
+      "motions": [
+        "@iamsuosi/lab-notebook",
+        "@iamsuosi/riso-pop",
+        "@camilaon/idea-map",
+        "@iamsuosi/iso-works",
+        "@iamsuosi/clay-world",
+        "@iamsuosi/night-diagram",
+        "@iamsuosi/earth-block",
+        "@iamsuosi/plumb-line",
+        "@iamsuosi/drafting-table"
+      ]
+    },
+    {
+      "id": "data",
+      "name": "Data stories",
+      "line": "Numbers, comparisons and places, told so they land.",
+      "motions": [
+        "@iamsuosi/stage-light",
+        "@iamsuosi/field-atlas",
+        "@iamsuosi/lab-notebook",
+        "@iamsuosi/red-pencil"
+      ]
+    },
+    {
+      "id": "stories",
+      "name": "Stories",
+      "line": "A narrative told through people, places and time.",
+      "motions": [
+        "@iamsuosi/watercolor-tale",
+        "@iamsuosi/ink-scroll",
+        "@iamsuosi/depth-stage",
+        "@iamsuosi/field-atlas"
+      ]
+    },
+    {
+      "id": "tutorials",
+      "name": "Tutorials",
+      "line": "Step by step: how to make, set up or learn something.",
+      "motions": [
+        "@iamsuosi/screen-desk",
+        "@iamsuosi/pixel-quest",
+        "@camilaon/origami"
+      ]
+    },
+    {
+      "id": "breakdowns",
+      "name": "Breakdowns",
+      "line": "A claim, a document or an event taken apart and checked.",
+      "motions": [
+        "@iamsuosi/red-pencil",
+        "@iamsuosi/evidence-board",
+        "@camilaon/idea-map"
+      ]
+    },
+    {
+      "id": "footage",
+      "name": "Over your footage",
+      "line": "Drawn over a video you bring: a person speaking, a screen recording.",
+      "motions": [
+        "@iamsuosi/on-air",
+        "@iamsuosi/marker-margin",
+        "@iamsuosi/live-studio"
+      ]
+    }
+  ]
+}

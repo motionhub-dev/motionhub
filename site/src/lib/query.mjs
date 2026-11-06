@@ -1,10 +1,10 @@
 // The gallery's search and filters, with no dependencies, so the page's script and tests/query.test.mjs share them.
 //
 // A search is words a motion must all contain, with "an exact phrase", -a word it must not contain, and field:value to
-// look in one field only (kind:topic, tag:dark, by:iamsuosi, engine:remotion, colour:blue, type:serif). A motion is
+// look in one field only (catalog:tutorials, tag:dark, by:iamsuosi, engine:remotion, colour:blue, type:serif). A motion is
 //   {text: 'everything a search matches, in lower case', facets: {tag: ['dark'], by: ['iamsuosi'], ...}}.
 
-const FIELDS = {kind: 'kind', tag: 'tag', by: 'by', engine: 'engine', colour: 'colour', color: 'colour', type: 'type'};
+const FIELDS = {catalog: 'catalog', tag: 'tag', by: 'by', engine: 'engine', colour: 'colour', color: 'colour', type: 'type'};
 const TERM = /(-)?(?:([a-z]+):)?(?:"([^"]*)"?|(\S+))/gi;
 
 /** A search as its terms: `{value, field?, not?}`. A word before a colon that names no field is an ordinary word. */
