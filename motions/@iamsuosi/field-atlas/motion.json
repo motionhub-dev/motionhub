@@ -2,7 +2,7 @@
   "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "field-atlas",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "name": {
     "en": "Field Atlas",
     "zh-CN": "地图志"
@@ -28,7 +28,6 @@
     "light"
   ],
   "fit": {
-    "kind": "topic",
     "for": {
       "en": "Geography on a real map: routes and journeys, migrations, data by country or state, where something happened and what a place's name means.",
       "zh-CN": "真实地图上的地理叙事：路线与旅程、迁徙、按国家或省州的数据、事件发生地和地名的含义。"
