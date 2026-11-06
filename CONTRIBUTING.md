@@ -29,8 +29,6 @@ npx @motionhub/cli share motions/<slug>         # the checks below, then a link:
 
 Never type a share's code on a page you did not open from your own terminal.
 
-For interactive terminal submission, first run `npx @motionhub/cli login --motion` and authorize Motion submission in your browser. Then run `npx @motionhub/cli share motions/<slug>` in a terminal. Review the account, version and package digest, and type `certify` if you agree to the DCO. The command returns the pull request URL. A normal CLI login only grants draft Artifact uploads. Without Motion permission or an interactive terminal, the command returns the browser confirmation link and code.
-
 To open the pull request yourself instead, from your fork with git and gh: `npx @motionhub/cli share motions/<slug> --pr`.
 
 ## Before you open it

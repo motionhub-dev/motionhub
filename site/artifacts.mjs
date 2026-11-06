@@ -44,8 +44,11 @@ async function content(request, env, url) {
   const object = await env.ARTIFACTS.get(objectKey(grant.version, path));
   if (!object) return reply('Not found', 404);
   const site = env.ARTIFACT_SITE_ORIGIN ?? 'https://motionhub.dev';
+  // Sandboxed frames send Origin: null for modules, fonts and fetches. Do not grant
+  // ordinary web origins cross-origin read access to bearer URLs.
+  const cors = request.headers.get('origin') === 'null' ? {'access-control-allow-origin': 'null'} : {};
   return new Response(request.method === 'HEAD' ? null : object.body, {headers: {
-    ...privateHeaders, 'content-type': mime(path), 'access-control-allow-origin': '*',
+    ...privateHeaders, ...cors, vary: 'Origin', 'content-type': mime(path),
     'content-security-policy': `sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline' ${url.origin}; style-src 'unsafe-inline' ${url.origin}; img-src ${url.origin} data: blob:; font-src ${url.origin} data:; connect-src ${url.origin}; frame-ancestors ${site}; base-uri 'none'; form-action 'none'`,
   }});
 }
@@ -184,6 +187,13 @@ async function manage(request, env, me, id) {
       .bind(version, description, main, other.join(','), id, me.id).run();
   } else if (action === 'unpublish') {
     await env.DB.prepare('UPDATE artifacts SET public_version = NULL WHERE id = ? AND person = ?').bind(id, me.id).run();
+  } else if (action === 'delete-version') {
+    const deleted = await env.DB.prepare(`DELETE FROM artifact_versions
+      WHERE id = ? AND artifact = ? AND ready = 1
+      AND NOT EXISTS (SELECT 1 FROM artifacts WHERE id = ? AND (draft_version = ? OR public_version = ?))
+      AND NOT EXISTS (SELECT 1 FROM artifact_shares WHERE version = ? AND expires_at > ?)`)
+      .bind(version, id, id, version, version, version, now()).run();
+    if (!deleted.meta.changes) return reply('Only versions that are neither current, published, nor shared can be deleted.', 409);
   } else if (action === 'share') {
     await env.DB.prepare('INSERT INTO artifact_shares (id, version, expires_at) VALUES (?, ?, ?)').bind(randomToken(), version, now() + 7 * 86400).run();
   } else if (action === 'revoke') {
@@ -195,8 +205,10 @@ async function manage(request, env, me, id) {
 
 async function publicationControls(env, id, row) {
   const {results: versions} = await env.DB.prepare('SELECT id, created_at FROM artifact_versions WHERE artifact = ? AND ready = 1 ORDER BY created_at DESC, id').bind(id).all();
-  const {results: shares} = await env.DB.prepare('SELECT s.id FROM artifact_shares s JOIN artifact_versions v ON v.id = s.version WHERE v.artifact = ? AND s.expires_at > ?').bind(id, now()).all();
+  const {results: shares} = await env.DB.prepare('SELECT s.id, s.version FROM artifact_shares s JOIN artifact_versions v ON v.id = s.version WHERE v.artifact = ? AND s.expires_at > ?').bind(id, now()).all();
   const options = versions.map(({id: version, created_at}) => `<option value="${version}"${version === row.draft_version ? ' selected' : ''}>${new Date(created_at * 1000).toISOString()} · ${version.slice(0, 8)}</option>`).join('');
+  const removable = versions.filter(({id: version}) =>
+    version !== row.draft_version && version !== row.public_version && !shares.some((share) => share.version === version));
   return `<h2>Publish or share a version</h2>
   ${row.public_version ? `<p><a href="/works/${id}">Public work</a></p><form method="post"><button name="action" value="unpublish">Unpublish</button></form>` : ''}
   <form method="post"><label>Version <select name="version">${options}</select></label>
@@ -204,6 +216,9 @@ async function publicationControls(env, id, row) {
   <label>Main Motion <input name="main_motion" value="${escape(row.main_motion)}" placeholder="@author/slug"></label>
   <label>Supporting Motions <input name="other_motions" value="${escape(row.other_motions)}" placeholder="Comma-separated IDs"></label>
   <button name="action" value="publish">Publish selected version</button><button name="action" value="share">Create 7-day share link</button></form>
+  ${removable.length ? `<h2>Delete an old version</h2><form method="post">
+  <label>Version <select name="version">${removable.map(({id: version, created_at}) => `<option value="${version}">${new Date(created_at * 1000).toISOString()} · ${version.slice(0, 8)}</option>`).join('')}</select></label>
+  <button name="action" value="delete-version">Delete selected version</button></form>` : ''}
   ${shares.map(({id: share}) => `<form method="post"><a href="/artifact-share/${share}">Share link …${share.slice(-8)}</a><input type="hidden" name="share" value="${share}"><button name="action" value="revoke">Revoke link</button></form>`).join('')}`;
 }
 

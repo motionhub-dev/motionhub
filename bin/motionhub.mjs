@@ -16,7 +16,7 @@ import {main as hub} from '../tools/hub.mjs';
 
 const USAGE = `usage: motionhub check [dir or MOTION.md ...] [--format-only] [--author <github-login>] [--author-id <github-id>] [--was <motion.json>]
        motionhub search [words ...]
-       motionhub login [--motion] | whoami | logout
+       motionhub login | whoami | logout
        motionhub artifact upload <index.html|site.zip|directory> [--id <artifact-id>]
        motionhub get [<id>] [--out <dir>]
        motionhub init <slug> [--github <login>]

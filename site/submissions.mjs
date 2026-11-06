@@ -1,4 +1,3 @@
-import {cliPerson} from './cli-auth.mjs';
 // Sharing a motion without git or gh (the command line's `share`, tools/hub.mjs): the package is uploaded with no
 // account and kept a day; the person opens its link, signs in with GitHub, checks it, types the code their terminal
 // shows and certifies the DCO; then motionhub's GitHub App opens the pull request for them (site/github-app.mjs).
@@ -306,29 +305,22 @@ async function file(request, env, id, path, now) {
 }
 
 async function submit(request, env, id, now) {
-  const terminal = request.headers.has('authorization');
-  if (!terminal && !sameOrigin(request)) return json({error: 'a share is submitted from motionhub.dev'}, 403);
+  if (!sameOrigin(request)) return json({error: 'a share is submitted from motionhub.dev'}, 403);
   if (!ready(env)) return json({error: 'sharing from motionhub.dev is not open yet'}, 503);
-  const me = await (terminal ? cliPerson(request, env) : person(request, env, now));
+  const me = await person(request, env, now);
   if (!me) return json({error: 'sign in with GitHub'}, 401);
-  if (terminal && !me.motion_submit) return json({error: 'Motion submission permission required'}, 403);
   const r = await row(env, id);
-  const sent = (await request.json().catch(() => null)) ?? {};
-  if (terminal && (!r || typeof sent.poll !== 'string' || await sha256(sent.poll) !== r.poll_hash ||
-    sent.sha256 !== r.sha256 || sent.dcoVersion !== '1.1')) return json({error: 'Invalid terminal confirmation'}, 403);
   if (!r || expired(r, now)) return json({error: 'this share link has expired: share the motion again'}, 404);
-  if (terminal && r.status === 'submitted' && r.person === me.id) return json({pr: r.pr, prUrl: prUrl(r)});
   if (r.status === 'submitted') return json({error: 'this share is submitted already', pr: r.pr, prUrl: prUrl(r)}, 409);
   if (r.status === 'withdrawn') return json({error: 'its pull request was withdrawn: share the motion again to submit it'}, 409);
+  const sent = await request.json().catch(() => ({}));
   if (sent.mine !== true || sent.dco !== true) return json({error: 'confirm that you started this share and certify the DCO'}, 400);
   // a try is counted before the code is compared, in one step, so many tries at once never get past the limit; a
   // right code gives its try back
-  if (!terminal) {
-    const tried = await env.DB.prepare('UPDATE submissions SET attempts = attempts + 1 WHERE id = ? AND attempts < ?').bind(id, ATTEMPTS).run();
-    if (!changes(tried)) return json({error: 'too many wrong codes: share the motion again for a new link'}, 429);
-    if (!sameCode(sent.code, r.code)) return json({error: 'that is not the code your terminal shows for this share'}, 400);
-    await env.DB.prepare('UPDATE submissions SET attempts = attempts - 1 WHERE id = ?').bind(id).run();
-  }
+  const tried = await env.DB.prepare('UPDATE submissions SET attempts = attempts + 1 WHERE id = ? AND attempts < ?').bind(id, ATTEMPTS).run();
+  if (!changes(tried)) return json({error: 'too many wrong codes: share the motion again for a new link'}, 429);
+  if (!sameCode(sent.code, r.code)) return json({error: 'that is not the code your terminal shows for this share'}, 400);
+  await env.DB.prepare('UPDATE submissions SET attempts = attempts - 1 WHERE id = ?').bind(id).run();
   const at = Math.floor(now / 1000);
   const today = await env.DB.prepare('SELECT COUNT(*) AS n FROM submissions WHERE person = ? AND dco_at > ?').bind(me.id, at - DAY).first();
   if ((today?.n ?? 0) >= PER_DAY) return json({error: `at most ${PER_DAY} shares a day: try again tomorrow`}, 429);
@@ -340,7 +332,7 @@ async function submit(request, env, id, now) {
   if (!verdict.may) return json({error: verdict.why}, 403);
   // claimed before GitHub is asked, in one step with the day's count, so two submits at once never make two commits
   // nor pass the limit; a claim whose Worker stopped before it finished is taken again after a while
-  const claim = await env.DB.prepare(`UPDATE submissions SET status = 'submitting', person = ?1, dco_at = ?2, dco_version = '1.1' WHERE id = ?3
+  const claim = await env.DB.prepare(`UPDATE submissions SET status = 'submitting', person = ?1, dco_at = ?2 WHERE id = ?3
     AND (status IN ('uploaded', 'viewed') OR (status = 'submitting' AND dco_at < ?2 - ${STUCK}))
     AND (SELECT COUNT(*) FROM submissions WHERE person = ?1 AND dco_at > ?2 - ${DAY} AND id != ?3) < ${PER_DAY}`).bind(me.id, at, id).run();
   if (!changes(claim)) {

@@ -26,9 +26,9 @@ async function api(path, method, token, body, headers = {}) {
   return data;
 }
 
-async function login(motion = false) {
-  const device = await api('/api/cli/device' + (motion ? '?scope=motion:submit' : ''), 'POST');
-  console.log('Open this link in your browser and review the requested permissions:\n' + device.url);
+async function login() {
+  const device = await api('/api/cli/device', 'POST');
+  console.log('Open this link in your browser and review the requested permissions:\n' + device.url + '\nTerminal code: ' + device.userCode);
   const end = Date.now() + 600000;
   while (Date.now() < end) {
     await delay(5000);
@@ -97,13 +97,12 @@ export async function zipDirectory(root) {
 }
 
 export async function artifactCli(command, args) {
-  if (command === 'login' && (!args.length || (args.length === 1 && args[0] === '--motion'))) {
-    const motion = args[0] === '--motion';
+  if (command === 'login' && !args.length) {
     const old = await readToken();
     const me = old && await api('/api/cli/me', 'GET', old).catch((error) => {
       if (error.status !== 401) throw error;
     });
-    console.log('Signed in as @' + (me && (!motion || me.motion_submit) ? me : await api('/api/cli/me', 'GET', await login(motion))).login);
+    console.log('Signed in as @' + (me || await api('/api/cli/me', 'GET', await login())).login);
     return;
   }
   const token = await readToken();
@@ -135,17 +134,4 @@ export async function artifactCli(command, args) {
     return upload(await login());
   });
   console.log(`Artifact: ${result.id}\nPreview: ${new URL(result.preview, base)}`);
-}
-
-export async function motionCredential(origin) {
-  if (origin !== base || !process.stdin.isTTY || !process.stdout.isTTY) return null;
-  const token = await readToken();
-  if (!token) return null;
-  try {
-    const me = await api('/api/cli/me', 'GET', token);
-    return me.motion_submit ? {token, login: me.login} : null;
-  } catch (error) {
-    if (error.status === 401 || error.status === 404) return null;
-    throw error;
-  }
 }

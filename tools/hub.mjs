@@ -24,8 +24,6 @@
 //                                               checks as that account and opens nothing
 
 import {spawnSync} from 'node:child_process';
-import {createInterface} from 'node:readline/promises';
-import {motionCredential} from './artifact-cli.mjs';
 import {createHash} from 'node:crypto';
 import {cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -195,7 +193,7 @@ export async function main(command, args, base = HUB) {
     if (!slug) { console.error('usage: motionhub share <dir> [--wait] | motionhub share <dir> --pr [--github <login>]'); return 2; }
     // through motionhub.dev unless asked for gh and a fork (--pr), or only for the checks as someone (--github)
     if (args.includes('--pr') || value('--github')) console.log(await share(resolve(slug), {pr: args.includes('--pr'), github: value('--github')}, base));
-    else console.log(await shareLink(resolve(slug), {wait: args.includes('--wait'), log: (l) => console.log(l), terminal: await motionCredential(base)}, base));
+    else console.log(await shareLink(resolve(slug), {wait: args.includes('--wait'), log: (l) => console.log(l)}, base));
     return 0;
   }
   if (command === 'init') {
@@ -276,7 +274,7 @@ export function scaffold(slug, author) {
  * the pull request: a link to sign in with GitHub at and a code to type there. With `wait`, ask until the pull request
  * is open (or `log` says it is not yet) and give its address. `ask` is the time between asks, in ms.
  */
-export async function shareLink(dir, {wait = false, log = () => {}, ask = 5000, most = 30 * 60 * 1000, terminal = null} = {}, base = HUB) {
+export async function shareLink(dir, {wait = false, log = () => {}, ask = 5000, most = 30 * 60 * 1000} = {}, base = HUB) {
   if (!existsSync(join(dir, 'motion.json'))) throw new Error(`${dir} has no motion.json: share a motion's directory (motionhub init <slug> makes one)`);
   const manifest = JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8'));
   const id = motionId(manifest);
@@ -295,25 +293,6 @@ export async function shareLink(dir, {wait = false, log = () => {}, ask = 5000, 
     `  2. Sign in with GitHub, check the motion, and type this code: ${body.code}`,
     `The link works until ${body.expires}. Never type the code on a page you did not open from this terminal.`,
   ];
-  if (terminal) {
-    const digest = createHash('sha256').update(bytes).digest('hex');
-    const input = createInterface({input: process.stdin, output: process.stdout});
-    let answer;
-    try {
-      answer = await input.question(`Submit ${id} ${manifest.version} as @${terminal.login}?\nPackage SHA-256: ${digest}\nDeveloper Certificate of Origin 1.1: https://developercertificate.org/\nI certify that I have the right to contribute this package and agree to sign off the commit. Type 'certify' to confirm: `);
-    } finally {
-      input.close();
-    }
-    if (answer !== 'certify') return 'Motion submission cancelled.';
-    const submit = await fetch(`${base}/api/submissions/${body.id}/submit`, {
-      method: 'POST', redirect: 'error',
-      headers: {'content-type': 'application/json', authorization: `Bearer ${terminal.token}`},
-      body: JSON.stringify({poll: body.poll, sha256: digest, mine: true, dco: true, dcoVersion: '1.1'}),
-    });
-    const result = await submit.json().catch(() => ({}));
-    if (!submit.ok) throw new Error(result.error ?? `Motion submission failed (HTTP ${submit.status}).`);
-    return `The pull request is open: ${result.prUrl}`;
-  }
   if (!wait) return lines.join('\n');
   log(lines.join('\n'));
   for (const until = Date.now() + most; Date.now() < until;) {

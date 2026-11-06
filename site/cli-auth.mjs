@@ -1,3 +1,4 @@
+import {limitedBytes} from './artifact-files.mjs';
 import {person, sameOrigin, sha256} from './people.mjs';
 
 const token = () => crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', '');
@@ -10,7 +11,7 @@ const bearer = (request) => /^Bearer ([a-f0-9]{64})$/.exec(request.headers.get('
 export async function cliPerson(request, env) {
   const credential = bearer(request);
   if (!credential) return null;
-  return env.DB.prepare(`SELECT p.id, p.login, p.name, d.motion_submit FROM cli_devices d JOIN people p ON p.id = d.person
+  return env.DB.prepare(`SELECT p.id, p.login, p.name FROM cli_devices d JOIN people p ON p.id = d.person
     WHERE d.token_hash = ? AND d.expires_at > ?`).bind(await sha256(credential), now()).first();
 }
 
@@ -21,11 +22,11 @@ export async function cliAuth(request, env) {
       url.origin !== (env.ARTIFACT_SITE_ORIGIN ?? 'https://motionhub.dev')) return json({}, 404);
   if (path === '/api/cli/device' && request.method === 'POST') {
     if (env.SUBMIT_LIMIT && !(await env.SUBMIT_LIMIT.limit({key: 'cli:' + (request.headers.get('cf-connecting-ip') ?? 'local')})).success) return json({error: 'Try again later.'}, 429);
-    const scope = url.searchParams.get('scope');
-    if (scope && scope !== 'motion:submit') return json({error: 'Invalid scope.'}, 400);
     const code = token(), secret = token();
-    await env.DB.prepare('INSERT INTO cli_devices (code_hash, secret_hash, expires_at, motion_submit) VALUES (?, ?, ?, ?)').bind(await sha256(code), await sha256(secret), now() + 600, scope === 'motion:submit' ? 1 : 0).run();
-    return json({url: new URL('/cli/authorize?code=' + code, url.origin).href, secret});
+    const userCode = crypto.randomUUID().slice(0, 8).toUpperCase();
+    await env.DB.prepare('INSERT INTO cli_devices (code_hash, secret_hash, user_code_hash, expires_at) VALUES (?, ?, ?, ?)')
+      .bind(await sha256(code), await sha256(secret), await sha256(code + userCode), now() + 600).run();
+    return json({url: new URL('/cli/authorize?code=' + code, url.origin).href, secret, userCode});
   }
   if (path === '/api/cli/token' && request.method === 'POST') {
     const secret = bearer(request);
@@ -54,12 +55,30 @@ export async function cliAuth(request, env) {
   if (!me) return Response.redirect(new URL('/auth/login?next=' + encodeURIComponent(path + url.search), url), 303);
   const hash = await sha256(code);
   if (request.method === 'POST' && sameOrigin(request)) {
-    const result = await env.DB.prepare('UPDATE cli_devices SET person = ? WHERE code_hash = ? AND person IS NULL AND expires_at > ?').bind(me.id, hash, now()).run();
-    return new Response(result.meta.changes ? 'Authorized. Return to your terminal.' : 'This authorization link has expired or was used.', {status: result.meta.changes ? 200 : 410, headers});
+    let input;
+    try {
+      const form = new URLSearchParams(new TextDecoder().decode(await limitedBytes(request.body, 1024)));
+      input = (form.get('userCode') ?? '').trim().toUpperCase();
+    } catch { return json({error: 'Invalid authorization form.'}, 400); }
+    const result = await env.DB.prepare(`UPDATE cli_devices SET attempts = attempts + 1,
+      person = CASE WHEN user_code_hash = ? THEN ? ELSE NULL END
+      WHERE code_hash = ? AND person IS NULL AND expires_at > ? AND attempts < 5
+      RETURNING person`).bind(await sha256(code + input), me.id, hash, now()).first();
+    if (!result) return json({error: 'Authorization link expired, was used, or reached its attempt limit.'}, 410);
+    if (result.person === me.id) return new Response('Authorized. Return to your terminal.', {headers});
+    return authorizationPage('Incorrect code. Enter the code from your own terminal.');
   }
   if (request.method !== 'GET') return json({}, 403);
-  const pending = await env.DB.prepare('SELECT motion_submit FROM cli_devices WHERE code_hash = ? AND person IS NULL AND expires_at > ?').bind(hash, now()).first();
-  if (!pending) return json({error: 'Authorization link expired or was used.'}, 410);
-  const permission = pending.motion_submit ? 'Allow this terminal to upload private artifact drafts and submit Motion pull requests after DCO confirmation' : 'Allow this terminal to upload private artifact drafts';
-  return new Response(`<!doctype html><meta charset="utf-8"><title>MotionHub CLI</title><h1>Authorize MotionHub CLI</h1><p>${permission} for 30 days. Continue only if you started this login.</p><form method="post"><button>Authorize this terminal</button></form>`, {headers: {...headers, 'content-type': 'text/html; charset=utf-8', 'content-security-policy': "default-src 'none'; frame-ancestors 'none'; form-action 'self'; base-uri 'none'"}});
+  const pending = await env.DB.prepare('SELECT 1 FROM cli_devices WHERE code_hash = ? AND person IS NULL AND expires_at > ? AND attempts < 5').bind(hash, now()).first();
+  return pending ? authorizationPage() : json({error: 'Authorization link expired, was used, or reached its attempt limit.'}, 410);
+}
+
+function authorizationPage(error = '') {
+  return new Response(`<!doctype html><meta charset="utf-8"><title>MotionHub CLI</title>
+<h1>Authorize MotionHub CLI</h1><p>Allow your terminal to upload private artifact drafts for 30 days.</p>
+<p>Enter only the code shown in a terminal where you started this login.</p>
+${error ? `<p role="alert">${error}</p>` : ''}
+<form method="post"><label>Terminal code <input name="userCode" required pattern="[A-Fa-f0-9]{8}" maxlength="8" autocomplete="off"></label>
+<button>Authorize draft uploads</button></form>`, {status: error ? 400 : 200, headers: {...headers, 'content-type': 'text/html; charset=utf-8',
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'; form-action 'self'; base-uri 'none'"}});
 }

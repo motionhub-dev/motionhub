@@ -539,25 +539,3 @@ test('the command line checks, packs and uploads, prints the link and the code, 
   mkdirSync(join(dir, 'empty'));
   await assert.rejects(shareLink(join(dir, 'empty'), {}, 'https://hub.test'), /no motion\.json/);
 });
-
-test('CLI submission requires the Motion scope and exact confirmed package, and retries return the same PR', async () => {
-  await session(42, 'ana');
-  const share = await (await upload()).json();
-  const token = 'a'.repeat(64);
-  env.DB.raw.prepare('INSERT INTO cli_devices (code_hash, secret_hash, person, expires_at, token_hash) VALUES (?, ?, ?, ?, ?)')
-    .run('code', 'secret', 42, Math.floor(Date.now() / 1000) + 600, await sha256(token));
-  const digest = env.DB.raw.prepare('SELECT sha256 FROM submissions WHERE id = ?').get(share.id).sha256;
-  const send = (extra = {}) => worker.fetch(new Request(SITE + '/api/submissions/' + share.id + '/submit', {
-    method: 'POST', headers: {authorization: 'Bearer ' + token, 'content-type': 'application/json'},
-    body: JSON.stringify({poll: share.poll, sha256: digest, mine: true, dco: true, dcoVersion: '1.1', ...extra}),
-  }), env, ctx);
-  assert.equal((await send()).status, 403);
-  env.DB.raw.exec('UPDATE cli_devices SET motion_submit = 1');
-  assert.equal((await send({sha256: 'wrong'})).status, 403);
-  assert.equal((await send({dco: false})).status, 400);
-  const response = await send();
-  assert.equal(response.status, 200, await response.clone().text());
-  const {prUrl} = await response.json();
-  assert.equal((await (await send()).json()).prUrl, prUrl);
-  assert.equal(github.calls.filter(({method, path}) => method === 'POST' && path.endsWith('/pulls')).length, 1);
-});

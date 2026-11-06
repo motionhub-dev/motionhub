@@ -2,7 +2,7 @@
 
 Artifact previews are disabled unless the Worker has an `ARTIFACTS` binding and a valid `ARTIFACT_CONTENT_ORIGIN`. For staging:
 
-1. Apply the site's D1 migrations to the staging database, including `0003_artifacts.sql` through `0006_cli_motion.sql`.
+1. Apply the site's D1 migrations to the staging database, including `0003_artifacts.sql` through `0005_artifact_publication.sql`.
 2. Bind a dedicated, private R2 bucket as `ARTIFACTS`. Do not enable a public bucket endpoint.
 3. Attach `artifacts.motionhub.dev` as the pilot content domain on the same Worker and set its HTTPS origin as `ARTIFACT_CONTENT_ORIGIN`. Use this domain only for uploaded content. Set `ARTIFACT_SITE_ORIGIN` to the staging application origin and configure the GitHub login callback for that origin.
    The application origin for staging is `https://staging.motionhub.dev`. This pilot is same-site, so session and OAuth state cookies use the browser-enforced `__Host-` prefix. Existing browser sessions need to sign in again after that cookie change. Keep content on the sandboxed routes, and replace the content origin and Worker domain binding when moving to a separate registrable domain.

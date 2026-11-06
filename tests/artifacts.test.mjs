@@ -51,7 +51,7 @@ test('ZIP intake validates root entry, paths, duplicate names and file types', a
 test('owner can upload HTML and ZIP, update the fixed draft, and keep it after a failed upload', async () => {
   const db = new DatabaseSync(':memory:');
   db.exec('PRAGMA foreign_keys = ON;');
-  for (const migration of ['0001_people_and_likes', '0003_artifacts', '0004_cli_devices', '0005_artifact_publication', '0002_submissions', '0006_cli_motion']) {
+  for (const migration of ['0001_people_and_likes', '0003_artifacts', '0004_cli_devices', '0005_artifact_publication', '0002_submissions']) {
     db.exec(readFileSync(new URL(`../site/migrations/${migration}.sql`, import.meta.url), 'utf8'));
   }
   const site = 'https://motionhub.dev', origin = 'https://artifacts.motionhub.dev';
@@ -115,6 +115,7 @@ test('owner can upload HTML and ZIP, update the fixed draft, and keep it after a
   const work = site + '/works/' + id;
   assert.match(await (await fetch(work)).text(), /@alice\/example/);
   assert.match(await (await fetch(site + '/portfolio/alice')).text(), new RegExp(id));
+  assert.equal((await manage({action: 'delete-version', version: original})).status, 409);
   const published = origin + '/published/' + original + '/index.html';
   assert.equal(await (await fetch(published)).text(), 'first draft');
   const shared = origin + '/shared/' + share + '/index.html';
@@ -124,11 +125,14 @@ test('owner can upload HTML and ZIP, update the fixed draft, and keep it after a
   assert.equal((await manage({action: 'unpublish'})).status, 303);
   assert.equal((await fetch(work)).status, 404);
   assert.equal((await fetch(published)).status, 404);
+  assert.equal((await manage({action: 'delete-version', version: original})).status, 303);
   assert.doesNotMatch(await (await fetch(site + '/portfolio/alice')).text(), new RegExp(id));
 
   assert.match(document.headers.get('content-security-policy'), /sandbox allow-scripts/);
   const script = new URL('assets/main.js', latestFrame);
   assert.equal(await (await fetch(script)).text(), 'export {};');
+  assert.equal((await fetch(script, {headers: {origin: 'null'}})).headers.get('access-control-allow-origin'), 'null');
+  assert.equal((await fetch(script, {headers: {origin: 'https://unrelated.example'}})).headers.get('access-control-allow-origin'), null);
   script.pathname = script.pathname.replace(/preview\/[^/]+/, 'preview/' + 'a'.repeat(64));
   assert.equal((await fetch(script)).status, 404);
   db.exec('UPDATE artifact_preview_grants SET expires_at = 0');
@@ -138,12 +142,26 @@ test('owner can upload HTML and ZIP, update the fixed draft, and keep it after a
   const cli = (path, secret, method = 'POST') => fetch(site + '/api/cli/' + path, {method, headers: secret ? {authorization: 'Bearer ' + secret} : {}});
   const device = await (await cli('device')).json();
   assert.equal((await cli('token', device.secret)).status, 202);
-  assert.equal((await fetch(device.url, {method: 'POST', headers: {...cookie, origin: site}})).status, 200);
+  const authorize = (userCode, owner = cookie) => fetch(device.url, {
+    method: 'POST', headers: {...owner, origin: site}, body: new URLSearchParams({userCode}),
+  });
+  assert.equal((await authorize(device.userCode, {})).status, 303);
+  assert.equal((await authorize('')).status, 400);
+  assert.equal((await authorize('INVALID')).status, 400);
+  assert.equal((await cli('token', device.secret)).status, 202);
+  assert.equal((await authorize(device.userCode)).status, 200);
   const {token} = await (await cli('token', device.secret)).json();
   assert.equal((await cli('token', device.secret)).status, 410);
   assert.equal((await (await cli('me', token, 'GET')).json()).login, 'alice');
   assert.equal((await fetch(site + '/api/artifacts/' + id, {method: 'POST', body: 'CLI draft',
     headers: {authorization: 'Bearer ' + token, 'content-type': 'text/html'}})).status, 201);
+  const blocked = await (await cli('device')).json();
+  for (let index = 0; index < 5; index++) {
+    const attempt = await fetch(blocked.url, {method: 'POST', headers: {...cookie, origin: site}, body: new URLSearchParams({userCode: 'INVALID'})});
+    assert.equal(attempt.status, 400);
+  }
+  const locked = await fetch(blocked.url, {method: 'POST', headers: {...cookie, origin: site}, body: new URLSearchParams({userCode: blocked.userCode})});
+  assert.equal(locked.status, 410);
   await cli('logout', token);
   assert.equal((await cli('me', token, 'GET')).status, 401);
   db.exec('DELETE FROM people WHERE id = 1');
