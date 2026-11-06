@@ -18,6 +18,7 @@ You do not use this package on its own: an engine binding provides it.
 | `<Caption opacity>` | One spoken line, drawn from the `caption` tokens (font, size, weight, color, background, radius, padding-y, padding-x, bottom, max-width, shadow, rule-left or rule-top) |
 | `<Sequence from duration>`, `interpolate(t, input, output, {easing})`, `Easing` | As Remotion's, in seconds: a span whose children count time from its start, a value mapped through a curve, and the curves (`Easing.bezier` takes a cubicBezier token). For composing components, as a reel does |
 | `<MotionRoot tokens>` | A full-frame box carrying the tokens as CSS custom properties |
+| `<MotionScope tokens root>` | Its children drawn in another motion, on the engine's clock: `useTokens()` under it gives that motion's tokens (a `tokens.json`, or tokens already resolved), set as custom properties on a full-frame root (`root={false}` leaves it out). A film in several motions wraps each scene, or each part of a frame, in one |
 | `resolveTokens(dtcg)`, `tokenVariables(tokens)` | `tokens.json` (W3C design tokens) as values, and those values as custom properties: `--color-ink`, `--font-display`, `--duration-light`, `--easing-light`, `--caption-size` |
 
 A component colours with `var(--color-<name>)` and sets type with `var(--font-<name>)`, reads its time from `useTime()`, never from a clock, a timer or `Math.random`, and takes what changes (words, a progress from 0 to 1, a video's `src`) as props. So the same moment draws the same picture every time.

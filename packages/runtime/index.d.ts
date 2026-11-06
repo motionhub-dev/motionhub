@@ -36,6 +36,8 @@ export declare const useVideoConfig: () => {width: number; height: number; fps: 
 export declare const useTokens: () => Tokens;
 export declare const Video: FC<VideoProps>;
 export declare const MotionRoot: FC<{tokens?: Tokens; style?: CSSProperties; children?: ReactNode}>;
+/** Its children drawn in another motion: its tokens (a tokens.json, or resolved), keeping the engine's time; one per scene or part of a frame */
+export declare const MotionScope: FC<{tokens: unknown; root?: boolean; children?: ReactNode}>;
 export declare const Caption: FC<{children?: ReactNode; opacity?: number; style?: CSSProperties}>;
 
 export type EasingFn = (x: number) => number;

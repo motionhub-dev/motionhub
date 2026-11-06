@@ -46,10 +46,22 @@ It writes the motion as `@<your GitHub login>/<slug>`, takes the look from the p
 
 ```sh
 npx @motionhub/cli search hand-drawn    # motions with every word
-npx @motionhub/cli get @iamsuosi/lab-notebook   # into ./motion, checked against its SHA-256
+npx @motionhub/cli get @iamsuosi/lab-notebook   # into ./motions/@iamsuosi/lab-notebook/, checked against its SHA-256
+npx @motionhub/cli get @iamsuosi/red-pencil     # a second look, beside the first
+npx @motionhub/cli get                          # on another computer: every motion motions.lock.json records
 ```
 
 `get` takes a motion's id: its creator's GitHub name and its slug, `@iamsuosi/lab-notebook`. The [command line](cli.md) page has every command.
+
+## Several motions in one film
+
+A long film can change its look from part to part: one motion for the opening and the data, another for a chapter told by hand. Get each into the project; they sit side by side in `./motions/`, each at its id, and a motion of your own sits beside them in `./motions/<name>/` ([the format](../SPEC.md#13-a-projects-motions)). Say in your plan which motion each scene is in, by its id, and ask your agent for it:
+
+```text
+/motionhub make a film about <your topic>: the opening and the data in @iamsuosi/lab-notebook, the history in @iamsuosi/red-pencil
+```
+
+Each motion's components draw in its own tokens, even side by side in one frame: in Remotion, wrap each scene in `<MotionScope tokens>` ([`@motionhub/runtime`](../packages/runtime/README.md)); in HyperFrames, `Motions[<id>].mount` ([`@motionhub/hyperframes`](../packages/hyperframes/README.md)).
 
 ## In Remotion or HyperFrames
 

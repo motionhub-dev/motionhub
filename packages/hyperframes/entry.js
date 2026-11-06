@@ -1,11 +1,12 @@
-// The browser half of @motionhub/hyperframes, bundled by cli.js with the motion's components into assets/motion/motion.js.
-// It sets window.Motion: mount(), which draws the components with their runtime (@motionhub/runtime) at the time a GSAP timeline
-// is at, so every frame is a function of timeline time; the components; and the tokens, with GSAP-ready eases.
+// The browser half of @motionhub/hyperframes, bundled by cli.js with the motions' components into assets/motion/motion.js.
+// It sets window.Motions, by each motion's id: mount(), which draws the motion's components with their runtime
+// (@motionhub/runtime) and its tokens at the time a GSAP timeline is at, so every frame is a function of timeline time; the
+// components; and the tokens, with GSAP-ready eases. With one motion, window.Motion is that one.
 import {createElement as h} from 'react';
 import {createRoot} from 'react-dom/client';
 import {flushSync} from 'react-dom';
 import {Caption, MotionRoot, MotionRuntimeProvider} from '@motionhub/runtime';
-import {components, tokens} from 'motionhub:motion';
+import {motions} from 'motionhub:motion';
 
 /** The curve [x1, y1, x2, y2] as a function GSAP takes for `ease` */
 function bezier(x1, y1, x2, y2) {
@@ -19,28 +20,34 @@ function bezier(x1, y1, x2, y2) {
   };
 }
 
-/**
- * Draw `draw(t)` (React elements, made with Motion.h) into `el` whenever render(t) is called, from the timeline's onUpdate:
- * `tl.eventCallback('onUpdate', () => m.render(tl.time())); m.render(0);`. `options`: width, height, fps (1920, 1080, 30), and `offset`, the
- * composition's start in the film, so useCompositionTime() counts from the film's start.
- */
-function mount(el, draw, options = {}) {
-  const {width = 1920, height = 1080, fps = 30, offset = 0} = options;
-  const root = createRoot(el);
-  const render = (t) => {
-    const value = {useTime: () => t, useCompositionTime: () => offset + t, fps, width, height, tokens};
-    flushSync(() => root.render(h(MotionRuntimeProvider, {value}, h(MotionRoot, {tokens}, draw(t)))));
-  };
-  return {render};
-}
-
 /** A box at x, y of w × h pixels holding `child` */
 const box = (x, y, w, hgt, child) => h('div', {style: {position: 'absolute', left: x, top: y, width: w, height: hgt}}, child);
 
-const need = (group, name) => {
-  const v = tokens[group]?.[name];
-  if (v === undefined) throw new Error(`the motion has no ${group} token "${name}": it has ${Object.keys(tokens[group] ?? {}).join(', ') || 'none'}`);
-  return v;
-};
+/** One motion's side of window.Motions */
+function motion({id, components, tokens}) {
+  /**
+   * Draw `draw(t)` (React elements, made with h) into `el` whenever render(t) is called, from the timeline's onUpdate:
+   * `tl.eventCallback('onUpdate', () => m.render(tl.time())); m.render(0);`. `options`: width, height, fps (1920, 1080, 30), and `offset`, the
+   * composition's start in the film, so useCompositionTime() counts from the film's start. `el` is marked as this motion's (data-motion), so its
+   * own HTML takes this motion's custom properties from motion.css.
+   */
+  function mount(el, draw, options = {}) {
+    const {width = 1920, height = 1080, fps = 30, offset = 0} = options;
+    el.setAttribute('data-motion', id);
+    const root = createRoot(el);
+    const render = (t) => {
+      const value = {useTime: () => t, useCompositionTime: () => offset + t, fps, width, height, tokens};
+      flushSync(() => root.render(h(MotionRuntimeProvider, {value}, h(MotionRoot, {tokens}, draw(t)))));
+    };
+    return {render};
+  }
+  const need = (group, name) => {
+    const v = tokens[group]?.[name];
+    if (v === undefined) throw new Error(`${id} has no ${group} token "${name}": it has ${Object.keys(tokens[group] ?? {}).join(', ') || 'none'}`);
+    return v;
+  };
+  return {id, h, mount, box, components: {...components, Caption}, tokens, seconds: (name) => need('duration', name), ease: (name) => bezier(...need('easing', name))};
+}
 
-window.Motion = {h, mount, box, components: {...components, Caption}, tokens, seconds: (name) => need('duration', name), ease: (name) => bezier(...need('easing', name))};
+window.Motions = Object.fromEntries(motions.map((m) => [m.id, motion(m)]));
+if (motions.length === 1) window.Motion = window.Motions[motions[0].id];

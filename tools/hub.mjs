@@ -1,12 +1,17 @@
-// motionhub.dev from the command line, with no dependencies: search its index, get a motion (its package checked
-// against the SHA-256 the index gives, unpacked with no link and no path outside the motion), start a new motion, and
-// share one by pull request (HUB.md, CONTRIBUTING.md).
+// motionhub.dev from the command line, with no dependencies: search its index, get a motion into the project (its
+// package checked against the SHA-256 the index gives, unpacked with no link and no path outside the motion), start a
+// new motion, and share one by pull request (HUB.md, CONTRIBUTING.md). A project keeps its motions in ./motions/
+// (SPEC.md §13) and records what it took from the hub in ./motions.lock.json (docs/cli.md).
 //
 //   motionhub search [words ...]                one line per motion that has every word in its id, names, line, fit or tags
-//   motionhub get <id> [--out <dir>]            the newest version of `@iamsuosi/lab-notebook`, into <dir>
-//                                               (default ./motion), which must not exist yet
-//   motionhub init <slug> [--github <login>]    ./<slug>/ with every required file but the poster, to fill in, scoped to
-//                                               the account gh is signed in as (or --github): its id is @<login>/<slug>
+//   motionhub get <id> [--out <dir>]            the newest version of `@iamsuosi/lab-notebook` into ./motions/<id>/,
+//                                               recorded in ./motions.lock.json; with --out, into <dir> (which must not
+//                                               exist yet) and not recorded
+//   motionhub get                               every motion ./motions.lock.json records, at its version: one missing is
+//                                               taken, one there is checked to be the copy as published
+//   motionhub init <slug> [--github <login>]    ./motions/<slug>/ with every required file but the poster, to fill in,
+//                                               scoped to the account gh is signed in as (or --github): its id is
+//                                               @<login>/<slug>
 //   motionhub tokens [MOTION.md] [--out <file>] a motion in one file's tokens, as tokens.json; by default the project's
 //                                               (./MOTION.md, else ./motion/MOTION.md), to standard output
 //   motionhub share <dir> [--wait]              the pull request's checks, then the motion uploaded to motionhub.dev and a
@@ -22,12 +27,43 @@ import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {basename, dirname, join, resolve} from 'node:path';
+import {dirname, join, relative, resolve} from 'node:path';
 import {gunzipSync} from 'node:zlib';
-import {SPEC, checkMotion, expandTokens, motionId, parseFrontMatter} from './check.mjs';
+import {ID, SPEC, checkMotion, expandTokens, listMotions, motionId, parseFrontMatter} from './check.mjs';
 import {files as filesOf, tgz} from './pack.mjs';
 
 export const HUB = 'https://motionhub.dev';
+
+/** Where a project keeps its motions (SPEC.md §13), and the file that records the ones it took from a hub. */
+export const MOTIONS = 'motions';
+export const LOCK = 'motions.lock.json';
+const LOCK_VERSION = 1;
+
+/** Where a motion taken from a hub sits in a project: motions/<id>/, so motions/@<scope>/<slug>/. */
+export const motionPath = (id, root = '.') => join(root, MOTIONS, ...id.split('/'));
+
+/** The project's lock: `{lockfileVersion, motions: {<id>: {version, sha256}}}`, with no motions when there is none. */
+export function readLock(root = '.') {
+  const file = join(root, LOCK);
+  if (!existsSync(file)) return {lockfileVersion: LOCK_VERSION, motions: {}};
+  let lock;
+  try { lock = JSON.parse(readFileSync(file, 'utf8')); } catch (error) { throw new Error(`${file} is not JSON: ${error.message}`); }
+  if (lock?.lockfileVersion !== LOCK_VERSION || !lock.motions || typeof lock.motions !== 'object') throw new Error(`${file} is in a format this version does not know: update with npx @motionhub/cli@latest`);
+  // an entry names where a motion is written, so it must be an id, and its package a SHA-256
+  for (const [id, m] of Object.entries(lock.motions)) {
+    if (!ID.test(id) || !id.startsWith('@') || typeof m?.version !== 'string' || !/^[0-9A-Za-z.+-]+$/.test(m.version) || !/^[0-9a-f]{64}$/.test(m?.sha256 ?? '')) throw new Error(`${file}: "${id}" is not a motion this file can record ({"version", "sha256"} under an id @<scope>/<slug>)`);
+  }
+  return lock;
+}
+
+/** Write the project's lock, its motions in the order of their ids, so the file only changes where a motion does. */
+export function writeLock(lock, root = '.') {
+  const motions = Object.fromEntries(Object.keys(lock.motions).sort().map((id) => [id, {version: lock.motions[id].version, sha256: lock.motions[id].sha256}]));
+  writeFileSync(join(root, LOCK), `${JSON.stringify({lockfileVersion: LOCK_VERSION, motions}, null, 2)}\n`);
+}
+
+/** The SHA-256 of a motion's directory packed the way the hub packs it under `id`: its package's when it is the copy as published. */
+export const packedSha256 = (dir, id) => createHash('sha256').update(tgz(filesOf(dir).map((n) => [`${id}/${n}`, readFileSync(join(dir, n))]))).digest('hex');
 
 /** The motion a project holds, as SPEC.md §11 says a tool looks for one, or undefined. */
 export const projectMotion = (root = '.') => ['MOTION.md', 'motion/MOTION.md'].map((f) => join(root, f)).find((f) => existsSync(f));
@@ -90,14 +126,41 @@ export function unpack(row, gz) {
   return files;
 }
 
-/** Write the newest version of the motion `id` (`<slug>` or `@<scope>/<slug>`) into `out`, which must not exist yet. Returns its index row. */
-export async function getMotion(id, out, base = HUB) {
-  const row = (await index(base)).find((m) => m.slug === id);
-  if (!row) throw new Error(`no motion "${id}" on ${base}${id.startsWith('@') ? '' : ` (a community motion's id starts with its creator: @<login>/${id})`}: motionhub search <words>`);
+/** Write the package `row` names (its `slug` the motion's id, `package.url` and `package.sha256`) into `out`, which must not exist yet. */
+async function take(row, out, base) {
   if (existsSync(out)) throw new Error(`${out} already exists: a project keeps the copy it took, so remove it first or choose --out`);
   const files = unpack(row, Buffer.from(await (await get(new URL(row.package.url, base).href)).arrayBuffer()));
   for (const [path, data] of files) { mkdirSync(dirname(join(out, path)), {recursive: true}); writeFileSync(join(out, path), data); }
+}
+
+/** Write the newest version of the motion `id` (`<slug>` or `@<scope>/<slug>`) into `out`, which must not exist yet. Returns its index row. */
+export async function getMotion(id, out, base = HUB, rows) {
+  const row = (rows ?? await index(base)).find((m) => m.slug === id);
+  if (!row) throw new Error(`no motion "${id}" on ${base}${id.startsWith('@') ? '' : ` (a community motion's id starts with its creator: @<login>/${id})`}: motionhub search <words>`);
+  await take(row, out, base);
   return row;
+}
+
+/**
+ * Bring the project's motions to what its lock records (`motionhub get` with no id): a motion missing from motions/ is
+ * taken at the recorded version and checked against the recorded SHA-256; one already there is packed the hub's way and
+ * compared with it. Returns one line per motion and how many are not the copy as published.
+ */
+export async function restore(root = '.', base = HUB) {
+  const lock = readLock(root), lines = [];
+  let changed = 0;
+  for (const [id, {version, sha256}] of Object.entries(lock.motions)) {
+    const out = motionPath(id, root), at = relative(root, out);
+    if (!existsSync(out)) {
+      await take({slug: id, version, package: {url: `/m/${id}/${version}.tgz`, sha256}}, out, base);
+      lines.push(`${id} ${version}  taken into ${at}`);
+    } else if (packedSha256(out, id) === sha256) lines.push(`${id} ${version}  ok`);
+    else {
+      lines.push(`${id} ${version}  changed: ${at} is not the copy as published. A motion of your own goes in a directory of its own (motions/<name>/); remove this one and run motionhub get to take it back`);
+      changed++;
+    }
+  }
+  return {lines, changed};
 }
 
 /** The command line for search and get: `args` after the command's name. Returns the exit status. */
@@ -113,7 +176,11 @@ export async function main(command, args, base = HUB) {
   if (command === 'tokens') {
     if (args.includes('--out') && (!value('--out') || value('--out').startsWith('--'))) { console.error('usage: motionhub tokens [MOTION.md] [--out <file>]: --out needs a path'); return 2; }
     const file = slug ?? projectMotion();
-    if (!file) { console.error('no MOTION.md here or in ./motion: usage: motionhub tokens [MOTION.md] [--out <file>]'); return 2; }
+    if (!file) {
+      const held = listMotions(resolve(MOTIONS)).map((d) => `  motionhub tokens ${join(MOTIONS, d, 'MOTION.md')}`);
+      console.error(`no MOTION.md here or in ./motion: usage: motionhub tokens [MOTION.md] [--out <file>]${held.length ? `\nthe project holds several motions; name one:\n${held.join('\n')}` : ''}`);
+      return 2;
+    }
     const json = `${JSON.stringify(motionTokens(file), null, 2)}\n`;
     if (value('--out')) { writeFileSync(value('--out'), json); console.log(`${value('--out')}, the tokens of ${file}`); } else process.stdout.write(json);
     return 0;
@@ -127,17 +194,33 @@ export async function main(command, args, base = HUB) {
   }
   if (command === 'init') {
     if (!slug || !/^(?=.{3,40}$)[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) { console.error('usage: motionhub init <slug> [--github <login>]  (3 to 40 characters of a-z, 0-9 and single hyphens)'); return 2; }
-    const out = resolve(slug);
+    const out = resolve(MOTIONS, slug);
     if (existsSync(out)) throw new Error(`${out} already exists`);
     const account = value('--github') ? {login: value('--github')} : githubAccount();
     for (const [path, data] of scaffold(slug, account)) { mkdirSync(dirname(join(out, path)), {recursive: true}); writeFileSync(join(out, path), data); }
-    console.log(`${out}, the motion @${account?.login ? account.login.toLowerCase() : 'your-github-login'}/${slug}, authored by ${account?.login ? `${account.login}${value('--github') ? '' : ' (the account gh is signed in as)'}` : 'nobody yet: set scope and authors in motion.json'}: fill in motion.json, MOTION.md, tokens.json and CREDITS.md, add poster.jpg (a frame of a film made in it, 960 to 3840 pixels wide, at most 500 KB) and any tool directory, then: motionhub share ${basename(out)}`);
+    console.log(`${out}, the motion @${account?.login ? account.login.toLowerCase() : 'your-github-login'}/${slug}, authored by ${account?.login ? `${account.login}${value('--github') ? '' : ' (the account gh is signed in as)'}` : 'nobody yet: set scope and authors in motion.json'}: fill in motion.json, MOTION.md, tokens.json and CREDITS.md, add poster.jpg (a frame of a film made in it, 960 to 3840 pixels wide, at most 500 KB) and any tool directory, then: motionhub share ${relative(process.cwd(), out)}`);
     return 0;
   }
-  if (!slug) { console.error('usage: motionhub get <id> [--out <dir>]'); return 2; }
-  const out = resolve(value('--out') ?? 'motion');
-  const row = await getMotion(slug, out, base);
-  console.log(`${row.slug} ${row.version} in ${out}: read its MOTION.md and tokens.json before drawing. Credit: ${row.name.en} by ${row.authors.map((a) => a.name).join(', ')}, ${base}/m/${row.slug}/, ${row.license.text}`);
+  if (!slug) {
+    if (args.includes('--out')) { console.error('usage: motionhub get <id> [--out <dir>]: --out takes one motion'); return 2; }
+    if (!Object.keys(readLock().motions).length) { console.error(`usage: motionhub get <id> [--out <dir>], or motionhub get to take every motion ${LOCK} records: there is none here yet`); return 2; }
+    const {lines, changed} = await restore('.', base);
+    for (const line of lines) console.log(line);
+    return changed ? 1 : 0;
+  }
+  const custom = value('--out');
+  const out = resolve(custom ?? motionPath(slug)), at = relative(process.cwd(), out);
+  const rows = await index(base);
+  const lock = readLock();
+  // a copy already in the project stays: it is the version the film was made in
+  if (!custom && existsSync(out)) {
+    const held = lock.motions[slug], newest = rows.find((m) => m.slug === slug);
+    if (held && newest && held.version === newest.version) { console.log(`${slug} ${held.version} is in ${at}, the newest version`); return 0; }
+    throw new Error(`${at} already exists${held ? ` at ${held.version}` : ''}${newest ? `; the newest is ${newest.version}: remove ${at} and get it again to take that one` : ''}`);
+  }
+  const row = await getMotion(slug, out, base, rows);
+  if (!custom) { lock.motions[row.slug] = {version: row.version, sha256: row.package.sha256}; writeLock(lock); }
+  console.log(`${row.slug} ${row.version} in ${at}${custom ? '' : `, recorded in ${LOCK}`}: read its MOTION.md and tokens.json before drawing. Credit: ${row.name.en} by ${row.authors.map((a) => a.name).join(', ')}, ${base}/m/${row.slug}/, ${row.license.text}`);
   return 0;
 }
 

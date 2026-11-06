@@ -42,7 +42,7 @@ const MEMBERS = new Set(['spec', 'slug', 'version', 'name', 'line', 'authors', '
 const MEMBERS_SINCE = {scope: 'motion/0.2', basedOn: 'motion/0.3', fit: 'motion/0.4'};
 /** What sort of motion it is (SPEC.md §3, What it is for) */
 export const FIT_KINDS = ['general', 'topic', 'overlay'];
-const ID = /^(?:@[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,38}\/)?[a-z0-9]+(?:-[a-z0-9]+)*$/;
+export const ID = /^(?:@[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,38}\/)?[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const FILES = ['motion.json', 'MOTION.md', 'tokens.json', 'poster.jpg', 'CREDITS.md'];
 const HEADINGS = [['essence'], ['colour', 'color'], ['type'], ['motion'], ['avoid']];
 const DOC_BYTES = 16 * 1024;
@@ -101,7 +101,7 @@ export function checkMotion(dir, {hub = true, author, authorId, was, accounts, s
   if (linked.length) { for (const l of linked) add('format.symlink', l, 'a motion holds files, never links: replace it with the file it points to'); return issues; }
   if (existsSync(dir) && statSync(dir).isFile() && basename(dir) === 'MOTION.md') return checkOneFile(dir, hub, add), issues;
   if (!existsSync(dir) || !statSync(dir).isDirectory()) return add('format.dir', '.', 'not a directory'), issues;
-  if (!existsSync(join(dir, 'motion.json')) && existsSync(join(dir, 'MOTION.md')) && oneFileSpec(join(dir, 'MOTION.md'))) return checkOneFile(join(dir, 'MOTION.md'), hub, add), issues;
+  if (!existsSync(join(dir, 'motion.json')) && existsSync(join(dir, 'MOTION.md')) && oneFileSpec(join(dir, 'MOTION.md'))) return checkPlace(dir, undefined, add, accounts), checkOneFile(join(dir, 'MOTION.md'), hub, add), issues;
 
   const entries = readdirSync(dir, {withFileTypes: true});
   for (const file of FILES) if (!entries.some((e) => e.isFile() && e.name === file)) add('format.missing', file, `${file} is required`);
@@ -128,6 +128,7 @@ export function checkMotion(dir, {hub = true, author, authorId, was, accounts, s
   }
 
   const who = {author, authorId: authorId === undefined || authorId === null || authorId === '' ? undefined : Number(authorId), accounts};
+  checkPlace(dir, manifest, add, accounts);
   if (hub) checkHub(dir, manifest, {...who, was}, add);
   if (hub && was) checkUpdate(manifest, was, who, add);
   // shared through motionhub.dev (share without --pr), each file that is not text is a call of its own to GitHub
@@ -551,17 +552,42 @@ export function listMotions(root) {
   return dirs(root).flatMap((d) => (d.startsWith('@') ? dirs(join(root, d)).map((s) => `${d}/${s}`) : [d])).sort();
 }
 
+/**
+ * Where a motion directory sits: under a `motions/` directory (`in`), as `at` (`<name>` or `@<scope>/<name>`), with `root`
+ * that `motions/` directory, and whether that is the catalogue (`catalogue`): a `motions/` with `accounts/` beside it, as
+ * in this repository, or any `motions/` when the accounts to judge by are given (a pull request's files, checked by main's
+ * checker). Any other `motions/` is a project's (SPEC.md §13).
+ */
+export function place(dir, {accounts} = {}) {
+  const path = resolve(dir), name = basename(path), parent = basename(dirname(path));
+  const scoped = parent.startsWith('@') && basename(dirname(dirname(path))) === 'motions';
+  const inMotions = scoped || parent === 'motions';
+  const root = scoped ? dirname(dirname(path)) : dirname(path);
+  return {in: inMotions, at: scoped ? `${parent}/${name}` : name, root: inMotions ? root : undefined, catalogue: inMotions && (accounts !== undefined || existsSync(join(dirname(root), 'accounts')))};
+}
+
+/**
+ * In a project (SPEC.md §13), a motion under motions/@<scope>/ is a copy taken from a hub and sits at its id; any other is
+ * the project's own, at motions/<name>/ with a name of a-z, 0-9 and single hyphens.
+ */
+function checkPlace(dir, manifest, add, accounts) {
+  const {in: inMotions, at, catalogue} = place(dir, {accounts});
+  if (!inMotions || catalogue) return;
+  if (!at.startsWith('@')) {
+    if (!NAME.test(at)) add('format.place', '.', `motions/${at}/: a motion of the project's own is named with a-z, 0-9 and single hyphens`);
+    return;
+  }
+  if (typeof manifest?.slug === 'string' && motionId(manifest) !== at) add('format.place', 'motion.json', `motions/${at}/ holds the motion ${motionId(manifest)}: in a project, motions/@<scope>/ holds only copies taken from a hub, each at its id. Keep a motion of your own at motions/<name>/`);
+}
+
 function checkHub(dir, manifest, {author, authorId, accounts, was}, add) {
   const who = {author, authorId, accounts};
-  // in the catalogue a motion is motions/<id>/: motions/<slug>/ or motions/@<scope>/<slug>/ (HUB.md); a copy in a
-  // project (./motion/) may be named otherwise
-  const path = resolve(dir), name = basename(path), parent = basename(dirname(path));
-  const inCatalogue = parent === 'motions' || (parent.startsWith('@') && basename(dirname(dirname(path))) === 'motions');
-  const at = parent.startsWith('@') ? `${parent}/${name}` : name;
+  // in the catalogue a motion is motions/<id>/: motions/<slug>/ or motions/@<scope>/<slug>/ (HUB.md). A project's own
+  // motion may be named otherwise (motions/<name>/, SPEC.md §13); one under motions/@<scope>/ is checked by checkPlace
+  const {catalogue: inCatalogue, at, root} = place(dir, {accounts});
   if (inCatalogue && typeof manifest?.slug === 'string' && motionId(manifest) !== at) add('hub.slug', 'motion.json', `the motion ${motionId(manifest)} sits at motions/${motionId(manifest)}/ in the catalogue, not motions/${at}/`);
   // a motion it is based on is one in the catalogue, so the site can link and credit it
   if (inCatalogue && Array.isArray(manifest?.basedOn)) {
-    const root = parent.startsWith('@') ? dirname(dirname(path)) : dirname(path);
     for (const b of manifest.basedOn) if (typeof b?.id === 'string' && ID.test(b.id) && !existsSync(join(root, b.id, 'motion.json'))) add('hub.basedOn', 'motion.json', `basedOn names ${b.id}, which is not in the catalogue`);
   }
   if (manifest?.license && typeof manifest.license === 'object') {

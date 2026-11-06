@@ -72,7 +72,7 @@ npx skills add motionhub-dev/motions -g
 
 ```sh
 npx @motionhub/cli search hand-drawn          # 搜索含有所有关键词的 motion
-npx @motionhub/cli get @iamsuosi/lab-notebook   # 下载到 ./motion，并核对 SHA-256
+npx @motionhub/cli get @iamsuosi/lab-notebook   # 下载到 ./motions/@iamsuosi/lab-notebook/，并核对 SHA-256
 ```
 
 所有用法见 [Use a motion](docs/use.md)，所有命令见 [Command line](docs/cli.md)。
@@ -132,8 +132,8 @@ motions/@<scope>/<slug>/   一个 motion，id 为 @<scope>/<slug>：创作者的
 也可以手动操作：
 
 ```sh
-npx @motionhub/cli init <slug> --github <你>   # 生成 ./<slug>/，含所有待填写的必需文件，scope 为你
-npx @motionhub/cli share <slug>                # 跑一遍 pull request 会跑的检查，然后给出链接：用 GitHub 登录即可开 pull request
+npx @motionhub/cli init <slug> --github <你>   # 生成 ./motions/<slug>/，含所有待填写的必需文件，scope 为你
+npx @motionhub/cli share motions/<slug>        # 跑一遍 pull request 会跑的检查，然后给出链接：用 GitHub 登录即可开 pull request
 ```
 
 不需要 git、gh 或 GitHub token：打开链接、输入终端显示的验证码，pull request 就以你的名义打开。想用 gh 从自己的 fork 开，加 `--pr`。

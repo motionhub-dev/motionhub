@@ -70,7 +70,7 @@ Or from the command line, with Node.js 20 or later:
 
 ```sh
 npx @motionhub/cli search hand-drawn          # motions with every word
-npx @motionhub/cli get @iamsuosi/lab-notebook   # into ./motion, checked against its SHA-256
+npx @motionhub/cli get @iamsuosi/lab-notebook   # into ./motions/@iamsuosi/lab-notebook/, checked against its SHA-256
 ```
 
 [Use a motion](docs/use.md) has every way, and [Command line](docs/cli.md) every command.
@@ -130,8 +130,8 @@ Made a film whose look others should have? With the skill installed, ask your ag
 By hand:
 
 ```sh
-npx @motionhub/cli init <slug> --github <you>   # ./<slug>/ with every required file to fill in, scoped to you
-npx @motionhub/cli share <slug>                 # the checks, then a link: sign in with GitHub to open the pull request
+npx @motionhub/cli init <slug> --github <you>   # ./motions/<slug>/ with every required file to fill in, scoped to you
+npx @motionhub/cli share motions/<slug>         # the checks, then a link: sign in with GitHub to open the pull request
 ```
 
 No git, gh or GitHub token is needed: the link opens the pull request under your name. `--pr` opens it from your fork with gh instead.

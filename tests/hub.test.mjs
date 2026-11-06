@@ -5,10 +5,11 @@ import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {createServer} from 'node:http';
-import {existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {getMotion, motionTokens, projectMotion, scaffold, search, share, unpack} from '../tools/hub.mjs';
+import {LOCK, getMotion, main, motionTokens, packedSha256, projectMotion, readLock, scaffold, search, share, unpack} from '../tools/hub.mjs';
+import {tgz} from '../tools/pack.mjs';
 import {SPEC, checkMotion} from '../tools/check.mjs';
 import {resolveTokens, tokenVariables} from '../packages/runtime/tokens.js';
 
@@ -73,6 +74,101 @@ test('get writes the newest version, and never over a directory that exists', as
     await assert.rejects(getMotion('nothing-here', join(out, 'x'), base), /no motion/);
     assert.ok(!existsSync(join(out, 'x')));
   } finally { server.close(); }
+});
+
+/** A motion `id` at `version` packed as the hub packs it (tools/pack.mjs), and its index row. */
+function hubPkg(id, version = '1.0.0', doc = '# A\n') {
+  const gz = tgz([[`${id}/MOTION.md`, Buffer.from(doc)], [`${id}/react/parts/plate.tsx`, Buffer.from('export const Plate = () => null;\n')]]);
+  return {row: {slug: id, version, name: {en: 'Plain Paper'}, line: {en: 'Ink on plain paper.'}, tags: [], authors: [{name: 'A', github: 'a'}],
+    license: {text: 'CC-BY-4.0'}, poster: `/m/${id}/poster.jpg`, tools: ['react'], package: {url: `/m/${id}/${version}.tgz`, sha256: createHash('sha256').update(gz).digest('hex'), bytes: gz.length}}, gz};
+}
+
+/** A hub serving `packages` (each {row, gz}), every version at its URL and the newest of each id in the index; and its base URL. */
+async function hub(packages) {
+  const newest = new Map(packages.map((p) => [p.row.slug, p.row]));
+  const server = createServer((req, res) => {
+    const p = packages.find((x) => x.row.package.url === req.url);
+    if (req.url === '/api/motions.json') res.end(JSON.stringify({spec: 'motion/0.1', motions: [...newest.values()]}));
+    else if (p) res.end(p.gz);
+    else { res.statusCode = 404; res.end(); }
+  });
+  await new Promise((done) => server.listen(0, '127.0.0.1', done));
+  return {server, base: `http://127.0.0.1:${server.address().port}`};
+}
+
+/** The command line's `main` run in `dir`, with what it printed. */
+async function inDir(dir, command, args, base) {
+  const was = process.cwd(), log = console.log, error = console.error, out = [];
+  process.chdir(dir);
+  console.log = console.error = (line) => out.push(String(line));
+  try { return {status: await main(command, args, base), out: out.join('\n')}; }
+  finally { process.chdir(was); console.log = log; console.error = error; }
+}
+
+test('a project holds several motions, each at motions/<id>/, and records what it took in its lock', async () => {
+  const a = hubPkg('@ana/plain-paper'), b = hubPkg('@bo/chalk-hall', '2.1.0');
+  const {server, base} = await hub([a, b]);
+  const project = mkdtempSync(join(tmpdir(), 'project-'));
+  try {
+    assert.equal((await inDir(project, 'get', ['@ana/plain-paper'], base)).status, 0);
+    assert.equal((await inDir(project, 'get', ['@bo/chalk-hall'], base)).status, 0);
+    assert.equal(readFileSync(join(project, 'motions/@ana/plain-paper/MOTION.md'), 'utf8'), '# A\n');
+    assert.ok(existsSync(join(project, 'motions/@bo/chalk-hall/react/parts/plate.tsx')));
+    assert.deepEqual(JSON.parse(readFileSync(join(project, LOCK), 'utf8')), {lockfileVersion: 1, motions: {
+      '@ana/plain-paper': {version: '1.0.0', sha256: a.row.package.sha256},
+      '@bo/chalk-hall': {version: '2.1.0', sha256: b.row.package.sha256},
+    }});
+    // the copy as published packs to its package's SHA-256, which is how a copy is checked later
+    assert.equal(packedSha256(join(project, 'motions/@ana/plain-paper'), '@ana/plain-paper'), a.row.package.sha256);
+    const again = await inDir(project, 'get', ['@ana/plain-paper'], base);
+    assert.equal(again.status, 0);
+    assert.match(again.out, /is in motions\/@ana\/plain-paper, the newest version/);
+    // --out writes elsewhere and records nothing
+    assert.equal((await inDir(project, 'get', ['@ana/plain-paper', '--out', 'elsewhere'], base)).status, 0);
+    assert.ok(existsSync(join(project, 'elsewhere/MOTION.md')));
+    assert.deepEqual(Object.keys(readLock(project).motions), ['@ana/plain-paper', '@bo/chalk-hall']);
+  } finally { server.close(); }
+});
+
+test('get with no id takes the recorded versions back, and names a copy that was changed', async () => {
+  const old = hubPkg('@ana/plain-paper', '1.0.0'), next = hubPkg('@ana/plain-paper', '1.1.0', '# A, again\n');
+  const {server, base} = await hub([old, next]);
+  const project = mkdtempSync(join(tmpdir(), 'project-'));
+  try {
+    writeFileSync(join(project, LOCK), JSON.stringify({lockfileVersion: 1, motions: {'@ana/plain-paper': {version: '1.0.0', sha256: old.row.package.sha256}}}));
+    const taken = await inDir(project, 'get', [], base);
+    assert.equal(taken.status, 0, taken.out);
+    assert.equal(readFileSync(join(project, 'motions/@ana/plain-paper/MOTION.md'), 'utf8'), '# A\n', 'the recorded version, not the newest');
+    assert.match((await inDir(project, 'get', [], base)).out, /@ana\/plain-paper 1\.0\.0  ok/);
+    writeFileSync(join(project, 'motions/@ana/plain-paper/MOTION.md'), '# A, edited\n');
+    const changed = await inDir(project, 'get', [], base);
+    assert.equal(changed.status, 1);
+    assert.match(changed.out, /changed: motions\/@ana\/plain-paper is not the copy as published/);
+    // a newer version is only taken when asked, by removing the copy and getting it again
+    const kept = await inDir(project, 'get', ['@ana/plain-paper'], base).catch((e) => e);
+    assert.match(kept.message, /already exists at 1\.0\.0; the newest is 1\.1\.0/);
+    rmSync(join(project, 'motions/@ana/plain-paper'), {recursive: true});
+    assert.equal((await inDir(project, 'get', ['@ana/plain-paper'], base)).status, 0);
+    assert.equal(readLock(project).motions['@ana/plain-paper'].version, '1.1.0');
+  } finally { server.close(); }
+});
+
+test('a lock is refused when it names a place outside motions/ or a package without its SHA-256', () => {
+  const project = mkdtempSync(join(tmpdir(), 'project-'));
+  for (const motions of [{'../../etc': {version: '1.0.0', sha256: 'a'.repeat(64)}}, {'plain-paper': {version: '1.0.0', sha256: 'a'.repeat(64)}}, {'@ana/plain-paper': {version: '1.0.0', sha256: 'abc'}}, {'@ana/plain-paper': {version: '../1', sha256: 'a'.repeat(64)}}]) {
+    writeFileSync(join(project, LOCK), JSON.stringify({lockfileVersion: 1, motions}));
+    assert.throws(() => readLock(project), /is not a motion this file can record/, JSON.stringify(motions));
+  }
+  writeFileSync(join(project, LOCK), JSON.stringify({lockfileVersion: 2, motions: {}}));
+  assert.throws(() => readLock(project), /format this version does not know/);
+});
+
+test('init starts a motion of the project\'s own in motions/<slug>/', async () => {
+  const project = mkdtempSync(join(tmpdir(), 'project-'));
+  const r = await inDir(project, 'init', ['my-look', '--github', 'ana']);
+  assert.equal(r.status, 0);
+  assert.ok(existsSync(join(project, 'motions/my-look/motion.json')));
+  assert.match(r.out, /motionhub share motions\/my-look/);
 });
 
 /** The smallest JPEG the checker reads: its size, and nothing to decode. */

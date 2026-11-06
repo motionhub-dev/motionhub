@@ -229,7 +229,7 @@ Front matter is a small part of YAML, so a tool needs no YAML library to read it
 
 A motion in a directory (§2) may have front matter in its `MOTION.md`, but never `tokens`: its values are in `tokens.json`, so they have one source. Its `motion.json` says its version and its name.
 
-A tool looking for a project's motion reads `MOTION.md` at the project's root, and otherwise `motion/MOTION.md`. A project may hold other design files too; this format says nothing about them.
+A tool looking for a project's motion reads `MOTION.md` at the project's root, and otherwise `motion/MOTION.md`. A project may hold other design files too; this format says nothing about them. A project that uses several motions keeps them as §13 says.
 
 ## 12. `react/`
 
@@ -250,3 +250,22 @@ A component in `react/parts/`:
 - exports a literal `meta` with `name`, `purpose`, `line`, `fits`, `params` (each with `type` and `doc`) and `preview`
 
 `purpose` is what the component is for: one of `title`, `open`, `close`, `data`, `compare`, `steps`, `term`, `link`, `quote`, `mark`, `transition` or `ground`.
+
+## 13. A project's motions
+
+A film can be made in more than one motion: one look for its titles and another for its data, or a look for each part of a long film. A project keeps the motions it uses in a directory `motions/` at its root:
+
+```
+motions/
+  @iamsuosi/red-pencil/    a copy taken from a hub, at its id
+  @ana/ledger-pencil/
+  my-look/                 a motion of the project's own
+```
+
+- **A copy taken from a hub** sits at its id: `motions/@<scope>/<slug>/`, whose `motion.json` names that scope and slug. It is the motion as published, never changed in place: a project that wants it otherwise copies it to a directory of its own and changes that, naming the original in `basedOn` (§3).
+- **A motion of the project's own** is any other directory directly in `motions/`, named as its maker likes with `a-z`, `0-9` and single hyphens. It is a motion in a directory (§2), or a directory holding only a motion in one file (§11). Its name in the project is its directory's; its id is still the one its `motion.json` gives, if any.
+- A name starting with `@` is only ever a scope, so a project's own motion never collides with a copy from a hub, nor two copies with each other.
+
+A tool looking for a project's motions reads the one §11 finds, if there is one, and every motion in `motions/`. Which motion draws which scene is the film's own matter: a tool names it by its id or its directory where it plans that scene, and this format says nothing about it. A binding gives each motion's components that motion's tokens only, so a component drawn in one motion never reads another's, even in the same frame.
+
+This section adds no member to a motion and changes no motion's meaning, so it needs no new `spec`: it says only where a project keeps the motions it holds. What a tool records about them (where a copy came from, at which version) is that tool's own, such as `motions.lock.json` for `@motionhub/cli`.

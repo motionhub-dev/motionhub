@@ -1,6 +1,6 @@
 {
   "name": "@motionhub/hyperframes",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Use a motion from motionhub.dev in HyperFrames: its React components drawn by your GSAP timeline, its tokens as CSS variables and eases, its faces as local files.",
   "license": "MIT",
   "repository": {"type": "git", "url": "git+https://github.com/motionhub-dev/motions.git", "directory": "packages/hyperframes"},

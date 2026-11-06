@@ -17,7 +17,7 @@ The first installs HyperFrames' core skills, as [its README](https://github.com/
 /motionhub make a HyperFrames film about <your topic> in @iamsuosi/lab-notebook
 ```
 
-The motionhub skill fetches the motion into `./motion` and checks it against its SHA-256, reads `MOTION.md` and `tokens.json` whole, adds the [HyperFrames binding](../packages/hyperframes/README.md), and builds your story from the motion's components and tokens; HyperFrames' skills keep the composition to HyperFrames' own practice and render it.
+The motionhub skill fetches the motion into `./motions/<id>/` and checks it against its SHA-256, reads `MOTION.md` and `tokens.json` whole, adds the [HyperFrames binding](../packages/hyperframes/README.md), and builds your story from the motion's components and tokens; HyperFrames' skills keep the composition to HyperFrames' own practice and render it.
 
 An agent without motionhub's skill can take the same request as a prompt that starts by reading it:
 
@@ -27,4 +27,4 @@ Read https://motionhub.dev/llms.txt, then make a HyperFrames film about "<your t
 
 ## By hand
 
-The [HyperFrames binding](../packages/hyperframes/README.md) is the package the skill uses: it writes the motion's tokens as CSS variables and eases and its faces as local files, and `Motion.mount` draws the components in `./motion/react/parts/` from your timeline.
+The [HyperFrames binding](../packages/hyperframes/README.md) is the package the skill uses: it writes the motion's tokens as CSS variables and eases and its faces as local files, and `Motions[<id>].mount` draws the components in `./motions/<id>/react/parts/` from your timeline, for each motion the project holds.

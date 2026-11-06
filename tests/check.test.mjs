@@ -37,8 +37,10 @@ let root;
 /** A file's content: the change's when it names one (null leaves the file out), else the default. */
 const pick = (change, key, fallback, encode = (v) => v) => key in change ? (change[key] === null ? null : encode(change[key])) : encode(fallback);
 function motion(change = {}) {
+  // the default root is a catalogue's: accounts/ beside motions/, as in this repository; `change.root` names another
   root ??= mkdtempSync(join(tmpdir(), 'motions-'));
-  const dir = join(root, change.dir ?? 'test-motion');
+  mkdirSync(join(root, 'accounts'), {recursive: true});
+  const dir = join(change.root ?? root, change.dir ?? 'test-motion');
   rmSync(dir, {recursive: true, force: true});
   mkdirSync(dir, {recursive: true});
   const files = {
@@ -108,6 +110,19 @@ test('a scope is a lowercase GitHub username, since motion/0.2, and a catalogue 
   assert.ok(codes(motion({dir: 'motions/@tester/test-motion', manifest: UNSCOPED})).includes('hub.slug'), 'an unscoped motion is not kept under a scope');
   assert.ok(codes(motion({dir: 'motions/test-motion', manifest: listed})).includes('hub.slug'), 'a scoped motion is not kept at the top');
   assert.deepEqual(codes(motion({dir: 'project/motion', manifest: scoped}), {hub: false}), [], 'a copy in a project may be named otherwise');
+});
+
+test('a project keeps its own motions at motions/<name>/ and copies from a hub at motions/<id>/ (SPEC.md §13)', () => {
+  const project = mkdtempSync(join(tmpdir(), 'project-'));
+  const listed = {...MANIFEST, scope: 'tester'};
+  const slugCodes = (dir, manifest, options) => codes(motion({root: project, dir, manifest}), options).filter((c) => c === 'hub.slug' || c === 'format.place');
+  assert.deepEqual(slugCodes('motions/my-look', listed), [], 'a motion of the project\'s own is named as its maker likes');
+  assert.deepEqual(slugCodes('motions/@tester/test-motion', listed), []);
+  assert.deepEqual(slugCodes('motions/@other/test-motion', listed), ['format.place'], 'a copy from a hub sits at its id');
+  assert.deepEqual(slugCodes('motions/@tester/other', listed, {hub: false}), ['format.place'], 'a rule of the format, not only the hub\'s');
+  assert.deepEqual(slugCodes('motions/@tester/test-motion', UNSCOPED), ['format.place']);
+  assert.deepEqual(slugCodes('motions/My_Look', listed), ['format.place'], 'a name of a-z, 0-9 and single hyphens');
+  assert.deepEqual(slugCodes('motions/my-look', listed, {accounts: new Map([['tester', 7]])}), ['hub.slug'], 'with the accounts to judge by, a motions/ is the catalogue\'s, as for a pull request\'s files');
 });
 
 test('basedOn names the motions this one builds on, since motion/0.3, and in the catalogue they are there', () => {

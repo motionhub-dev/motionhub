@@ -21,15 +21,15 @@ ask your agent from the project whose look you want to share:
 It runs the steps below for you and asks before it opens the pull request. By hand:
 
 ```sh
-npx @motionhub/cli init <slug> --github <you>   # ./<slug>/ with every required file to fill in, scoped to you
-npx @motionhub/cli share <slug>                 # the checks below, then a link: sign in with GitHub there to open the pull request
+npx @motionhub/cli init <slug> --github <you>   # ./motions/<slug>/ with every required file to fill in, scoped to you
+npx @motionhub/cli share motions/<slug>         # the checks below, then a link: sign in with GitHub there to open the pull request
 ```
 
 `share` needs no git, `gh` or GitHub token, so it works from any machine an agent runs on, a cloud one included. It checks the motion and uploads it to motionhub.dev, then prints a link and a code. Open the link and sign in with GitHub; motionhub asks GitHub for no permissions. Check the motion, type the code your terminal shows, and certify the DCO. motionhub's GitHub App then opens the pull request on your behalf. The commit carries your name, signed off; the app shows as the pull request's author, and the pull request names you. Add `--wait` to have the command wait (up to 30 minutes) and print the pull request. To change it, share it again: while your pull request for it is open, the new version is added to it. Your page on motionhub.dev (`/you/`, In review) lists it, and Withdraw there closes it. A link works for a day. A new motion under your scope can be submitted only by your GitHub account; a published one only by one of its authors, each in a pull request of their own. Shared this way, a motion holds at most 40 files that are not text (pictures, fonts, sounds); open the pull request yourself with `--pr` for more.
 
 Never type a share's code on a page you did not open from your own terminal.
 
-To open the pull request yourself instead, from your fork with git and gh: `npx @motionhub/cli share <slug> --pr`.
+To open the pull request yourself instead, from your fork with git and gh: `npx @motionhub/cli share motions/<slug> --pr`.
 
 ## Before you open it
 
@@ -88,7 +88,7 @@ A pull request that breaks these is closed. If you hold rights in something here
 A tool keeps its own files in a directory named after it (SPEC.md §7). Where several people write for one tool, the directory follows that tool's convention here:
 
 - **`react/`**: the motion's components, for any React engine. [SPEC.md](SPEC.md) §12 says what they are: where they sit, what they import, how they colour and set type, and the `meta` each exports. They run unchanged in Remotion through [`@motionhub/remotion`](packages/remotion/README.md) and in HyperFrames through [`@motionhub/hyperframes`](packages/hyperframes/README.md). Each one's `meta.purpose` is checked for every motion (`hub.purpose`), so the site and agents can see what a motion's components cover. A face Google Fonts does not serve goes in `react/fonts/` as WOFF2, cut to the characters the components draw (at most 300 KB each), with `react/fonts/fonts.json` naming each (`[{family, file, weight, style}]`) and `CREDITS.md` its licence (`hub.font`); players and bindings use it before Google Fonts. `react/sound.json` is how its world sounds: `{bpm, root, kit, roles: {land, move, draw, count, cut, out}}`, each role a voice of `@motionhub/runtime/sound` (`hub.sound`), and the reel says when with `export const cues = [{at, role, dur}]`. `react/reel.tsx` is the reel the motion's page plays live (HUB.md, "Reels"): a default export that composes the components by `useTime()`, with `Sequence`, `interpolate` and `Easing` from the runtime, and `export const reel = {seconds}`, at most 30.
-- **`remotion/`**: only what `react/` and `@motionhub/remotion` do not already give a Remotion project (a component that needs `@remotion/*`, say), imported from `../motion/remotion`, with a `README.md` saying what each piece is for and its props. Components there follow the same rules, and faces may be bundled under `remotion/fonts/` with their licence text.
+- **`remotion/`**: only what `react/` and `@motionhub/remotion` do not already give a Remotion project (a component that needs `@remotion/*`, say), imported from the motion's `remotion/` (`../motions/<id>/remotion` in a project), with a `README.md` saying what each piece is for and its props. Components there follow the same rules, and faces may be bundled under `remotion/fonts/` with their licence text.
 
 A convention for another tool is added here when its first motion arrives.
 
