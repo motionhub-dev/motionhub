@@ -4,7 +4,7 @@
 // the motion's tokens follow the W3C design tokens format, and their CSS custom properties follow Style Dictionary's
 // naming (--color-ink, --font-display). An engine binding (@motionhub/remotion, @motionhub/hyperframes, or an engine's own) supplies
 // the runtime through <MotionRuntimeProvider>; this package holds no engine.
-import {createContext, createElement, useContext} from 'react';
+import {createContext, createElement, useContext, useMemo} from 'react';
 
 // ---- seeded randomness: the same seed gives the same stream on every machine and in every engine ----
 /** mulberry32 */
@@ -31,7 +31,7 @@ const hash = (key) => {
 export const seededRandom = (seed) => prng(typeof seed === 'number' ? seed : hash(String(seed)));
 
 export {resolveTokens, tokenVariables} from './tokens.js';
-import {tokenVariables} from './tokens.js';
+import {resolveTokens, tokenVariables} from './tokens.js';
 
 // ---- the runtime an engine provides ----
 const Runtime = createContext(null);
@@ -114,6 +114,23 @@ export const Sequence = ({from = 0, duration = Infinity, children}) => {
 export const MotionRoot = ({tokens, style, children}) => createElement('div', {
   style: {position: 'absolute', inset: 0, overflow: 'hidden', ...tokenVariables(tokens), ...style},
 }, children);
+
+/** Whether `tokens` are a tokens.json (W3C design tokens, with `$value`s) rather than tokens already resolved */
+const isDtcg = (tokens) => {
+  const walk = (node) => node && typeof node === 'object' && ('$value' in node || Object.values(node).some(walk));
+  return walk(tokens);
+};
+
+/**
+ * Its children drawn in another motion: every component under it reads `tokens` (that motion's tokens.json, or tokens already resolved) from
+ * useTokens(), and they are set as custom properties on a full-frame root (`root={false}` leaves it out), while time, frame and size stay the
+ * engine's. So one film uses several motions (SPEC.md §13): a <MotionScope> for each scene, or for each part of a frame, in its motion.
+ */
+export const MotionScope = ({tokens, root = true, children}) => {
+  const parent = runtime();
+  const resolved = useMemo(() => (isDtcg(tokens) ? resolveTokens(tokens) : tokens ?? {}), [tokens]);
+  return createElement(Runtime.Provider, {value: {...parent, tokens: resolved}}, root ? createElement(MotionRoot, {tokens: resolved}, children) : children);
+};
 
 /**
  * The motion's caption: one spoken line on the frame, drawn from the caption group of its tokens: font, size, weight, color, background, radius,

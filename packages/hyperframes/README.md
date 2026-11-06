@@ -1,14 +1,14 @@
 # @motionhub/hyperframes
 
-Use a motion from [motionhub.dev](https://motionhub.dev) in HyperFrames. Its React components (`motion/react/parts/`) are drawn at the time your GSAP timeline is at; its tokens become CSS variables and GSAP eases; its faces become local files. Nothing is fetched at render.
+Use a motion from [motionhub.dev](https://motionhub.dev) in HyperFrames. Its React components (`react/parts/`) are drawn at the time your GSAP timeline is at; its tokens become CSS variables and GSAP eases; its faces become local files. Nothing is fetched at render.
 
 ```sh
-npx @motionhub/cli get @iamsuosi/stage-light   # into ./motion
+npx @motionhub/cli get @iamsuosi/stage-light   # into ./motions/@iamsuosi/stage-light/
 npm i @motionhub/hyperframes
-npx motionhub-hyperframes motion --out assets/motion
+npx motionhub-hyperframes --out assets/motion
 ```
 
-That writes `assets/motion/motion.js` (the components, React and `@motionhub/runtime` in one file), `motion.css` and `fonts/`. Add `--han` for a film with Chinese, Japanese or Korean text: it adds those faces, every part of them (several MB each). In `index.html`, before the compositions' scripts:
+That takes every motion in `./motions/` ([a project's motions](../../SPEC.md#13-a-projects-motions); name directories to take only those, and with no `./motions/` it takes `./motion`) and writes `assets/motion/motion.js` (their components, React and `@motionhub/runtime` in one file), `motion.css` and `fonts/`. A motion in one file needs its `tokens.json` first: `npx @motionhub/cli tokens motions/<name>/MOTION.md --out motions/<name>/tokens.json`. Add `--han` for a film with Chinese, Japanese or Korean text: it adds those faces, every part of them (several MB each). In `index.html`, before the compositions' scripts:
 
 ```html
 <link rel="stylesheet" href="assets/motion/motion.css">
@@ -36,7 +36,8 @@ In a composition, a state object your timeline tweens, and one mount that draws 
 </script>
 ```
 
-- `Motion.components` holds every component and `Caption`; their props are in each file's `meta` (what it is for, what fits it, each parameter) and signature, and `motion/react/previews/<file>.jpg` shows it. A parameter of type `progress` runs from 0 to 1: tween `s.x` and pass it. A component that draws in 3D imports `three`: `npm i three` before bundling.
-- `Motion.mount(el, draw, {width, height, fps, offset})` draws `draw(t)` into `el`; the components read `t` as their `useTime()`, and `offset + t` (the composition's start in the film) as their `useCompositionTime()`. Mount one per composition. A component that plays video (`<Video>`) is not supported here: use HyperFrames' own `<video>`.
+- `window.Motion` is the project's motion when it holds one; with several, `window.Motions[<id>]` is each, by its id (`@iamsuosi/stage-light`, or a motion of your own by its name in `motions/`), with the same members.
+- `Motion.components` holds every component and `Caption`; their props are in each file's `meta` (what it is for, what fits it, each parameter) and signature, and the motion's `react/previews/<file>.jpg` shows it. A parameter of type `progress` runs from 0 to 1: tween `s.x` and pass it. A component that draws in 3D imports `three`: `npm i three` before bundling.
+- `Motion.mount(el, draw, {width, height, fps, offset})` draws `draw(t)` into `el` in that motion; the components read `t` as their `useTime()`, and `offset + t` (the composition's start in the film) as their `useCompositionTime()`. Mount one per composition, or one per element when a frame holds two motions. It marks `el` with `data-motion="<id>"`, so your own HTML inside it takes that motion's custom properties too. A component that plays video (`<Video>`) is not supported here: use HyperFrames' own `<video>`.
 - `Motion.box(x, y, w, h, child)` places a component in a box of that size; `Motion.h` is React's `createElement`.
-- `Motion.tokens` are the resolved tokens; `Motion.seconds(name)` and `Motion.ease(name)` a duration and an easing for GSAP, when the motion has `duration` and `easing` tokens. `motion.css` has them all as `--color-*`, `--font-*`, `--duration-*`, `--easing-*` and `--caption-*`.
+- `Motion.tokens` are the resolved tokens; `Motion.seconds(name)` and `Motion.ease(name)` a duration and an easing for GSAP, when the motion has `duration` and `easing` tokens. `motion.css` has them all as `--color-*`, `--font-*`, `--duration-*`, `--easing-*` and `--caption-*`, on `[data-motion="<id>"]` for each motion, and on `:root` too when there is one.

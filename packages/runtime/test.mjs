@@ -4,7 +4,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createElement as h} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
-import {Caption, Easing, MotionRuntimeProvider, Sequence, interpolate, useTime, resolveTokens, seededRandom, tokenVariables, useCompositionTime, useCurrentFrame, useTokens, useVideoConfig} from './index.js';
+import {Caption, Easing, MotionRuntimeProvider, MotionScope, Sequence, interpolate, useTime, resolveTokens, seededRandom, tokenVariables, useCompositionTime, useCurrentFrame, useTokens, useVideoConfig} from './index.js';
 
 test('a seed draws the same stream every time, and another seed another one', () => {
   const take = (seed) => { const r = seededRandom(seed); return [r(), r(), r()]; };
@@ -62,4 +62,14 @@ test('interpolate maps time through a curve and holds at the ends; a Sequence co
   assert.equal(at(1), '');
   assert.equal(at(2.5), '<i>0.5</i>');
   assert.equal(at(5), '');
+});
+
+test('a MotionScope draws its children in another motion, on the same clock', () => {
+  const other = {color: {$type: 'color', ink: {$value: {colorSpace: 'srgb', components: [1, 0, 0], hex: '#FF0000'}}}};
+  const Ink = () => h('i', null, `${useTokens().color.ink} ${useTime()} ${useCompositionTime()}`);
+  const value = {useTime: () => 2, useCompositionTime: () => 12, fps: 30, width: 1920, height: 1080, tokens: resolveTokens(DTCG)};
+  const html = renderToStaticMarkup(h(MotionRuntimeProvider, {value}, h(Ink), h(MotionScope, {tokens: other}, h(Ink)), h(MotionScope, {tokens: resolveTokens(other), root: false}, h(Ink))));
+  assert.equal(html.match(/<i>[^<]*<\/i>/g).join(' '), '<i>#1A334D 2 12</i> <i>#FF0000 2 12</i> <i>#FF0000 2 12</i>');
+  assert.match(html, /<div style="[^"]*--color-ink:#FF0000[^"]*"><i>#FF0000/, 'its root carries its own custom properties, so they never reach the other motion');
+  assert.throws(() => renderToStaticMarkup(h(MotionScope, {tokens: other}, h(Ink))), /outside its engine/);
 });
