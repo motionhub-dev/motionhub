@@ -58,11 +58,11 @@ async function signIn(next = '/m/red-pencil/') {
   const state = new URL(start.headers.get('location')).searchParams.get('state');
   const stateCookie = setCookies(start)[0].split(';')[0];
   const done = await get(`/auth/callback?code=good&state=${state}`, {cookie: stateCookie});
-  const session = setCookies(done).find((c) => c.startsWith('mh_session=')).split(';')[0];
+  const session = setCookies(done).find((c) => c.startsWith('__Host-mh_session=')).split(';')[0];
   return {done, cookie: session};
 }
 
-test('login sends the person to GitHub with no scope and a state remembered in a cookie for /auth/', async () => {
+test('login sends the person to GitHub with no scope and a state remembered in a host-only cookie', async () => {
   const r = await get('/auth/login?next=/m/red-pencil/');
   assert.equal(r.status, 302);
   const to = new URL(r.headers.get('location'));
@@ -71,11 +71,11 @@ test('login sends the person to GitHub with no scope and a state remembered in a
   assert.equal(to.searchParams.get('redirect_uri'), `${SITE}/auth/callback`);
   assert.equal(to.searchParams.get('scope'), null);
   const [c] = setCookies(r);
-  assert.match(c, /^mh_state=[\w-]{43}%20%2Fm%2Fred-pencil%2F; Path=\/auth\/; Max-Age=600; Secure; SameSite=Lax; HttpOnly$/);
+  assert.match(c, /^__Host-mh_state=[\w-]{43}%20%2Fm%2Fred-pencil%2F; Path=\/; Max-Age=600; Secure; SameSite=Lax; HttpOnly$/);
 });
 
 test('a callback whose state does not match is refused', async () => {
-  const r = await get('/auth/callback?code=good&state=forged', {cookie: 'mh_state=real%20%2F'});
+  const r = await get('/auth/callback?code=good&state=forged', {cookie: '__Host-mh_state=real%20%2F'});
   assert.equal(r.status, 400);
   assert.equal(env.DB.raw.prepare('SELECT COUNT(*) AS n FROM sessions').get().n, 0);
 });
@@ -85,9 +85,9 @@ test('a callback signs the person in, keeps only the hash of the session and nev
   assert.equal(done.status, 302);
   assert.equal(done.headers.get('location'), '/m/red-pencil/');
   const cs = setCookies(done);
-  assert.ok(cs.some((c) => /^mh_session=[\w-]{43}; Path=\/; Max-Age=2592000; Secure; SameSite=Lax; HttpOnly$/.test(c)));
+  assert.ok(cs.some((c) => /^__Host-mh_session=[\w-]{43}; Path=\/; Max-Age=2592000; Secure; SameSite=Lax; HttpOnly$/.test(c)));
   assert.ok(cs.some((c) => /^mh_in=1; Path=\/; Max-Age=2592000; Secure; SameSite=Lax$/.test(c)));
-  const token = cookie.slice('mh_session='.length);
+  const token = cookie.slice('__Host-mh_session='.length);
   const rows = env.DB.raw.prepare('SELECT * FROM sessions').all();
   assert.equal(rows.length, 1);
   assert.equal(rows[0].token_hash, await sha256(token));
@@ -133,7 +133,7 @@ test('signing out ends the session; forgetting removes the person, their likes a
   await send('POST', '/api/likes/red-pencil', {cookie: a.cookie, origin: SITE});
   assert.equal((await send('POST', '/auth/logout', {cookie: a.cookie})).status, 403);
   const out = await send('POST', '/auth/logout', {cookie: a.cookie, origin: SITE});
-  assert.ok(setCookies(out).some((c) => c.startsWith('mh_session=;') && c.includes('Max-Age=0')));
+  assert.ok(setCookies(out).some((c) => c.startsWith('__Host-mh_session=;') && c.includes('Max-Age=0')));
   assert.deepEqual(await (await get('/api/me', {cookie: a.cookie})).json(), {person: null});
   const gone = await (await send('DELETE', '/api/me', {cookie: b.cookie, origin: SITE})).json();
   assert.deepEqual(gone, {ok: true, forgotten: true});

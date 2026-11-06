@@ -9,12 +9,15 @@
 //   motionhub tokens [MOTION.md] [--out <file>]
 //   motionhub share <dir> [--wait] | motionhub share <dir> --pr [--github <login>]
 
+import {artifactCli} from '../tools/artifact-cli.mjs';
 import {readFileSync} from 'node:fs';
 import {main as check} from '../tools/check.mjs';
 import {main as hub} from '../tools/hub.mjs';
 
 const USAGE = `usage: motionhub check [dir or MOTION.md ...] [--format-only] [--author <github-login>] [--author-id <github-id>] [--was <motion.json>]
        motionhub search [words ...]
+       motionhub login | whoami | logout
+       motionhub artifact upload <index.html|site.zip|directory> [--id <artifact-id>]
        motionhub get [<id>] [--out <dir>]
        motionhub init <slug> [--github <login>]
        motionhub tokens [MOTION.md] [--out <file>]
@@ -38,6 +41,7 @@ share   a motion through the checks its pull request will run, against what is p
 const [command, ...args] = process.argv.slice(2);
 try {
   if (command === 'check') process.exitCode = await check(args);
+  else if (['login', 'whoami', 'logout', 'artifact'].includes(command)) await artifactCli(command, args);
   else if (['search', 'get', 'init', 'tokens', 'share'].includes(command)) process.exitCode = await hub(command, args);
   else if (command === '--version' || command === '-v') console.log(JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version);
   else { console.log(USAGE); process.exitCode = command && command !== '--help' && command !== '-h' ? 2 : 0; }
