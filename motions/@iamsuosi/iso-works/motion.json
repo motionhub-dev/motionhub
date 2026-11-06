@@ -2,7 +2,7 @@
   "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "iso-works",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "name": {
     "en": "Iso Works",
     "zh-CN": "等距工坊"
@@ -27,7 +27,6 @@
     "light"
   ],
   "fit": {
-    "kind": "general",
     "for": {
       "en": "Systems and flows counted in blocks: supply chains, business processes, data pipelines, organisations, capacity and throughput.",
       "zh-CN": "用方块计量的系统与流程：供应链、业务流程、数据流、组织结构、产能与吞吐。"
