@@ -115,7 +115,7 @@ async function session(id, login, name = login) {
   const token = `t-${id}-${login}`;
   env.DB.raw.prepare('INSERT OR REPLACE INTO people (id, login, name, avatar, created_at, seen_at) VALUES (?, ?, ?, NULL, 0, 0)').run(id, login, name);
   env.DB.raw.prepare('INSERT INTO sessions (token_hash, person, created_at, expires_at) VALUES (?, ?, 0, ?)').run(await sha256(token), id, Math.floor(Date.now() / 1000) + 3600);
-  return `mh_session=${token}`;
+  return `__Host-mh_session=${token}`;
 }
 const upload = async (bytes = pkg()) => call('POST', '/api/submissions', {body: bytes, type: 'application/gzip'});
 const submit = (id, cookie, body) => call('POST', `/api/submissions/${id}/submit`, {cookie, origin: SITE, type: 'application/json', body: JSON.stringify(body)});
@@ -538,4 +538,26 @@ test('the command line checks, packs and uploads, prints the link and the code, 
   assert.match(lines[0], /MAPLE-07/);
   mkdirSync(join(dir, 'empty'));
   await assert.rejects(shareLink(join(dir, 'empty'), {}, 'https://hub.test'), /no motion\.json/);
+});
+
+test('CLI submission requires the Motion scope and exact confirmed package, and retries return the same PR', async () => {
+  await session(42, 'ana');
+  const share = await (await upload()).json();
+  const token = 'a'.repeat(64);
+  env.DB.raw.prepare('INSERT INTO cli_devices (code_hash, secret_hash, person, expires_at, token_hash) VALUES (?, ?, ?, ?, ?)')
+    .run('code', 'secret', 42, Math.floor(Date.now() / 1000) + 600, await sha256(token));
+  const digest = env.DB.raw.prepare('SELECT sha256 FROM submissions WHERE id = ?').get(share.id).sha256;
+  const send = (extra = {}) => worker.fetch(new Request(SITE + '/api/submissions/' + share.id + '/submit', {
+    method: 'POST', headers: {authorization: 'Bearer ' + token, 'content-type': 'application/json'},
+    body: JSON.stringify({poll: share.poll, sha256: digest, mine: true, dco: true, dcoVersion: '1.1', ...extra}),
+  }), env, ctx);
+  assert.equal((await send()).status, 403);
+  env.DB.raw.exec('UPDATE cli_devices SET motion_submit = 1');
+  assert.equal((await send({sha256: 'wrong'})).status, 403);
+  assert.equal((await send({dco: false})).status, 400);
+  const response = await send();
+  assert.equal(response.status, 200, await response.clone().text());
+  const {prUrl} = await response.json();
+  assert.equal((await (await send()).json()).prUrl, prUrl);
+  assert.equal(github.calls.filter(({method, path}) => method === 'POST' && path.endsWith('/pulls')).length, 1);
 });

@@ -1,3 +1,4 @@
+import {cliAuth} from './cli-auth.mjs';
 // motionhub.dev's Worker. The pages and files come from the static build (dist/); packages and the videos of reels come
 // from the R2 bucket, where every version ever published stays (HUB.md), since the build only holds the newest ones.
 //
@@ -6,6 +7,7 @@
 // gives each motion's downloads, in all and in the last 30 days, and its likes (people.mjs, with signing in). Analytics Engine keeps three months, so a daily
 // cron adds each finished day to stats/totals.json in the bucket; the total is that plus what came since.
 
+import {artifacts, sweepArtifacts} from './artifacts.mjs';
 import {likeCounts, people} from './people.mjs';
 import {avatar} from './avatars.mjs';
 import {submissions, sweep} from './submissions.mjs';
@@ -172,6 +174,10 @@ async function videoResponse(request, env, pathname) {
 
 export default {
   async fetch(request, env, ctx) {
+    const cli = await cliAuth(request, env);
+    if (cli) return cli;
+    const artifact = await artifacts(request, env);
+    if (artifact) return artifact;
     const url = new URL(request.url);
     // a motion's id starts with its scope's @, which a link keeps as it is and a browser may send as %40: the routes
     // below read the id, so they see one spelling
@@ -211,5 +217,6 @@ export default {
   async scheduled(controller, env, ctx) {
     ctx.waitUntil(rollup(env));
     ctx.waitUntil(sweep(env).catch(() => {}));
+    ctx.waitUntil(sweepArtifacts(env));
   },
 };
