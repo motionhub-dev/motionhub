@@ -96,10 +96,12 @@ test('owner can upload HTML and ZIP, update the fixed draft, and keep it after a
     method: 'POST', body, headers: {...owner, origin: site, 'content-type': type},
   });
   assert.equal((await upload('/api/artifacts', 'anonymous', 'text/html', {})).status, 401);
-  const created = await upload('/api/artifacts', 'first draft', 'text/html');
+  const created = await upload('/api/artifacts', 'first draft', 'text/html', {...cookie, 'x-artifact-title': encodeURIComponent('账目桥 Demo')});
   assert.equal(created.status, 201);
   const result = await created.json();
   const {id, preview} = result;
+  const title = () => db.prepare('SELECT title FROM artifacts WHERE id = ?').get(id).title;
+  assert.equal(title(), '账目桥 Demo');
   assert.equal(preview, `/artifact/${id}/preview`);
   const legacy = await fetch(site + '/artifacts/' + id, {headers: cookie});
   assert.equal(legacy.status, 302);
@@ -132,12 +134,14 @@ test('owner can upload HTML and ZIP, update the fixed draft, and keep it after a
   const archive = zip([['assets/main.js', 'export {};'], ['index.html', 'second draft']]);
   const updated = await upload('/api/artifacts/' + id, archive, 'application/zip');
   assert.equal(updated.status, 201);
+  assert.equal(title(), '账目桥 Demo');
   assert.equal((await updated.json()).preview, preview);
   const latestDirect = await frame();
   assert.equal(await (await fetch(latestDirect)).text(), 'second draft');
   assert.equal(await (await fetch(directPreview)).text(), 'first draft');
   fail = true;
-  assert.equal((await upload('/api/artifacts/' + id, archive, 'application/zip')).status, 500);
+  assert.equal((await upload('/api/artifacts/' + id, archive, 'application/zip', {...cookie, 'x-artifact-title': 'Failed rename'})).status, 500);
+  assert.equal(title(), '账目桥 Demo');
   const latestFrame = await frame();
   const document = await fetch(latestFrame);
   assert.equal(await document.text(), 'second draft');
@@ -169,6 +173,9 @@ test('owner can upload HTML and ZIP, update the fixed draft, and keep it after a
   assert.equal((await fetch(latestFrame)).status, 404);
   assert.equal(objects.size, 3);
   fail = false;
+  for (const badTitle of ['', ' ', 'a'.repeat(101), '%invalid']) {
+    assert.equal((await upload('/api/artifacts/' + id, 'bad', 'text/html', {...cookie, 'x-artifact-title': badTitle})).status, 400);
+  }
   const cli = (path, secret, method = 'POST') => fetch(site + '/api/cli/' + path, {method, headers: secret ? {authorization: 'Bearer ' + secret} : {}});
   const device = await (await cli('device')).json();
   assert.equal((await cli('token', device.secret)).status, 202);
@@ -195,13 +202,14 @@ test('owner can upload HTML and ZIP, update the fixed draft, and keep it after a
   assert.equal((await cli('token', device.secret)).status, 410);
   assert.equal((await (await cli('me', token, 'GET')).json()).login, 'alice');
   assert.equal((await fetch(site + '/api/artifacts/' + id, {method: 'POST', body: 'CLI draft',
-    headers: {authorization: 'Bearer ' + token, 'content-type': 'text/html'}})).status, 201);
+    headers: {authorization: 'Bearer ' + token, 'content-type': 'text/html', 'x-artifact-title': encodeURIComponent('新账目桥')}})).status, 201);
   // denied, the link is spent and the waiting terminal is told so
   const denied = await (await cli('device')).json();
   assert.equal((await authorize('deny', cookie, denied.url)).status, 200);
   assert.equal((await cli('token', denied.secret)).status, 410);
   assert.equal((await authorize('allow', cookie, denied.url)).status, 410);
   assert.equal((await fetch(denied.url, {headers: cookie})).status, 410);
+  assert.equal(title(), '新账目桥');
   await cli('logout', token);
   assert.equal((await cli('me', token, 'GET')).status, 401);
   db.exec('DELETE FROM people WHERE id = 1');

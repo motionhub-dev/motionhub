@@ -61,7 +61,9 @@ async function upload(request, env, me, artifactId) {
   if (artifactId && !existing) return json({error: 'Artifact not found.'}, 404);
   let files, title;
   try {
-    title = decodeURIComponent(request.headers.get('x-artifact-title') ?? '').trim().slice(0, 100) || 'Untitled artifact';
+    const suppliedTitle = request.headers.get('x-artifact-title');
+    title = suppliedTitle === null ? null : decodeURIComponent(suppliedTitle).trim();
+    if (title !== null && (!title || title.length > 100)) throw new Error('Title must contain 1 to 100 characters.');
     const bytes = await limitedBytes(request.body, MAX_UPLOAD);
     files = await artifactFiles(bytes, request.headers.get('content-type')?.split(';')[0].trim());
   } catch (error) {
@@ -72,7 +74,7 @@ async function upload(request, env, me, artifactId) {
   const time = now();
   if (!existing) {
     const result = await env.DB.prepare(`INSERT INTO artifacts (id, person, title, updated_at)
-      SELECT ?, ?, ?, ? WHERE (SELECT count(*) FROM artifacts WHERE person = ?) < 20`).bind(id, me.id, title, time, me.id).run();
+      SELECT ?, ?, ?, ? WHERE (SELECT count(*) FROM artifacts WHERE person = ?) < 20`).bind(id, me.id, title ?? 'Untitled artifact', time, me.id).run();
     if (!result.meta.changes) return json({error: 'Artifact limit reached.'}, 429);
   }
   const reserved = await env.DB.prepare(`INSERT INTO artifact_versions (id, artifact, created_at)
@@ -88,7 +90,7 @@ async function upload(request, env, me, artifactId) {
     }
     const results = await env.DB.batch([
       env.DB.prepare('UPDATE artifact_versions SET ready = 1 WHERE id = ?').bind(version),
-      env.DB.prepare('UPDATE artifacts SET draft_version = ?, updated_at = ? WHERE id = ? AND person = ?').bind(version, time, id, me.id),
+      env.DB.prepare('UPDATE artifacts SET draft_version = ?, updated_at = ?, title = COALESCE(?, title) WHERE id = ? AND person = ?').bind(version, time, title, id, me.id),
     ]);
     if (!results[1].meta.changes) throw new Error('Artifact was removed.');
   } catch (error) {
@@ -339,7 +341,7 @@ export async function artifacts(request, env) {
 <div>${results.length ? `<ul class="art-list">${results.map(({id, title, updated_at, live}) => `<li><div class="art-main"><a class="art-name" href="/artifact/${id}/preview">${escape(title)}</a><span class="art-meta">Updated ${when(updated_at)}</span></div>${live ? '<span class="art-status is-live">Published</span>' : '<span class="art-status">Private draft</span>'}</li>`).join('')}</ul>`
   : '<div class="art-empty"><p><b>No artifacts yet.</b></p><p>Upload an HTML file, or a ZIP of a built site, to see it in a private preview. Up to 20 artifacts, 20 versions each.</p></div>'}</div>
 <aside class="art-side"><section class="art-panel"><h2>New artifact</h2>${uploadForm()}</section>
-<section class="art-panel art-cli"><h2>From your terminal</h2><p>Upload a built site's folder, zipped for you:</p><pre data-copy>npx @motionhub/cli artifact upload ./dist</pre><p class="note">Build with relative asset URLs; for Vite, <code>--base ./</code>.</p></section></aside>
+<section class="art-panel art-cli"><h2>From your terminal</h2><p>Upload a built site's folder, zipped for you:</p><pre data-copy>npx @motionhub/cli artifact upload ./dist --title &quot;My artifact&quot;</pre><p class="note">Build with relative asset URLs; for Vite, <code>--base ./</code>.</p></section></aside>
 </div>${script}`,
     });
   }
