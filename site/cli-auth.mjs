@@ -1,5 +1,6 @@
 import {limitedBytes} from './artifact-files.mjs';
 import {person, sameOrigin, sha256} from './people.mjs';
+import {escapeHtml, shellPage} from './shell.mjs';
 
 const token = () => crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', '');
 const valid = /^[a-f0-9]{64}$/;
@@ -53,7 +54,7 @@ export async function cliAuth(request, env) {
   }
   if (path !== '/cli/authorize') return json({}, 404);
   const code = url.searchParams.get('code') ?? '';
-  if (!valid.test(code)) return json({error: 'Invalid authorization link.'}, 400);
+  if (!valid.test(code)) return gone(request, env, 400);
   const me = await person(request, env);
   if (!me) return Response.redirect(new URL('/auth/login?next=' + encodeURIComponent(path + url.search), url), 303);
   const hash = await sha256(code);
@@ -61,31 +62,48 @@ export async function cliAuth(request, env) {
     let action;
     try {
       action = new URLSearchParams(new TextDecoder().decode(await limitedBytes(request.body, 1024))).get('action');
-    } catch { return json({error: 'Invalid authorization form.'}, 400); }
-    if (action !== 'allow' && action !== 'deny') return json({error: 'Invalid authorization form.'}, 400);
+    } catch { action = null; }
+    if (action !== 'allow' && action !== 'deny') return gone(request, env, 400);
     // denied, the link expires at once: the terminal's next poll is told so and stops waiting
     const result = await env.DB.prepare(action === 'allow'
       ? 'UPDATE cli_devices SET person = ? WHERE code_hash = ? AND person IS NULL AND expires_at > ? RETURNING code_hash'
       : 'UPDATE cli_devices SET expires_at = 0 WHERE code_hash = ? AND person IS NULL AND expires_at > ? RETURNING code_hash')
       .bind(...(action === 'allow' ? [me.id] : []), hash, now()).first();
-    if (!result) return json({error: 'Authorization link expired or was used.'}, 410);
-    return message(action === 'allow' ? 'Authorized. Return to your terminal.' : 'Denied. The terminal was not signed in.');
+    if (!result) return gone(request, env);
+    return action === 'allow' ? done(request, env, me) : denied(request, env);
   }
   if (request.method !== 'GET') return json({}, 403);
   const pending = await env.DB.prepare('SELECT 1 FROM cli_devices WHERE code_hash = ? AND person IS NULL AND expires_at > ?').bind(hash, now()).first();
-  return pending ? authorizationPage(me.login) : json({error: 'Authorization link expired or was used.'}, 410);
+  return pending ? authorizationPage(request, env, me) : gone(request, env);
 }
 
-const escape = (value) => String(value).replace(/[&<>"']/g, (char) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[char]));
-const html = (body, status = 200) => new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>MotionHub CLI</title>
-<style>body{font:1rem system-ui;margin:2rem auto;padding:0 1rem;max-width:36rem}form{display:flex;gap:1rem}</style>${body}`, {status, headers: {...headers,
-  'content-type': 'text/html; charset=utf-8',
-  'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; form-action 'self'; base-uri 'none'"}});
-const message = (text) => html(`<h1>MotionHub CLI</h1><p>${escape(text)}</p>`);
+// the pages a person sees, in the site's layout (site/shell.mjs)
+const tick = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const alert = '<span class="share-mark" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 4v5M8 11.6v.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>';
+const gate = (request, env, title, card, status = 200) => shellPage(request, env, {
+  title: `${title}: motionhub`, description: 'Sign the motionhub command line in.', path: '/cli/authorize',
+  head: '<meta name="robots" content="noindex">', status, headers: {'cache-control': 'no-store'},
+  body: `<div class="gate"><section class="gate-card">${card}</section></div>`,
+});
 
-function authorizationPage(login) {
-  return html(`<h1>Is this you signing in?</h1>
-<p>A terminal is asking to upload private Artifact drafts as <strong>@${escape(login)}</strong> for 30 days.</p>
-<p><strong>Only allow it if you just ran <code>motionhub login</code> yourself.</strong> If someone sent you this link, or you don't recognise it, deny it.</p>
-<form method="post"><button name="action" value="allow">Yes, it's me: allow</button><button name="action" value="deny">No, deny</button></form>`);
+function authorizationPage(request, env, me) {
+  const name = me.name || me.login;
+  return gate(request, env, 'Sign in the command line', `<h1>Is this you signing in?</h1>
+<p>A terminal is asking to act as you on motionhub.</p>
+<div class="gate-who"><img src="/avatar/${me.id}?s=80" alt="" width="40" height="40"><div><b>${escapeHtml(name)}</b><small>@${escapeHtml(me.login)}</small></div></div>
+<ul class="gate-grants"><li>Upload private Artifact drafts as @${escapeHtml(me.login)}</li><li>For 30 days, or until you run <code>motionhub logout</code></li></ul>
+<div class="gate-warn">${alert}<div><p><strong>Only allow this if you just ran <code>motionhub login</code> yourself.</strong></p><p>If someone sent you this link, or you don't recognise it, deny it: allowing it would let their terminal upload as you.</p></div></div>
+<form method="post" class="gate-acts"><button class="btn accent" name="action" value="allow">Yes, it's me: allow</button><button class="btn" name="action" value="deny">No, deny</button></form>`);
 }
+
+const done = (request, env, me) => gate(request, env, 'Signed in', `<span class="share-big-tick">${tick}</span>
+<h1>Your terminal is signed in</h1>
+<p>Return to your terminal: it is signed in as <strong>@${escapeHtml(me.login)}</strong>. You can close this page.</p>
+<p class="note">Upload a page or a site with <code>motionhub artifact upload &lt;dir&gt;</code>. Your drafts are on <a href="/artifacts/">your Artifacts</a>.</p>`);
+
+const denied = (request, env) => gate(request, env, 'Denied', `<h1>Sign-in denied</h1>
+<p>The terminal was not signed in, and this link no longer works. If it was you after all, run <code>motionhub login</code> again.</p>`);
+
+const gone = (request, env, status = 410) => gate(request, env, 'Link expired', `<h1>This sign-in link no longer works</h1>
+<p>A link works once, for 10 minutes. Run <code>motionhub login</code> again for a new one.</p>
+<pre data-copy>npx @motionhub/cli login</pre>`, status);
