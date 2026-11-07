@@ -153,10 +153,10 @@ for (const form of document.querySelectorAll('form[data-endpoint]')) {
     }
   });
 }
-for (const button of document.querySelectorAll('[data-copy-text]')) {
+for (const button of document.querySelectorAll('[data-copy-text], [data-copy-value]')) {
   const label = button.textContent;
   button.addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(new URL(button.dataset.copyText, location.href).href); button.textContent = 'Copied'; }
+    try { await navigator.clipboard.writeText(button.dataset.copyValue ?? new URL(button.dataset.copyText, location.href).href); button.textContent = 'Copied'; }
     catch { button.textContent = 'Copy failed'; }
     setTimeout(() => (button.textContent = label), 1600);
   });
@@ -256,7 +256,7 @@ async function manage(request, env, me, id) {
   return Response.redirect(new URL(`/artifact/${id}/preview`, request.url), 303);
 }
 
-async function draftPage(request, env, id, row, origin, token, compact = false) {
+async function draftPage(request, env, id, row, origin, token) {
   const {results: versions} = await env.DB.prepare('SELECT id, created_at FROM artifact_versions WHERE artifact = ? AND ready = 1 ORDER BY created_at DESC, id').bind(id).all();
   const {results: shares} = await env.DB.prepare('SELECT s.id, s.version, s.expires_at FROM artifact_shares s JOIN artifact_versions v ON v.id = s.version WHERE v.artifact = ? AND s.expires_at > ? ORDER BY s.expires_at DESC').bind(id, now()).all();
   const label = (version) => {
@@ -267,12 +267,6 @@ async function draftPage(request, env, id, row, origin, token, compact = false) 
   const options = (selected) => versions.map(({id: version}) => `<option value="${version}"${version === selected ? ' selected' : ''}>${escape(label(version))}</option>`).join('');
   const removable = versions.filter(({id: version}) =>
     version !== row.draft_version && version !== row.public_version && !shares.some((share) => share.version === version));
-  const latest = versions.find(({id: version}) => version === row.draft_version);
-  const tags = [
-    row.public_version ? '<span class="art-status is-live">Published</span>' : '<span class="art-status">Private draft</span>',
-    shares.length ? `<span class="art-status is-shared">${shares.length} share link${shares.length === 1 ? '' : 's'}</span>` : '',
-    `<span class="art-status">${versions.length} version${versions.length === 1 ? '' : 's'}</span>`,
-  ].join('');
   const publish = `<section class="art-panel"><h2>${row.public_version ? 'Published' : 'Publish'}</h2>
 <p>${row.public_version ? `Anyone can see <a href="/works/${id}">its public page</a>, and it is on <a href="/portfolio/${encodeURIComponent(row.login)}">your portfolio</a>. Publish another version to replace it.` : 'Give it a public page, listed on your portfolio, for anyone to see.'}</p>
 <form method="post">
@@ -295,26 +289,16 @@ ${shares.length ? `<ul class="art-links">${shares.map(({id: key, version, expire
 <p class="note">A version that is not the latest, not published and not shared can be deleted, for good.</p>
 <form method="post" data-confirm="Delete this version for good?"><label class="field">Version<select name="version">${removable.map(({id: version}) => `<option value="${version}">${escape(label(version))}</option>`).join('')}</select></label><button class="btn" name="action" value="delete-version">Delete version</button></form>
 </details>` : '';
-  if (compact) {
-    const panels = `${publish}${share}<section class="art-panel"><h2>New version</h2>${uploadForm(id)}</section>${old}`;
-    return shellPage(request, env, {
-      title: `${row.title} · motionhub`, layoutPath: '/preview-shell/', frame: origin,
-      head: '<meta name="robots" content="noindex">', headers: {'x-robots-tag': 'noindex'},
-      body: `<main class="workspace">
+  const panels = `${publish}${share}<section class="art-panel"><h2>New version</h2>${uploadForm(id)}</section>${old}`;
+  return shellPage(request, env, {
+    title: `${row.title} · motionhub`, layoutPath: '/preview-shell/', frame: origin,
+    head: '<meta name="robots" content="noindex">', headers: {'x-robots-tag': 'noindex'},
+    body: `<main class="workspace">
 <header class="preview-header"><a href="/artifacts/">motionhub</a><span class="preview-title">${escape(row.title)}</span>
-<a href="/artifact/${id}/preview" title="Reload to renew the preview after 15 minutes">Reload · 15 min</a><details class="preview-actions"><summary>Manage</summary><div class="preview-panel">${panels}</div></details></header>
+<a href="/artifact/${id}/preview" title="Reload to renew the preview after 15 minutes">Reload preview</a><details class="preview-actions"><summary>Manage</summary><div class="preview-panel"><p class="note">Content access expires after 15 minutes. Reload this page to renew it.</p><button class="btn" type="button" data-copy-value="${id}">Copy Artifact ID</button>${panels}</div></details></header>
 ${frame(origin, 'preview', token)}</main>${script}`,
-    });
-  }
-  return view(request, env, {
-    title: row.title, frame: origin,
-    body: `<p class="crumb"><a href="/artifacts/">Your artifacts</a> / ${escape(row.title)}</p>
-<div class="art-head"><div><h1>${escape(row.title)}</h1><div class="art-tags">${tags}</div></div>${row.public_version ? `<a class="btn" href="/works/${id}">View public page</a>` : ''}</div>
-<div class="art-grid">
-<section class="art-stage"><div class="art-bar"><span>Private preview of the latest version${latest ? `, uploaded ${when(latest.created_at)}` : ''}</span><a href="/artifact/${id}/preview">Reload</a></div>${frame(origin, 'preview', token)}</section>
-<aside class="art-side">${publish}${share}<section class="art-panel"><h2>New version</h2>${uploadForm(id)}</section>${old}</aside>
-</div>${script}`,
   });
+
 }
 
 export async function artifacts(request, env) {
@@ -323,8 +307,9 @@ export async function artifacts(request, env) {
     if (url.origin === (env.ARTIFACT_SITE_ORIGIN ?? 'https://motionhub.dev')) return reply('Not found', 404);
     return content(request, env, url);
   }
-  const compact = previewRoute.exec(url.pathname);
-  const draft = compact || draftRoute.exec(url.pathname);
+  const legacy = draftRoute.exec(url.pathname);
+  if (legacy && request.method === 'GET') return Response.redirect(new URL(`/artifact/${legacy[1]}/preview`, request.url), 302);
+  const draft = previewRoute.exec(url.pathname) || legacy;
   const api = uploadRoute.exec(url.pathname);
   const list = url.pathname === '/artifacts' || url.pathname === '/artifacts/';
   const publicRoute = /^\/(works|artifact-share|portfolio)\//.test(url.pathname);
@@ -366,7 +351,7 @@ export async function artifacts(request, env) {
     env.DB.prepare('DELETE FROM artifact_preview_grants WHERE expires_at <= ?').bind(now()),
     env.DB.prepare('INSERT INTO artifact_preview_grants (token_hash, version, expires_at) VALUES (?, ?, ?)').bind(await sha256(token), row.draft_version, now() + PREVIEW_TTL),
   ]);
-  return draftPage(request, env, draft[1], {...row, login: me.login}, origin, token, Boolean(compact));
+  return draftPage(request, env, draft[1], {...row, login: me.login}, origin, token);
 }
 
 /** Pending uploads and account removals leave a durable deletion record before any R2 cleanup. */
