@@ -12,6 +12,7 @@ const now = () => Math.floor(Date.now() / 1000);
 const escape = (value) => String(value).replace(/[&<>"']/g, (char) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[char]));
 const reply = (message, status) => new Response(message, {status, headers: privateHeaders});
 const json = (data, status = 200) => Response.json(data, {status, headers: privateHeaders});
+const PREVIEW_TTL = 900;
 const randomToken = () => crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', '');
 const objectKey = (version, path) => `versions/${version}/${path}`;
 
@@ -54,7 +55,7 @@ async function content(request, env, url) {
   }});
 }
 
-async function upload(request, env, me, artifactId) {
+async function upload(request, env, me, artifactId, origin) {
   const existing = artifactId && await env.DB.prepare('SELECT id FROM artifacts WHERE id = ? AND person = ?').bind(artifactId, me.id).first();
   if (artifactId && !existing) return json({error: 'Artifact not found.'}, 404);
   let files, title;
@@ -78,15 +79,19 @@ async function upload(request, env, me, artifactId) {
     AND (SELECT count(*) FROM artifact_versions WHERE artifact = ?) < 20`).bind(version, time, id, me.id, id).run();
   if (!reserved.meta.changes) return json({error: 'Version limit reached.'}, 429);
   const keys = [];
+  const token = randomToken();
+  let expiresAt;
   try {
     for (const [path, bytes] of files) {
       const key = objectKey(version, path);
       keys.push(key);
       await env.ARTIFACTS.put(key, bytes);
     }
+    expiresAt = now() + PREVIEW_TTL;
     const results = await env.DB.batch([
       env.DB.prepare('UPDATE artifact_versions SET ready = 1 WHERE id = ?').bind(version),
       env.DB.prepare('UPDATE artifacts SET draft_version = ?, updated_at = ? WHERE id = ? AND person = ?').bind(version, time, id, me.id),
+      env.DB.prepare('INSERT INTO artifact_preview_grants (token_hash, version, expires_at) VALUES (?, ?, ?)').bind(await sha256(token), version, expiresAt),
     ]);
     if (!results[1].meta.changes) throw new Error('Artifact was removed.');
   } catch (error) {
@@ -95,7 +100,7 @@ async function upload(request, env, me, artifactId) {
     if (!existing) await env.DB.prepare('DELETE FROM artifacts WHERE id = ? AND draft_version IS NULL').bind(id).run();
     throw error;
   }
-  return json({id, version, preview: `/artifacts/${id}`}, 201);
+  return json({id, version, preview: `/artifacts/${id}`, directPreview: `${origin}/preview/${token}/index.html`, previewExpiresAt: new Date(expiresAt * 1000).toISOString()}, 201);
 }
 
 // the pages, in the site's layout (site/shell.mjs); private ones are never indexed
@@ -331,7 +336,7 @@ export async function artifacts(request, env) {
 <a class="btn primary" href="/auth/login?next=${encodeURIComponent(url.pathname)}" rel="nofollow">Sign in with GitHub</a></section>`,
   });
   if (draft && request.method === 'POST') return manage(request, env, me, draft[1]);
-  if (api) return upload(request, env, me, api[1]).catch(() => json({error: 'Upload failed. Try again.'}, 500));
+  if (api) return upload(request, env, me, api[1], origin).catch(() => json({error: 'Upload failed. Try again.'}, 500));
   if (list) {
     const {results} = await env.DB.prepare('SELECT id, title, updated_at, public_version IS NOT NULL AS live FROM artifacts WHERE person = ? AND draft_version IS NOT NULL ORDER BY updated_at DESC').bind(me.id).all();
     return view(request, env, {
@@ -350,7 +355,7 @@ export async function artifacts(request, env) {
   const token = randomToken();
   await env.DB.batch([
     env.DB.prepare('DELETE FROM artifact_preview_grants WHERE expires_at <= ?').bind(now()),
-    env.DB.prepare('INSERT INTO artifact_preview_grants (token_hash, version, expires_at) VALUES (?, ?, ?)').bind(await sha256(token), row.draft_version, now() + 900),
+    env.DB.prepare('INSERT INTO artifact_preview_grants (token_hash, version, expires_at) VALUES (?, ?, ?)').bind(await sha256(token), row.draft_version, now() + PREVIEW_TTL),
   ]);
   return draftPage(request, env, draft[1], {...row, login: me.login}, origin, token);
 }
