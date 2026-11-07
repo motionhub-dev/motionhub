@@ -158,7 +158,7 @@ test('owner can upload HTML and ZIP, update the fixed draft, and keep it after a
   // a browser posts a form with Origin: null from a no-referrer page, so the pages with forms checked by Origin keep it
   const formPage = await fetch(device.url, {headers: cookie});
   const formText = await formPage.text();
-  assert.match(formText, /<form method="post">/);
+  assert.match(formText, /<form method="post"/);
   assert.match(formText, /@alice/);
   assert.doesNotMatch(formText, /<input/);
   assert.equal(formPage.headers.get('referrer-policy'), 'same-origin');

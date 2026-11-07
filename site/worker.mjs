@@ -186,6 +186,11 @@ export default {
     const left = LEFT_PAGE.exec(pathname);
     if (left) return Response.redirect(BLOB + LEFT_THE_DOCS[left[1]], 301);
     if (pathname === '/api/stats.json') return statsResponse(request, env, ctx);
+    // the layout the Worker's own pages are written into (site/shell.mjs), never a page of its own
+    if (pathname === '/app-shell/' || pathname === '/app-shell' || pathname.startsWith('/app-shell/')) {
+      const page = await env.ASSETS.fetch(new Request(new URL('/404.html', request.url)));
+      return new Response(page.body, {status: 404, headers: page.headers});
+    }
     const face = /^\/avatar\/([^/]+)$/.exec(pathname);
     if (face && (request.method === 'GET' || request.method === 'HEAD')) return avatar(request, env, ctx, face[1]);
     const own = await people(request, env, ctx);
