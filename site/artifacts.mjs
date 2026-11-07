@@ -4,6 +4,7 @@ import {shellPage} from './shell.mjs';
 import {artifactFiles, limitedBytes, MAX_UPLOAD, mime, safePath} from './artifact-files.mjs';
 
 const idPattern = '[a-f0-9-]{36}';
+const previewRoute = new RegExp(`^/artifact/(${idPattern})/preview/?$`);
 const draftRoute = new RegExp(`^/artifacts/(${idPattern})$`);
 const uploadRoute = new RegExp(`^/api/artifacts(?:/(${idPattern}))?$`);
 const contentRoute = /^\/(preview|shared|published)\/([a-f0-9-]+)\/(.+)$/;
@@ -12,6 +13,7 @@ const now = () => Math.floor(Date.now() / 1000);
 const escape = (value) => String(value).replace(/[&<>"']/g, (char) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[char]));
 const reply = (message, status) => new Response(message, {status, headers: privateHeaders});
 const json = (data, status = 200) => Response.json(data, {status, headers: privateHeaders});
+const PREVIEW_TTL = 900;
 const randomToken = () => crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', '');
 const objectKey = (version, path) => `versions/${version}/${path}`;
 
@@ -95,7 +97,7 @@ async function upload(request, env, me, artifactId) {
     if (!existing) await env.DB.prepare('DELETE FROM artifacts WHERE id = ? AND draft_version IS NULL').bind(id).run();
     throw error;
   }
-  return json({id, version, preview: `/artifacts/${id}`}, 201);
+  return json({id, version, preview: `/artifact/${id}/preview`}, 201);
 }
 
 // the pages, in the site's layout (site/shell.mjs); private ones are never indexed
@@ -111,7 +113,7 @@ const notFound = (request, env, message = 'This artifact is not here: it was unp
 });
 const problem = (request, env, id, message, status) => view(request, env, {
   title: 'Something went wrong', status,
-  body: `<section class="you-out"><h1>That didn't work</h1><p>${escape(message)}</p><a class="btn primary" href="/artifacts/${id}">Back to the artifact</a></section>`,
+  body: `<section class="you-out"><h1>That didn't work</h1><p>${escape(message)}</p><a class="btn primary" href="/artifact/${id}/preview">Back to the artifact</a></section>`,
 });
 
 const when = (seconds) => new Date(seconds * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
@@ -151,10 +153,10 @@ for (const form of document.querySelectorAll('form[data-endpoint]')) {
     }
   });
 }
-for (const button of document.querySelectorAll('[data-copy-text]')) {
+for (const button of document.querySelectorAll('[data-copy-text], [data-copy-value]')) {
   const label = button.textContent;
   button.addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(new URL(button.dataset.copyText, location.href).href); button.textContent = 'Copied'; }
+    try { await navigator.clipboard.writeText(button.dataset.copyValue ?? new URL(button.dataset.copyText, location.href).href); button.textContent = 'Copied'; }
     catch { button.textContent = 'Copy failed'; }
     setTimeout(() => (button.textContent = label), 1600);
   });
@@ -251,7 +253,7 @@ async function manage(request, env, me, id) {
     await env.DB.prepare('DELETE FROM artifact_shares WHERE id = ? AND version IN (SELECT id FROM artifact_versions WHERE artifact = ?)')
       .bind(data.get('share'), id).run();
   } else return problem(request, env, id, 'That is not something this page does.', 400);
-  return Response.redirect(new URL('/artifacts/' + id, request.url), 303);
+  return Response.redirect(new URL(`/artifact/${id}/preview`, request.url), 303);
 }
 
 async function draftPage(request, env, id, row, origin, token) {
@@ -265,12 +267,6 @@ async function draftPage(request, env, id, row, origin, token) {
   const options = (selected) => versions.map(({id: version}) => `<option value="${version}"${version === selected ? ' selected' : ''}>${escape(label(version))}</option>`).join('');
   const removable = versions.filter(({id: version}) =>
     version !== row.draft_version && version !== row.public_version && !shares.some((share) => share.version === version));
-  const latest = versions.find(({id: version}) => version === row.draft_version);
-  const tags = [
-    row.public_version ? '<span class="art-status is-live">Published</span>' : '<span class="art-status">Private draft</span>',
-    shares.length ? `<span class="art-status is-shared">${shares.length} share link${shares.length === 1 ? '' : 's'}</span>` : '',
-    `<span class="art-status">${versions.length} version${versions.length === 1 ? '' : 's'}</span>`,
-  ].join('');
   const publish = `<section class="art-panel"><h2>${row.public_version ? 'Published' : 'Publish'}</h2>
 <p>${row.public_version ? `Anyone can see <a href="/works/${id}">its public page</a>, and it is on <a href="/portfolio/${encodeURIComponent(row.login)}">your portfolio</a>. Publish another version to replace it.` : 'Give it a public page, listed on your portfolio, for anyone to see.'}</p>
 <form method="post">
@@ -293,14 +289,14 @@ ${shares.length ? `<ul class="art-links">${shares.map(({id: key, version, expire
 <p class="note">A version that is not the latest, not published and not shared can be deleted, for good.</p>
 <form method="post" data-confirm="Delete this version for good?"><label class="field">Version<select name="version">${removable.map(({id: version}) => `<option value="${version}">${escape(label(version))}</option>`).join('')}</select></label><button class="btn" name="action" value="delete-version">Delete version</button></form>
 </details>` : '';
-  return view(request, env, {
-    title: row.title, frame: origin,
-    body: `<p class="crumb"><a href="/artifacts/">Your artifacts</a> / ${escape(row.title)}</p>
-<div class="art-head"><div><h1>${escape(row.title)}</h1><div class="art-tags">${tags}</div></div>${row.public_version ? `<a class="btn" href="/works/${id}">View public page</a>` : ''}</div>
-<div class="art-grid">
-<section class="art-stage"><div class="art-bar"><span>Private preview of the latest version${latest ? `, uploaded ${when(latest.created_at)}` : ''}</span><a href="/artifacts/${id}">Reload</a></div>${frame(origin, 'preview', token)}</section>
-<aside class="art-side">${publish}${share}<section class="art-panel"><h2>New version</h2>${uploadForm(id)}</section>${old}</aside>
-</div>${script}`,
+  const panels = `${publish}${share}<section class="art-panel"><h2>New version</h2>${uploadForm(id)}</section>${old}`;
+  return shellPage(request, env, {
+    title: `${row.title} · motionhub`, layoutPath: '/preview-shell/', frame: origin,
+    head: '<meta name="robots" content="noindex">', headers: {'x-robots-tag': 'noindex'},
+    body: `<main class="workspace">
+<header class="preview-header"><a href="/artifacts/">motionhub</a><span class="preview-title">${escape(row.title)}</span>
+<a href="/artifact/${id}/preview" title="Reload to renew the preview after 15 minutes">Reload preview</a><details class="preview-actions"><summary>Manage</summary><div class="preview-panel"><p class="note">Content access expires after 15 minutes. Reload this page to renew it.</p><button class="btn" type="button" data-copy-value="${id}">Copy Artifact ID</button>${panels}</div></details></header>
+${frame(origin, 'preview', token)}</main>${script}`,
   });
 }
 
@@ -310,7 +306,9 @@ export async function artifacts(request, env) {
     if (url.origin === (env.ARTIFACT_SITE_ORIGIN ?? 'https://motionhub.dev')) return reply('Not found', 404);
     return content(request, env, url);
   }
-  const draft = draftRoute.exec(url.pathname);
+  const legacy = draftRoute.exec(url.pathname);
+  if (legacy && request.method === 'GET') return Response.redirect(new URL(`/artifact/${legacy[1]}/preview`, request.url), 302);
+  const draft = previewRoute.exec(url.pathname) || legacy;
   const api = uploadRoute.exec(url.pathname);
   const list = url.pathname === '/artifacts' || url.pathname === '/artifacts/';
   const publicRoute = /^\/(works|artifact-share|portfolio)\//.test(url.pathname);
@@ -338,7 +336,7 @@ export async function artifacts(request, env) {
       title: 'Your artifacts',
       body: `<div class="art-head"><div><h1>Your artifacts</h1><p>Pages and sites made with motions. Each stays private to you until you publish it or share a link.</p></div><a class="btn" href="/portfolio/${encodeURIComponent(me.login)}">Your portfolio</a></div>
 <div class="art-grid">
-<div>${results.length ? `<ul class="art-list">${results.map(({id, title, updated_at, live}) => `<li><div class="art-main"><a class="art-name" href="/artifacts/${id}">${escape(title)}</a><span class="art-meta">Updated ${when(updated_at)}</span></div>${live ? '<span class="art-status is-live">Published</span>' : '<span class="art-status">Private draft</span>'}</li>`).join('')}</ul>`
+<div>${results.length ? `<ul class="art-list">${results.map(({id, title, updated_at, live}) => `<li><div class="art-main"><a class="art-name" href="/artifact/${id}/preview">${escape(title)}</a><span class="art-meta">Updated ${when(updated_at)}</span></div>${live ? '<span class="art-status is-live">Published</span>' : '<span class="art-status">Private draft</span>'}</li>`).join('')}</ul>`
   : '<div class="art-empty"><p><b>No artifacts yet.</b></p><p>Upload an HTML file, or a ZIP of a built site, to see it in a private preview. Up to 20 artifacts, 20 versions each.</p></div>'}</div>
 <aside class="art-side"><section class="art-panel"><h2>New artifact</h2>${uploadForm()}</section>
 <section class="art-panel art-cli"><h2>From your terminal</h2><p>Upload a built site's folder, zipped for you:</p><pre data-copy>npx @motionhub/cli artifact upload ./dist</pre><p class="note">Build with relative asset URLs; for Vite, <code>--base ./</code>.</p></section></aside>
@@ -350,7 +348,7 @@ export async function artifacts(request, env) {
   const token = randomToken();
   await env.DB.batch([
     env.DB.prepare('DELETE FROM artifact_preview_grants WHERE expires_at <= ?').bind(now()),
-    env.DB.prepare('INSERT INTO artifact_preview_grants (token_hash, version, expires_at) VALUES (?, ?, ?)').bind(await sha256(token), row.draft_version, now() + 900),
+    env.DB.prepare('INSERT INTO artifact_preview_grants (token_hash, version, expires_at) VALUES (?, ?, ?)').bind(await sha256(token), row.draft_version, now() + PREVIEW_TTL),
   ]);
   return draftPage(request, env, draft[1], {...row, login: me.login}, origin, token);
 }

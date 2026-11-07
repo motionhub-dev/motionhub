@@ -133,5 +133,5 @@ export async function artifactCli(command, args) {
     if (error.status !== 401 || !token) throw error;
     return upload(await login());
   });
-  console.log(`Artifact: ${result.id}\nPreview: ${new URL(result.preview, base)}`);
+  console.log(`Preview: ${new URL(result.preview, base)}`);
 }

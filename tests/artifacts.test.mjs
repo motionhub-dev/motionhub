@@ -98,15 +98,31 @@ test('owner can upload HTML and ZIP, update the fixed draft, and keep it after a
   assert.equal((await upload('/api/artifacts', 'anonymous', 'text/html', {})).status, 401);
   const created = await upload('/api/artifacts', 'first draft', 'text/html');
   assert.equal(created.status, 201);
-  const {id, preview} = await created.json();
+  const result = await created.json();
+  const {id, preview} = result;
+  assert.equal(preview, `/artifact/${id}/preview`);
+  const legacy = await fetch(site + '/artifacts/' + id, {headers: cookie});
+  assert.equal(legacy.status, 302);
+  assert.equal(legacy.headers.get('location'), site + preview);
+  assert.equal(result.directPreview, undefined);
+  const previewHtml = await (await fetch(site + preview, {headers: cookie})).text();
+  assert.match(previewHtml, /preview-header/);
+  assert.match(previewHtml, /<summary>Manage<\/summary>/);
+  const directPreview = previewHtml.match(/src="([^"]+\/index\.html)"/)[1];
+  assert.equal(new URL(directPreview).origin, origin);
+  assert.equal(await (await fetch(directPreview)).text(), 'first draft');
   assert.equal((await fetch(site + preview, {headers: {cookie: '__Host-mh_session=bob'}})).status, 404);
   assert.equal((await upload('/api/artifacts/' + id, 'intruder', 'text/html', {cookie: '__Host-mh_session=bob'})).status, 404);
   const frame = async () => (await (await fetch(site + preview, {headers: cookie})).text()).match(/src="([^"]+\/index\.html)"/)[1];
   const firstFrame = await frame();
   assert.equal(await (await fetch(firstFrame)).text(), 'first draft');
-  const manage = (data, owner = cookie) => fetch(site + preview, {
+  const manage = async (data, owner = cookie) => {
+    const response = await fetch(site + preview, {
     method: 'POST', body: new URLSearchParams(data), headers: {...owner, origin: site},
   });
+    if (response.status === 303) assert.equal(response.headers.get('location'), site + preview);
+    return response;
+  };
   const original = db.prepare('SELECT draft_version FROM artifacts WHERE id = ?').get(id).draft_version;
   assert.equal((await manage({action: 'publish', version: original}, {cookie: '__Host-mh_session=bob'})).status, 404);
   assert.equal((await manage({action: 'publish', version: original, main_motion: '@alice/example'})).status, 303);
@@ -114,7 +130,12 @@ test('owner can upload HTML and ZIP, update the fixed draft, and keep it after a
   const share = db.prepare('SELECT id FROM artifact_shares').get().id;
 
   const archive = zip([['assets/main.js', 'export {};'], ['index.html', 'second draft']]);
-  assert.equal((await upload('/api/artifacts/' + id, archive, 'application/zip')).status, 201);
+  const updated = await upload('/api/artifacts/' + id, archive, 'application/zip');
+  assert.equal(updated.status, 201);
+  assert.equal((await updated.json()).preview, preview);
+  const latestDirect = await frame();
+  assert.equal(await (await fetch(latestDirect)).text(), 'second draft');
+  assert.equal(await (await fetch(directPreview)).text(), 'first draft');
   fail = true;
   assert.equal((await upload('/api/artifacts/' + id, archive, 'application/zip')).status, 500);
   const latestFrame = await frame();
@@ -144,6 +165,7 @@ test('owner can upload HTML and ZIP, update the fixed draft, and keep it after a
   script.pathname = script.pathname.replace(/preview\/[^/]+/, 'preview/' + 'a'.repeat(64));
   assert.equal((await fetch(script)).status, 404);
   db.exec('UPDATE artifact_preview_grants SET expires_at = 0');
+  assert.equal((await fetch(latestDirect)).status, 404);
   assert.equal((await fetch(latestFrame)).status, 404);
   assert.equal(objects.size, 3);
   fail = false;

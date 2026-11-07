@@ -836,3 +836,13 @@ details.art-panel > summary { cursor: pointer; list-style: none; font-weight: va
 details.art-panel > summary::-webkit-details-marker { display: none; }
 details.art-panel > summary::after { content: "+"; float: right; color: var(--color-muted); font-weight: var(--weight-regular); }
 details.art-panel[open] > summary::after { content: "–"; }
+
+/* The Artifact workspace shares the panel, upload, button and field styles above. */
+.workspace { position: relative; height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
+.preview-header { display: flex; align-items: center; gap: var(--size-md); min-height: var(--layout-preview-header); padding: var(--layout-preview-padding) var(--size-md); border-bottom: 1px solid var(--color-line); font-size: var(--size-base); }
+.preview-header a { color: inherit; text-decoration: none; }
+.preview-title { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.workspace > .art-frame { flex: 1; min-height: 0; width: 100%; height: auto; border: 0; display: block; }
+.preview-actions > summary { cursor: pointer; }
+.preview-panel { position: absolute; z-index: 1; right: 0; top: var(--layout-preview-header); bottom: 0; width: min(var(--layout-preview-panel), 100%); overflow: auto; padding: var(--size-md); background: var(--color-surface); border-left: 1px solid var(--color-line); }
+.preview-panel > .art-panel { margin-bottom: var(--size-md); }
