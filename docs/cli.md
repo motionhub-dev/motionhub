@@ -1,6 +1,6 @@
 # Command line
 
-`@motionhub/cli` finds, fetches and checks motions. It needs Node.js 20 or later and has no dependencies; run it with `npx` or install it with `npm i -g @motionhub/cli` for the `motionhub` command.
+`@motionhub/cli` finds, fetches and checks motions, and uploads Artifacts. It needs Node.js 20 or later and has no dependencies; run it with `npx` or install it with `npm i -g @motionhub/cli` for the `motionhub` command.
 
 ```sh
 npx @motionhub/cli <command> [options]
@@ -75,3 +75,21 @@ npx @motionhub/cli share <dir> --pr [--github <login>]
 A motion through the checks its pull request will run, against what is published, then uploaded to motionhub.dev. It prints a link and a code. Open the link and sign in with GitHub; motionhub asks for no permissions. Check the motion and type the code: motionhub's GitHub App opens the pull request on your behalf, with your name on the commit, signed off. No git, `gh` or GitHub token is needed, so it works from a cloud agent too. `--wait` waits for the pull request, up to 30 minutes, and prints its address. A link works for a day. Shared again while your pull request is open, the new version is added to it.
 
 With `--pr` it opens the pull request itself, from your fork, with git and `gh`, signed off, as the account `gh` is signed in as. `--github <login>` alone runs the checks as that account and opens nothing. [Share a motion](../CONTRIBUTING.md) explains what happens next.
+
+## login, whoami, logout
+
+```sh
+npx @motionhub/cli login
+npx @motionhub/cli whoami
+npx @motionhub/cli logout
+```
+
+`login` signs the command line in to motionhub.dev. It prints a link and a terminal code: open the link, sign in with GitHub and type the code. The credential is kept in `~/.motionhub/`. `whoami` prints the account it belongs to. `logout` revokes it on motionhub.dev and deletes it.
+
+## artifact upload
+
+```sh
+npx @motionhub/cli artifact upload <index.html|site.zip|directory> [--id <artifact-id>]
+```
+
+A page, a ZIP with `index.html` at its root, or a static site's directory (zipped for you) uploaded as a private Artifact draft, up to 8 MiB. It prints the draft's id and its preview link, which only you can open. `--id` uploads a new version of that draft. Use relative asset URLs; for Vite, build with `--base ./`. When the command line is not signed in, it signs in first, as `login` does.
