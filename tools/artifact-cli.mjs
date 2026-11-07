@@ -1,3 +1,4 @@
+import {parseArgs} from 'node:util';
 import {mkdir, readFile, readdir, stat, unlink, writeFile} from 'node:fs/promises';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
@@ -118,17 +119,24 @@ export async function artifactCli(command, args) {
     }
     return;
   }
-  const [action, path, flag, id, ...rest] = args;
-  if (command !== 'artifact' || action !== 'upload' || !path || rest.length ||
-      (flag && (flag !== '--id' || !/^[a-f0-9-]{36}$/.test(id ?? '')))) {
-    throw new Error('Usage: motionhub artifact upload <index.html|site.zip|directory> [--id <artifact-id>]');
+  const [action, path, ...flags] = args;
+  if (command !== 'artifact' || action !== 'upload' || !path) {
+    throw new Error('Usage: motionhub artifact upload <index.html|site.zip|directory> [--id <artifact-id>] [--title <name>]');
   }
+  const {values: {id, title: suppliedTitle}} = parseArgs({args: flags, options: {
+    id: {type: 'string'}, title: {type: 'string'},
+  }});
+  if (id !== undefined && !/^[a-f0-9-]{36}$/.test(id)) throw new Error('Invalid Artifact ID.');
+  const title = suppliedTitle?.trim();
+  if (title !== undefined && (!title || title.length > 100)) throw new Error('Title must contain 1 to 100 characters.');
   const info = await stat(path);
   const type = info.isDirectory() || /\.zip$/i.test(path) ? 'application/zip' : /\.html$/i.test(path) ? 'text/html' : '';
   if (!type || (!info.isFile() && !info.isDirectory()) || (info.isFile() && info.size > limit)) throw new Error('Use HTML, ZIP, or a static site directory up to 8 MiB.');
   const body = info.isDirectory() ? await zipDirectory(path) : await readFile(path);
   const endpoint = '/api/artifacts' + (id ? '/' + id : '');
-  const upload = (credential) => api(endpoint, 'POST', credential, body, {'content-type': type});
+  const headers = {'content-type': type};
+  if (title !== undefined) headers['x-artifact-title'] = encodeURIComponent(title);
+  const upload = (credential) => api(endpoint, 'POST', credential, body, {...headers});
   const result = await upload(token || await login()).catch(async (error) => {
     if (error.status !== 401 || !token) throw error;
     return upload(await login());

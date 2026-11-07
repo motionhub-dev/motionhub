@@ -1,6 +1,6 @@
 ---
 name: motionhub
-description: Find a motion (a reusable look for narrated and explanatory video) on motionhub.dev and make a film in it with any engine. Use when asked to make a video, animation or explainer "in the style of" a named motion or a motionhub link, to pick a look for one, to read a motion directory (motion.json, MOTION.md, tokens.json), or to share a look of their own as a motion on motionhub.
+description: Find a motion (a reusable look for narrated and explanatory video) on motionhub.dev and make a film in it with any engine. Use when asked to make a video, animation or explainer "in the style of" a named motion or a motionhub link, to pick a look for one, to read a motion directory (motion.json, MOTION.md, tokens.json), to share a look of their own as a motion on motionhub, or to upload and update an Artifact preview.
 ---
 
 # Making a film in a motion
@@ -115,3 +115,16 @@ To build on someone else's motion, publish yours under your own scope, name thei
 ## 8. Check before you hand it over
 
 Put a frame of your film beside `poster.jpg`, if the motion has one: the same ground, the same colours in the same roles, the same faces. Then read Essence and Avoid once more against the film, and fix what does not hold.
+
+
+## 9. Upload an Artifact preview
+
+When the person asks to preview a page, motion demo or built static site on MotionHub, upload it with the CLI.
+
+1. Build a self-contained HTML file or a static directory with `index.html` at its root and relative asset URLs. For Vite, build with `--base ./`.
+2. Run `npx @motionhub/cli@latest artifact upload ./dist --title "Descriptive name"`. Use the person's name for the work when provided. Keep titles within 1–100 characters and quote names containing spaces.
+3. For subsequent iterations, reuse the Artifact UUID from the returned `/artifact/<id>/preview` URL with `--id <id>`. Add `--title "New name"` to rename it on a successful upload, or omit the title to keep it.
+4. If login is required, give the person the authorization link printed by the CLI and keep the process running while they confirm in their browser. Continue the upload after authorization.
+5. Return the single Preview URL printed by the CLI. The author signs in to see the latest draft with a slim management header. Publishing and share links are available in Manage.
+
+For example, create with `npx @motionhub/cli@latest artifact upload index.html --title "账目桥"`, then update with `npx @motionhub/cli@latest artifact upload index.html --id <id>`. Uploading creates a private draft.

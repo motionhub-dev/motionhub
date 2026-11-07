@@ -18,16 +18,23 @@ test('artifact upload prints only the canonical Preview link', async () => {
     await writeFile(mock, `
       import assert from 'node:assert/strict';
       globalThis.fetch = async (url, options) => {
-        assert.equal(url, 'https://motionhub.dev/api/artifacts');
+        assert.equal(url, 'https://motionhub.dev/api/artifacts' + (process.env.TEST_UPDATE ? '/${id}' : ''));
+        assert.equal(options.headers['x-artifact-title'], encodeURIComponent('账目桥 Demo'));
         assert.equal(options.method, 'POST');
         assert.equal(options.headers.authorization, 'Bearer test-credential');
         return Response.json({id: '${id}', preview: '/artifact/${id}/preview'});
       };
     `);
     const {stdout} = await promisify(execFile)(process.execPath, ['--import', mock,
-      fileURLToPath(new URL('../bin/motionhub.mjs', import.meta.url)), 'artifact', 'upload', html],
+      fileURLToPath(new URL('../bin/motionhub.mjs', import.meta.url)), 'artifact', 'upload', html, '--title', ' 账目桥 Demo '],
       {env: {...process.env, HOME: root, MOTIONHUB_ARTIFACT_ORIGIN: 'https://motionhub.dev'}});
     assert.equal(stdout, `Preview: https://motionhub.dev/artifact/${id}/preview\n`);
+    const updated = await promisify(execFile)(process.execPath, ['--import', mock,
+      fileURLToPath(new URL('../bin/motionhub.mjs', import.meta.url)), 'artifact', 'upload', html,
+      '--title', '账目桥 Demo', '--id', id],
+      {env: {...process.env, HOME: root, TEST_UPDATE: '1', MOTIONHUB_ARTIFACT_ORIGIN: 'https://motionhub.dev'}});
+    assert.equal(updated.stdout, stdout);
+
   } finally {
     await rm(root, {recursive: true, force: true});
   }
