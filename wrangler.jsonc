@@ -12,7 +12,12 @@
     "not_found_handling": "404-page",
     "run_worker_first": ["/m/*", "/play/*", "/api/stats.json", "/api/cli/*", "/cli/authorize", "/artifacts", "/artifacts/*", "/api/artifacts", "/api/artifacts/*", "/preview/*", "/works/*", "/artifact-share/*", "/portfolio/*", "/published/*", "/shared/*", "/api/me", "/api/me/pulls", "/api/me/pulls/*", "/api/me/shares", "/api/likes/*", "/auth/*", "/avatar/*", "/api/submissions", "/api/submissions/*", "/share/*", "/docs/hub*", "/docs/skill*"]
   },
-  "r2_buckets": [{"binding": "PACKAGES", "bucket_name": "motionhub"}],
+  // ARTIFACTS holds uploaded Artifact files (site/artifacts.mjs). Keep the bucket private: no public endpoint; content
+  // is served only through the Worker on ARTIFACT_CONTENT_ORIGIN (site/artifacts-setup.md).
+  "r2_buckets": [
+    {"binding": "PACKAGES", "bucket_name": "motionhub"},
+    {"binding": "ARTIFACTS", "bucket_name": "motionhub-artifacts"}
+  ],
   "analytics_engine_datasets": [{"binding": "EVENTS", "dataset": "motionhub_events"}],
   "analytics": {"binding": "ANALYTICS_SQL"},
   // signing in with GitHub and likes (site/people.mjs); GITHUB_CLIENT_SECRET is a secret set on the Worker, and so is
@@ -21,9 +26,18 @@
   // sharing without gh (site/submissions.mjs, site/github-app.mjs): GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY are
   // secrets on the Worker; until both are set, or with SUBMISSIONS "off", an upload is refused and the command line says
   // to use --pr. A package waits in PACKAGES under submissions/ for a day; the daily cron's sweep deletes it after.
-  "vars": {"GITHUB_CLIENT_ID": "Ov23liASjeKx0TOW1gNl", "SUBMISSIONS": "on"},
+  // Artifacts are served from their own origin, never the site's; without ARTIFACTS and ARTIFACT_CONTENT_ORIGIN they stay off.
+  "vars": {
+    "GITHUB_CLIENT_ID": "Ov23liASjeKx0TOW1gNl",
+    "SUBMISSIONS": "on",
+    "ARTIFACT_CONTENT_ORIGIN": "https://artifacts.motionhub.dev",
+    "ARTIFACT_SITE_ORIGIN": "https://motionhub.dev"
+  },
   "ratelimits": [{"name": "SUBMIT_LIMIT", "namespace_id": "1001", "simple": {"limit": 5, "period": 60}}],
   "triggers": {"crons": ["7 0 * * *"]},
-  "routes": [{"pattern": "motionhub.dev", "custom_domain": true}],
+  "routes": [
+    {"pattern": "motionhub.dev", "custom_domain": true},
+    {"pattern": "artifacts.motionhub.dev", "custom_domain": true}
+  ],
   "observability": {"enabled": true}
 }
