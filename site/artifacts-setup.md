@@ -12,6 +12,18 @@ ZIP files need `index.html` at the root. Use relative asset URLs; for Vite, buil
 
 Pilot limits are 8 MiB per upload, 24 MiB after unpacking, 256 ZIP entries, 20 artifacts per account, and 20 versions per artifact. The existing Worker cron clears expired grants, abandoned uploads, and storage queued for removal.
 
+## Production
+
+Production runs the same pilot as staging, with `https://motionhub.dev` as the application origin. Its configuration lives in `wrangler.jsonc`, because every deploy replaces the Worker's bindings and variables with that file:
+
+- the private R2 bucket `motionhub-artifacts`, bound as `ARTIFACTS`, with no public endpoint;
+- `ARTIFACT_CONTENT_ORIGIN` set to `https://artifacts.motionhub.dev`, a custom domain of the same Worker, and `ARTIFACT_SITE_ORIGIN` set to `https://motionhub.dev`;
+- the production D1 database, with `0003_artifacts.sql` to `0005_artifact_publication.sql` applied.
+
+The content domain is same-site with the application. Every content response carries a CSP `sandbox allow-scripts` policy without `allow-same-origin`, so uploaded pages run in an opaque origin, can't read or set cookies and can't reach the application's storage. Session and OAuth state cookies are `__Host-` cookies, so the content domain never receives them. Only `/preview/*`, `/shared/*` and `/published/*` run the Worker first. Other paths on the content domain are answered from the site's static assets. Those pages hold no session and the APIs they call return 404 there. A separate registrable domain for content remains the long-term setup; moving to one means replacing the content origin and the Worker domain binding.
+
+To turn Artifacts off, remove `ARTIFACT_CONTENT_ORIGIN` from `wrangler.jsonc` and deploy: every Artifact route then returns 404 and the stored drafts stay in D1 and R2.
+
 ## Staging acceptance
 
 Set `MOTIONHUB_ARTIFACT_ORIGIN` to the staging application HTTPS origin for CLI login and Artifact upload. The CLI stores staging credentials separately from production credentials.
