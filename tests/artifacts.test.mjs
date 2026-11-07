@@ -38,6 +38,12 @@ function zip(entries) {
   return Buffer.concat([...locals, ...directory, end]);
 }
 
+test('the Worker runs first for every request, so the content origin never serves the site\'s pages', () => {
+  const config = readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8');
+  const {assets, vars} = JSON.parse(config.replace(/^\s*\/\/.*$/gm, ''));
+  if (vars.ARTIFACT_CONTENT_ORIGIN) assert.equal(assets.run_worker_first, true);
+});
+
 test('ZIP intake validates root entry, paths, duplicate names and file types', async () => {
   const root = ['index.html', '<h1>Demo</h1>'];
   const files = await artifactFiles(zip([root, ['assets/main.js', 'export {};']]), 'application/zip');
@@ -83,6 +89,8 @@ test('owner can upload HTML and ZIP, update the fixed draft, and keep it after a
   const fetch = (url, options) => worker.fetch(new Request(url, options), env);
   assert.equal((await fetch(origin + '/auth/login')).status, 404);
   assert.equal((await fetch(origin + '/api/cli/me')).status, 404);
+  // the content origin answers its content routes only, never the site's pages (env has no ASSETS to fall back on)
+  for (const path of ['/', '/docs/', '/m/@alice/example/', '/artifacts/']) assert.equal((await fetch(origin + path)).status, 404);
   const cookie = {cookie: '__Host-mh_session=alice'};
   const upload = (path, body, type, owner = cookie) => fetch(site + path, {
     method: 'POST', body, headers: {...owner, origin: site, 'content-type': type},
