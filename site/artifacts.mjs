@@ -4,6 +4,7 @@ import {shellPage} from './shell.mjs';
 import {artifactFiles, limitedBytes, MAX_UPLOAD, mime, safePath} from './artifact-files.mjs';
 
 const idPattern = '[a-f0-9-]{36}';
+const previewRoute = new RegExp(`^/artifact/(${idPattern})/preview/?$`);
 const draftRoute = new RegExp(`^/artifacts/(${idPattern})$`);
 const uploadRoute = new RegExp(`^/api/artifacts(?:/(${idPattern}))?$`);
 const contentRoute = /^\/(preview|shared|published)\/([a-f0-9-]+)\/(.+)$/;
@@ -55,7 +56,7 @@ async function content(request, env, url) {
   }});
 }
 
-async function upload(request, env, me, artifactId, origin) {
+async function upload(request, env, me, artifactId) {
   const existing = artifactId && await env.DB.prepare('SELECT id FROM artifacts WHERE id = ? AND person = ?').bind(artifactId, me.id).first();
   if (artifactId && !existing) return json({error: 'Artifact not found.'}, 404);
   let files, title;
@@ -79,19 +80,15 @@ async function upload(request, env, me, artifactId, origin) {
     AND (SELECT count(*) FROM artifact_versions WHERE artifact = ?) < 20`).bind(version, time, id, me.id, id).run();
   if (!reserved.meta.changes) return json({error: 'Version limit reached.'}, 429);
   const keys = [];
-  const token = randomToken();
-  let expiresAt;
   try {
     for (const [path, bytes] of files) {
       const key = objectKey(version, path);
       keys.push(key);
       await env.ARTIFACTS.put(key, bytes);
     }
-    expiresAt = now() + PREVIEW_TTL;
     const results = await env.DB.batch([
       env.DB.prepare('UPDATE artifact_versions SET ready = 1 WHERE id = ?').bind(version),
       env.DB.prepare('UPDATE artifacts SET draft_version = ?, updated_at = ? WHERE id = ? AND person = ?').bind(version, time, id, me.id),
-      env.DB.prepare('INSERT INTO artifact_preview_grants (token_hash, version, expires_at) VALUES (?, ?, ?)').bind(await sha256(token), version, expiresAt),
     ]);
     if (!results[1].meta.changes) throw new Error('Artifact was removed.');
   } catch (error) {
@@ -100,7 +97,7 @@ async function upload(request, env, me, artifactId, origin) {
     if (!existing) await env.DB.prepare('DELETE FROM artifacts WHERE id = ? AND draft_version IS NULL').bind(id).run();
     throw error;
   }
-  return json({id, version, preview: `/artifacts/${id}`, directPreview: `${origin}/preview/${token}/index.html`, previewExpiresAt: new Date(expiresAt * 1000).toISOString()}, 201);
+  return json({id, version, preview: `/artifact/${id}/preview`}, 201);
 }
 
 // the pages, in the site's layout (site/shell.mjs); private ones are never indexed
@@ -256,10 +253,10 @@ async function manage(request, env, me, id) {
     await env.DB.prepare('DELETE FROM artifact_shares WHERE id = ? AND version IN (SELECT id FROM artifact_versions WHERE artifact = ?)')
       .bind(data.get('share'), id).run();
   } else return problem(request, env, id, 'That is not something this page does.', 400);
-  return Response.redirect(new URL('/artifacts/' + id, request.url), 303);
+  return Response.redirect(new URL(`/artifact/${id}/preview`, request.url), 303);
 }
 
-async function draftPage(request, env, id, row, origin, token) {
+async function draftPage(request, env, id, row, origin, token, compact = false) {
   const {results: versions} = await env.DB.prepare('SELECT id, created_at FROM artifact_versions WHERE artifact = ? AND ready = 1 ORDER BY created_at DESC, id').bind(id).all();
   const {results: shares} = await env.DB.prepare('SELECT s.id, s.version, s.expires_at FROM artifact_shares s JOIN artifact_versions v ON v.id = s.version WHERE v.artifact = ? AND s.expires_at > ? ORDER BY s.expires_at DESC').bind(id, now()).all();
   const label = (version) => {
@@ -298,6 +295,29 @@ ${shares.length ? `<ul class="art-links">${shares.map(({id: key, version, expire
 <p class="note">A version that is not the latest, not published and not shared can be deleted, for good.</p>
 <form method="post" data-confirm="Delete this version for good?"><label class="field">Version<select name="version">${removable.map(({id: version}) => `<option value="${version}">${escape(label(version))}</option>`).join('')}</select></label><button class="btn" name="action" value="delete-version">Delete version</button></form>
 </details>` : '';
+  if (compact) {
+    const panels = `${publish}${share}<section class="art-panel"><h2>New version</h2>${uploadForm(id)}</section>${old}`;
+    return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${escape(row.title)} · motionhub</title><link rel="stylesheet" href="/brand/tokens.css">
+<style>
+*{box-sizing:border-box}body{margin:0;background:var(--color-bg);color:var(--color-text);font:14px system-ui}
+.workspace{height:100vh;height:100dvh;display:flex;flex-direction:column}
+.preview-header{display:flex;align-items:center;gap:16px;min-height:44px;padding:8px 16px;border-bottom:1px solid var(--color-line)}
+.preview-header a{color:inherit;text-decoration:none}.preview-title{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.art-frame{flex:1;min-height:0;width:100%;border:0;display:block}.preview-actions>summary{cursor:pointer}
+.preview-panel{position:absolute;z-index:1;right:0;top:44px;bottom:0;width:min(420px,100%);overflow:auto;padding:16px;background:var(--color-surface);border-left:1px solid var(--color-line)}
+.preview-panel form,.field{display:grid;gap:8px}.preview-panel form{margin:12px 0}.preview-panel section{margin-bottom:24px}
+input,textarea,select,button{max-width:100%;font:inherit;color:inherit;background:var(--color-surface);border:1px solid var(--color-line);padding:8px}button{cursor:pointer}textarea{min-height:80px}
+.preview-panel a{color:inherit}.preview-panel small{display:block;color:var(--color-muted)}
+</style></head><body><main class="workspace">
+<header class="preview-header"><a href="/artifacts/">motionhub</a><span class="preview-title">${escape(row.title)}</span>
+<a href="/artifact/${id}/preview">Reload</a><details class="preview-actions"><summary>Manage</summary><div class="preview-panel">${panels}</div></details></header>
+${frame(origin, 'preview', token)}</main>${script}</body></html>`, {headers: {
+      ...privateHeaders, 'content-type': 'text/html; charset=utf-8', 'x-robots-tag': 'noindex',
+      'referrer-policy': 'same-origin',
+      'content-security-policy': `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-src ${origin}; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`,
+    }});
+  }
   return view(request, env, {
     title: row.title, frame: origin,
     body: `<p class="crumb"><a href="/artifacts/">Your artifacts</a> / ${escape(row.title)}</p>
@@ -315,7 +335,8 @@ export async function artifacts(request, env) {
     if (url.origin === (env.ARTIFACT_SITE_ORIGIN ?? 'https://motionhub.dev')) return reply('Not found', 404);
     return content(request, env, url);
   }
-  const draft = draftRoute.exec(url.pathname);
+  const compact = previewRoute.exec(url.pathname);
+  const draft = compact || draftRoute.exec(url.pathname);
   const api = uploadRoute.exec(url.pathname);
   const list = url.pathname === '/artifacts' || url.pathname === '/artifacts/';
   const publicRoute = /^\/(works|artifact-share|portfolio)\//.test(url.pathname);
@@ -336,7 +357,7 @@ export async function artifacts(request, env) {
 <a class="btn primary" href="/auth/login?next=${encodeURIComponent(url.pathname)}" rel="nofollow">Sign in with GitHub</a></section>`,
   });
   if (draft && request.method === 'POST') return manage(request, env, me, draft[1]);
-  if (api) return upload(request, env, me, api[1], origin).catch(() => json({error: 'Upload failed. Try again.'}, 500));
+  if (api) return upload(request, env, me, api[1]).catch(() => json({error: 'Upload failed. Try again.'}, 500));
   if (list) {
     const {results} = await env.DB.prepare('SELECT id, title, updated_at, public_version IS NOT NULL AS live FROM artifacts WHERE person = ? AND draft_version IS NOT NULL ORDER BY updated_at DESC').bind(me.id).all();
     return view(request, env, {
@@ -357,7 +378,7 @@ export async function artifacts(request, env) {
     env.DB.prepare('DELETE FROM artifact_preview_grants WHERE expires_at <= ?').bind(now()),
     env.DB.prepare('INSERT INTO artifact_preview_grants (token_hash, version, expires_at) VALUES (?, ?, ?)').bind(await sha256(token), row.draft_version, now() + PREVIEW_TTL),
   ]);
-  return draftPage(request, env, draft[1], {...row, login: me.login}, origin, token);
+  return draftPage(request, env, draft[1], {...row, login: me.login}, origin, token, Boolean(compact));
 }
 
 /** Pending uploads and account removals leave a durable deletion record before any R2 cleanup. */

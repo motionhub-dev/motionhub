@@ -98,9 +98,15 @@ test('owner can upload HTML and ZIP, update the fixed draft, and keep it after a
   assert.equal((await upload('/api/artifacts', 'anonymous', 'text/html', {})).status, 401);
   const created = await upload('/api/artifacts', 'first draft', 'text/html');
   assert.equal(created.status, 201);
-  const {id, preview, directPreview, previewExpiresAt} = await created.json();
+  const result = await created.json();
+  const {id, preview} = result;
+  assert.equal(preview, `/artifact/${id}/preview`);
+  assert.equal(result.directPreview, undefined);
+  const previewHtml = await (await fetch(site + preview, {headers: cookie})).text();
+  assert.match(previewHtml, /preview-header/);
+  assert.match(previewHtml, /<summary>Manage<\/summary>/);
+  const directPreview = previewHtml.match(/src="([^"]+\/index\.html)"/)[1];
   assert.equal(new URL(directPreview).origin, origin);
-  assert.ok(Date.parse(previewExpiresAt) > Date.now());
   assert.equal(await (await fetch(directPreview)).text(), 'first draft');
   assert.equal((await fetch(site + preview, {headers: {cookie: '__Host-mh_session=bob'}})).status, 404);
   assert.equal((await upload('/api/artifacts/' + id, 'intruder', 'text/html', {cookie: '__Host-mh_session=bob'})).status, 404);
@@ -119,7 +125,8 @@ test('owner can upload HTML and ZIP, update the fixed draft, and keep it after a
   const archive = zip([['assets/main.js', 'export {};'], ['index.html', 'second draft']]);
   const updated = await upload('/api/artifacts/' + id, archive, 'application/zip');
   assert.equal(updated.status, 201);
-  const latestDirect = (await updated.json()).directPreview;
+  assert.equal((await updated.json()).preview, preview);
+  const latestDirect = await frame();
   assert.equal(await (await fetch(latestDirect)).text(), 'second draft');
   assert.equal(await (await fetch(directPreview)).text(), 'first draft');
   fail = true;
