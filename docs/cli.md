@@ -84,7 +84,7 @@ npx @motionhub/cli whoami
 npx @motionhub/cli logout
 ```
 
-`login` signs the command line in to motionhub.dev. It prints a link and a terminal code: open the link, sign in with GitHub and type the code. The credential is kept in `~/.motionhub/`. `whoami` prints the account it belongs to. `logout` revokes it on motionhub.dev and deletes it.
+`login` signs the command line in to motionhub.dev. It prints a link: open it, sign in with GitHub and confirm that it is you who started the login. Allow it only if you ran `login` yourself; a link someone sent you would sign their terminal in as you. The credential is kept in `~/.motionhub/`. `whoami` prints the account it belongs to. `logout` revokes it on motionhub.dev and deletes it.
 
 ## artifact upload
 

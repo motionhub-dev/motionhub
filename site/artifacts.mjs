@@ -100,7 +100,8 @@ async function upload(request, env, me, artifactId) {
 function page(title, body, frameOrigin = "'none'", publicPage = false) {
   return new Response(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escape(title)} · motionhub</title>
 <style>body{font:1rem system-ui;margin:2rem auto;padding:0 1rem;max-width:72rem}form{display:grid;gap:1rem;max-width:30rem}iframe{width:100%;height:75vh;border:1px solid #aaa}a{color:inherit}</style><main>${body}</main></html>`, {headers: {
-    ...privateHeaders, 'content-type': 'text/html; charset=utf-8', 'x-robots-tag': publicPage ? 'index' : 'noindex',
+    // same-origin: the draft page's forms are checked by their Origin, which a browser sends as null from a no-referrer page
+    ...privateHeaders, 'referrer-policy': 'same-origin', 'content-type': 'text/html; charset=utf-8', 'x-robots-tag': publicPage ? 'index' : 'noindex',
     'content-security-policy': `default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-src ${frameOrigin}; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`,
   }});
 }

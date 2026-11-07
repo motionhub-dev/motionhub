@@ -28,7 +28,7 @@ async function api(path, method, token, body, headers = {}) {
 
 async function login() {
   const device = await api('/api/cli/device', 'POST');
-  console.log('Open this link in your browser and review the requested permissions:\n' + device.url + '\nTerminal code: ' + device.userCode);
+  console.log('Open this link in your browser, signed in to motionhub.dev, and confirm it is you:\n' + device.url);
   const end = Date.now() + 600000;
   while (Date.now() < end) {
     await delay(5000);

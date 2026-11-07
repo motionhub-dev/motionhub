@@ -150,26 +150,36 @@ test('owner can upload HTML and ZIP, update the fixed draft, and keep it after a
   const cli = (path, secret, method = 'POST') => fetch(site + '/api/cli/' + path, {method, headers: secret ? {authorization: 'Bearer ' + secret} : {}});
   const device = await (await cli('device')).json();
   assert.equal((await cli('token', device.secret)).status, 202);
-  const authorize = (userCode, owner = cookie) => fetch(device.url, {
-    method: 'POST', headers: {...owner, origin: site}, body: new URLSearchParams({userCode}),
+  const authorize = (action, owner = cookie, url = device.url) => fetch(url, {
+    method: 'POST', headers: {...owner, origin: site}, body: new URLSearchParams({action}),
   });
-  assert.equal((await authorize(device.userCode, {})).status, 303);
+  assert.equal(device.userCode, undefined);
+  assert.equal((await authorize('allow', {})).status, 303);
+  // a browser posts a form with Origin: null from a no-referrer page, so the pages with forms checked by Origin keep it
+  const formPage = await fetch(device.url, {headers: cookie});
+  const formText = await formPage.text();
+  assert.match(formText, /<form method="post">/);
+  assert.match(formText, /@alice/);
+  assert.doesNotMatch(formText, /<input/);
+  assert.equal(formPage.headers.get('referrer-policy'), 'same-origin');
+  assert.equal((await fetch(site + preview, {headers: cookie})).headers.get('referrer-policy'), 'same-origin');
   assert.equal((await authorize('')).status, 400);
-  assert.equal((await authorize('INVALID')).status, 400);
+  assert.equal((await authorize('maybe')).status, 400);
+  assert.equal((await fetch(device.url, {method: 'POST', headers: cookie, body: new URLSearchParams({action: 'allow'})})).status, 403);
   assert.equal((await cli('token', device.secret)).status, 202);
-  assert.equal((await authorize(device.userCode)).status, 200);
+  assert.equal((await authorize('allow')).status, 200);
+  assert.equal((await authorize('allow')).status, 410);
   const {token} = await (await cli('token', device.secret)).json();
   assert.equal((await cli('token', device.secret)).status, 410);
   assert.equal((await (await cli('me', token, 'GET')).json()).login, 'alice');
   assert.equal((await fetch(site + '/api/artifacts/' + id, {method: 'POST', body: 'CLI draft',
     headers: {authorization: 'Bearer ' + token, 'content-type': 'text/html'}})).status, 201);
-  const blocked = await (await cli('device')).json();
-  for (let index = 0; index < 5; index++) {
-    const attempt = await fetch(blocked.url, {method: 'POST', headers: {...cookie, origin: site}, body: new URLSearchParams({userCode: 'INVALID'})});
-    assert.equal(attempt.status, 400);
-  }
-  const locked = await fetch(blocked.url, {method: 'POST', headers: {...cookie, origin: site}, body: new URLSearchParams({userCode: blocked.userCode})});
-  assert.equal(locked.status, 410);
+  // denied, the link is spent and the waiting terminal is told so
+  const denied = await (await cli('device')).json();
+  assert.equal((await authorize('deny', cookie, denied.url)).status, 200);
+  assert.equal((await cli('token', denied.secret)).status, 410);
+  assert.equal((await authorize('allow', cookie, denied.url)).status, 410);
+  assert.equal((await fetch(denied.url, {headers: cookie})).status, 410);
   await cli('logout', token);
   assert.equal((await cli('me', token, 'GET')).status, 401);
   db.exec('DELETE FROM people WHERE id = 1');
