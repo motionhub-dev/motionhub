@@ -104,3 +104,5 @@ Use `--title` to name a new Artifact or rename an existing one while uploading. 
 npx @motionhub/cli artifact upload ./dist --title "Ledger Bridge"
 npx @motionhub/cli artifact upload ./dist --id <artifact-id> --title "账目桥"
 ```
+
+The upload API rejects titles over 100 characters instead of truncating them.

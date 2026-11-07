@@ -341,7 +341,7 @@ export async function artifacts(request, env) {
 <div>${results.length ? `<ul class="art-list">${results.map(({id, title, updated_at, live}) => `<li><div class="art-main"><a class="art-name" href="/artifact/${id}/preview">${escape(title)}</a><span class="art-meta">Updated ${when(updated_at)}</span></div>${live ? '<span class="art-status is-live">Published</span>' : '<span class="art-status">Private draft</span>'}</li>`).join('')}</ul>`
   : '<div class="art-empty"><p><b>No artifacts yet.</b></p><p>Upload an HTML file, or a ZIP of a built site, to see it in a private preview. Up to 20 artifacts, 20 versions each.</p></div>'}</div>
 <aside class="art-side"><section class="art-panel"><h2>New artifact</h2>${uploadForm()}</section>
-<section class="art-panel art-cli"><h2>From your terminal</h2><p>Upload a built site's folder, zipped for you:</p><pre data-copy>npx @motionhub/cli artifact upload ./dist</pre><p class="note">Build with relative asset URLs; for Vite, <code>--base ./</code>.</p></section></aside>
+<section class="art-panel art-cli"><h2>From your terminal</h2><p>Upload a built site's folder, zipped for you:</p><pre data-copy>npx @motionhub/cli artifact upload ./dist --title &quot;My artifact&quot;</pre><p class="note">Build with relative asset URLs; for Vite, <code>--base ./</code>.</p></section></aside>
 </div>${script}`,
     });
   }

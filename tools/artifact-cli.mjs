@@ -119,13 +119,18 @@ export async function artifactCli(command, args) {
     }
     return;
   }
+  const usage = 'Usage: motionhub artifact upload <index.html|site.zip|directory> [--id <artifact-id>] [--title <name>]';
   const [action, path, ...flags] = args;
-  if (command !== 'artifact' || action !== 'upload' || !path) {
-    throw new Error('Usage: motionhub artifact upload <index.html|site.zip|directory> [--id <artifact-id>] [--title <name>]');
+  if (command !== 'artifact' || action !== 'upload' || !path) throw new Error(usage);
+  let values;
+  try {
+    ({values} = parseArgs({args: flags, options: {
+      id: {type: 'string'}, title: {type: 'string'},
+    }}));
+  } catch {
+    throw new Error(usage);
   }
-  const {values: {id, title: suppliedTitle}} = parseArgs({args: flags, options: {
-    id: {type: 'string'}, title: {type: 'string'},
-  }});
+  const {id, title: suppliedTitle} = values;
   if (id !== undefined && !/^[a-f0-9-]{36}$/.test(id)) throw new Error('Invalid Artifact ID.');
   const title = suppliedTitle?.trim();
   if (title !== undefined && (!title || title.length > 100)) throw new Error('Title must contain 1 to 100 characters.');

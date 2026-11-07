@@ -116,7 +116,6 @@ To build on someone else's motion, publish yours under your own scope, name thei
 
 Put a frame of your film beside `poster.jpg`, if the motion has one: the same ground, the same colours in the same roles, the same faces. Then read Essence and Avoid once more against the film, and fix what does not hold.
 
-
 ## 9. Upload an Artifact preview
 
 When the person asks to preview a page, motion demo or built static site on MotionHub, upload it with the CLI.

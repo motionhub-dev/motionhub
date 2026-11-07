@@ -34,6 +34,20 @@ test('artifact upload prints only the canonical Preview link', async () => {
       '--title', '账目桥 Demo', '--id', id],
       {env: {...process.env, HOME: root, TEST_UPDATE: '1', MOTIONHUB_ARTIFACT_ORIGIN: 'https://motionhub.dev'}});
     assert.equal(updated.stdout, stdout);
+    for (const [flags, message] of [
+      [['--unknown'], /Usage: motionhub artifact upload/],
+      [['extra'], /Usage: motionhub artifact upload/],
+      [['--title', '-x'], /Usage: motionhub artifact upload/],
+      [['--id', 'invalid'], /Invalid Artifact ID/],
+      [['--title', ' '], /Title must contain/],
+      [['--title', 'a'.repeat(101)], /Title must contain/],
+    ]) {
+      await assert.rejects(promisify(execFile)(process.execPath, [
+        fileURLToPath(new URL('../bin/motionhub.mjs', import.meta.url)), 'artifact', 'upload', html, ...flags],
+        {env: {...process.env, HOME: root}}),
+        (error) => error.code === 1 && message.test(error.stderr));
+    }
+
 
   } finally {
     await rm(root, {recursive: true, force: true});
