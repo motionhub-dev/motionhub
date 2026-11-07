@@ -4,7 +4,9 @@ import {person, sameOrigin, sha256} from './people.mjs';
 const token = () => crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', '');
 const valid = /^[a-f0-9]{64}$/;
 const now = () => Math.floor(Date.now() / 1000);
-const headers = {'cache-control': 'no-store', 'referrer-policy': 'no-referrer'};
+// same-origin, not no-referrer: a browser sends Origin: null on a form post from a no-referrer page, and the
+// authorization form is checked by its Origin (sameOrigin)
+const headers = {'cache-control': 'no-store', 'referrer-policy': 'same-origin'};
 const json = (data, status = 200) => Response.json(data, {status, headers});
 const bearer = (request) => /^Bearer ([a-f0-9]{64})$/.exec(request.headers.get('authorization') ?? '')?.[1];
 

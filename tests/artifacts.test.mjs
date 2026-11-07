@@ -154,6 +154,11 @@ test('owner can upload HTML and ZIP, update the fixed draft, and keep it after a
     method: 'POST', headers: {...owner, origin: site}, body: new URLSearchParams({userCode}),
   });
   assert.equal((await authorize(device.userCode, {})).status, 303);
+  // a browser posts a form with Origin: null from a no-referrer page, so the pages with forms checked by Origin keep it
+  const formPage = await fetch(device.url, {headers: cookie});
+  assert.match(await formPage.text(), /<form method="post">/);
+  assert.equal(formPage.headers.get('referrer-policy'), 'same-origin');
+  assert.equal((await fetch(site + preview, {headers: cookie})).headers.get('referrer-policy'), 'same-origin');
   assert.equal((await authorize('')).status, 400);
   assert.equal((await authorize('INVALID')).status, 400);
   assert.equal((await cli('token', device.secret)).status, 202);
