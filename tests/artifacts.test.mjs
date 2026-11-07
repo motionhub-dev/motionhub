@@ -101,6 +101,9 @@ test('owner can upload HTML and ZIP, update the fixed draft, and keep it after a
   const result = await created.json();
   const {id, preview} = result;
   assert.equal(preview, `/artifact/${id}/preview`);
+  const legacy = await fetch(site + '/artifacts/' + id, {headers: cookie});
+  assert.equal(legacy.status, 302);
+  assert.equal(legacy.headers.get('location'), site + preview);
   assert.equal(result.directPreview, undefined);
   const previewHtml = await (await fetch(site + preview, {headers: cookie})).text();
   assert.match(previewHtml, /preview-header/);

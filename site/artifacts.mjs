@@ -298,7 +298,6 @@ ${shares.length ? `<ul class="art-links">${shares.map(({id: key, version, expire
 <a href="/artifact/${id}/preview" title="Reload to renew the preview after 15 minutes">Reload preview</a><details class="preview-actions"><summary>Manage</summary><div class="preview-panel"><p class="note">Content access expires after 15 minutes. Reload this page to renew it.</p><button class="btn" type="button" data-copy-value="${id}">Copy Artifact ID</button>${panels}</div></details></header>
 ${frame(origin, 'preview', token)}</main>${script}`,
   });
-
 }
 
 export async function artifacts(request, env) {
