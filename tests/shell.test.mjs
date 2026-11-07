@@ -29,6 +29,15 @@ test('a page fills the layout, escapes its text and allows only the layout\'s in
   assert.equal(response.headers.get('referrer-policy'), 'same-origin');
 });
 
+test('a dollar sign in the text a person wrote stays itself', async () => {
+  const text = "Cost $' and $& and $` and $1";
+  const html = await (await shellPage(request, {ASSETS: assets(layout)}, {title: text, description: text, path: "/works/$'", body: '<p>b</p>'})).text();
+  assert.match(html, /<title>Cost \$&#39; and \$&amp; and \$` and \$1<\/title>/);
+  assert.match(html, /content="Cost \$&#39; and \$&amp; and \$` and \$1"/);
+  assert.match(html, /href="https:\/\/motionhub\.dev\/works\/\$&#39;"/);
+  assert.equal(html.match(/<title>/g).length, 1);
+});
+
 test('without the built layout a page still renders, plainly', async () => {
   const html = await (await shellPage(request, {}, {title: 'T', body: '<p>b</p>'})).text();
   assert.match(html, /<title>T<\/title>/);

@@ -31,9 +31,10 @@ async function layout(request, env) {
 export async function shellPage(request, env, {title, description = '', path = '', body, head = '', status = 200, frame = "'none'", headers = {}}) {
   const template = await layout(request, env);
   const html = template
-    .replaceAll('%%MH_TITLE%%', escapeHtml(title))
-    .replaceAll('%%MH_DESCRIPTION%%', escapeHtml(description))
-    .replaceAll('/%%MH_PATH%%', escapeHtml(path || new URL(request.url).pathname))
+    // replacer functions throughout: in a replacement string, $& $` $' and $1 are patterns, and these are text a person wrote
+    .replaceAll('%%MH_TITLE%%', () => escapeHtml(title))
+    .replaceAll('%%MH_DESCRIPTION%%', () => escapeHtml(description))
+    .replaceAll('/%%MH_PATH%%', () => escapeHtml(path || new URL(request.url).pathname))
     .replace('<!--mh:head-->', () => head)
     .replace('<!--mh:body-->', () => body);
   const inline = [...template.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map((match) => match[1]);
