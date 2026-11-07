@@ -95,3 +95,5 @@ npx @motionhub/cli artifact upload <index.html|site.zip|directory> [--id <artifa
 A page, a ZIP with `index.html` at its root, or a static site's directory (zipped for you) uploaded as a private Artifact draft, up to 8 MiB. `--id` uploads a new version of that draft. Use relative asset URLs; for Vite, build with `--base ./`. When the command line is not signed in, it signs in first, as `login` does.
 
 The CLI prints a single **Preview** link at `/artifact/<id>/preview`. Sign in to view your latest draft in a full-height sandboxed frame. A slim header provides reload and management controls.
+
+To update an Artifact, pass the UUID between `/artifact/` and `/preview` as `--id`. For example, `/artifact/12345678-1234-1234-1234-123456789abc/preview` uses `--id 12345678-1234-1234-1234-123456789abc`.

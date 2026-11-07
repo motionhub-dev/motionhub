@@ -113,9 +113,13 @@ test('owner can upload HTML and ZIP, update the fixed draft, and keep it after a
   const frame = async () => (await (await fetch(site + preview, {headers: cookie})).text()).match(/src="([^"]+\/index\.html)"/)[1];
   const firstFrame = await frame();
   assert.equal(await (await fetch(firstFrame)).text(), 'first draft');
-  const manage = (data, owner = cookie) => fetch(site + preview, {
+  const manage = async (data, owner = cookie) => {
+    const response = await fetch(site + preview, {
     method: 'POST', body: new URLSearchParams(data), headers: {...owner, origin: site},
   });
+    if (response.status === 303) assert.equal(response.headers.get('location'), site + preview);
+    return response;
+  };
   const original = db.prepare('SELECT draft_version FROM artifacts WHERE id = ?').get(id).draft_version;
   assert.equal((await manage({action: 'publish', version: original}, {cookie: '__Host-mh_session=bob'})).status, 404);
   assert.equal((await manage({action: 'publish', version: original, main_motion: '@alice/example'})).status, 303);

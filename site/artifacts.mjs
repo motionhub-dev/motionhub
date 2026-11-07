@@ -113,7 +113,7 @@ const notFound = (request, env, message = 'This artifact is not here: it was unp
 });
 const problem = (request, env, id, message, status) => view(request, env, {
   title: 'Something went wrong', status,
-  body: `<section class="you-out"><h1>That didn't work</h1><p>${escape(message)}</p><a class="btn primary" href="/artifacts/${id}">Back to the artifact</a></section>`,
+  body: `<section class="you-out"><h1>That didn't work</h1><p>${escape(message)}</p><a class="btn primary" href="/artifact/${id}/preview">Back to the artifact</a></section>`,
 });
 
 const when = (seconds) => new Date(seconds * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
@@ -297,33 +297,21 @@ ${shares.length ? `<ul class="art-links">${shares.map(({id: key, version, expire
 </details>` : '';
   if (compact) {
     const panels = `${publish}${share}<section class="art-panel"><h2>New version</h2>${uploadForm(id)}</section>${old}`;
-    return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${escape(row.title)} · motionhub</title><link rel="stylesheet" href="/brand/tokens.css">
-<style>
-*{box-sizing:border-box}body{margin:0;background:var(--color-bg);color:var(--color-text);font:14px system-ui}
-.workspace{height:100vh;height:100dvh;display:flex;flex-direction:column}
-.preview-header{display:flex;align-items:center;gap:16px;min-height:44px;padding:8px 16px;border-bottom:1px solid var(--color-line)}
-.preview-header a{color:inherit;text-decoration:none}.preview-title{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.art-frame{flex:1;min-height:0;width:100%;border:0;display:block}.preview-actions>summary{cursor:pointer}
-.preview-panel{position:absolute;z-index:1;right:0;top:44px;bottom:0;width:min(420px,100%);overflow:auto;padding:16px;background:var(--color-surface);border-left:1px solid var(--color-line)}
-.preview-panel form,.field{display:grid;gap:8px}.preview-panel form{margin:12px 0}.preview-panel section{margin-bottom:24px}
-input,textarea,select,button{max-width:100%;font:inherit;color:inherit;background:var(--color-surface);border:1px solid var(--color-line);padding:8px}button{cursor:pointer}textarea{min-height:80px}
-.preview-panel a{color:inherit}.preview-panel small{display:block;color:var(--color-muted)}
-</style></head><body><main class="workspace">
+    return shellPage(request, env, {
+      title: `${row.title} · motionhub`, layoutPath: '/preview-shell/', frame: origin,
+      head: '<meta name="robots" content="noindex">', headers: {'x-robots-tag': 'noindex'},
+      body: `<main class="workspace">
 <header class="preview-header"><a href="/artifacts/">motionhub</a><span class="preview-title">${escape(row.title)}</span>
-<a href="/artifact/${id}/preview">Reload</a><details class="preview-actions"><summary>Manage</summary><div class="preview-panel">${panels}</div></details></header>
-${frame(origin, 'preview', token)}</main>${script}</body></html>`, {headers: {
-      ...privateHeaders, 'content-type': 'text/html; charset=utf-8', 'x-robots-tag': 'noindex',
-      'referrer-policy': 'same-origin',
-      'content-security-policy': `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-src ${origin}; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`,
-    }});
+<a href="/artifact/${id}/preview" title="Reload to renew the preview after 15 minutes">Reload · 15 min</a><details class="preview-actions"><summary>Manage</summary><div class="preview-panel">${panels}</div></details></header>
+${frame(origin, 'preview', token)}</main>${script}`,
+    });
   }
   return view(request, env, {
     title: row.title, frame: origin,
     body: `<p class="crumb"><a href="/artifacts/">Your artifacts</a> / ${escape(row.title)}</p>
 <div class="art-head"><div><h1>${escape(row.title)}</h1><div class="art-tags">${tags}</div></div>${row.public_version ? `<a class="btn" href="/works/${id}">View public page</a>` : ''}</div>
 <div class="art-grid">
-<section class="art-stage"><div class="art-bar"><span>Private preview of the latest version${latest ? `, uploaded ${when(latest.created_at)}` : ''}</span><a href="/artifacts/${id}">Reload</a></div>${frame(origin, 'preview', token)}</section>
+<section class="art-stage"><div class="art-bar"><span>Private preview of the latest version${latest ? `, uploaded ${when(latest.created_at)}` : ''}</span><a href="/artifact/${id}/preview">Reload</a></div>${frame(origin, 'preview', token)}</section>
 <aside class="art-side">${publish}${share}<section class="art-panel"><h2>New version</h2>${uploadForm(id)}</section>${old}</aside>
 </div>${script}`,
   });
@@ -364,7 +352,7 @@ export async function artifacts(request, env) {
       title: 'Your artifacts',
       body: `<div class="art-head"><div><h1>Your artifacts</h1><p>Pages and sites made with motions. Each stays private to you until you publish it or share a link.</p></div><a class="btn" href="/portfolio/${encodeURIComponent(me.login)}">Your portfolio</a></div>
 <div class="art-grid">
-<div>${results.length ? `<ul class="art-list">${results.map(({id, title, updated_at, live}) => `<li><div class="art-main"><a class="art-name" href="/artifacts/${id}">${escape(title)}</a><span class="art-meta">Updated ${when(updated_at)}</span></div>${live ? '<span class="art-status is-live">Published</span>' : '<span class="art-status">Private draft</span>'}</li>`).join('')}</ul>`
+<div>${results.length ? `<ul class="art-list">${results.map(({id, title, updated_at, live}) => `<li><div class="art-main"><a class="art-name" href="/artifact/${id}/preview">${escape(title)}</a><span class="art-meta">Updated ${when(updated_at)}</span></div>${live ? '<span class="art-status is-live">Published</span>' : '<span class="art-status">Private draft</span>'}</li>`).join('')}</ul>`
   : '<div class="art-empty"><p><b>No artifacts yet.</b></p><p>Upload an HTML file, or a ZIP of a built site, to see it in a private preview. Up to 20 artifacts, 20 versions each.</p></div>'}</div>
 <aside class="art-side"><section class="art-panel"><h2>New artifact</h2>${uploadForm()}</section>
 <section class="art-panel art-cli"><h2>From your terminal</h2><p>Upload a built site's folder, zipped for you:</p><pre data-copy>npx @motionhub/cli artifact upload ./dist</pre><p class="note">Build with relative asset URLs; for Vite, <code>--base ./</code>.</p></section></aside>

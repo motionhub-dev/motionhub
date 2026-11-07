@@ -16,9 +16,9 @@ async function sha256Base64(text) {
 const plain = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>%%MH_TITLE%%</title><meta name="description" content="%%MH_DESCRIPTION%%"><!--mh:head--></head><body><main><!--mh:body--></main></body></html>`;
 
-async function layout(request, env) {
+async function layout(request, env, path) {
   try {
-    const response = await env.ASSETS?.fetch(new Request(new URL(SHELL, request.url)));
+    const response = await env.ASSETS?.fetch(new Request(new URL(path, request.url)));
     if (response?.ok) return await response.text();
   } catch {}
   return plain;
@@ -28,8 +28,8 @@ async function layout(request, env) {
  * A page in the site's layout. `body` and `head` are HTML the caller has escaped; `title`, `description` and `path`
  * are text. `frame` is the origin a page may frame, `headers` more response headers.
  */
-export async function shellPage(request, env, {title, description = '', path = '', body, head = '', status = 200, frame = "'none'", headers = {}}) {
-  const template = await layout(request, env);
+export async function shellPage(request, env, {title, description = '', path = '', body, head = '', status = 200, frame = "'none'", headers = {}, layoutPath = SHELL}) {
+  const template = await layout(request, env, layoutPath);
   const html = template
     // replacer functions throughout: in a replacement string, $& $` $' and $1 are patterns, and these are text a person wrote
     .replaceAll('%%MH_TITLE%%', () => escapeHtml(title))

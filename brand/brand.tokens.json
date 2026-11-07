@@ -53,6 +53,8 @@
     "md": { "$value": { "value": 16, "unit": "px" }, "$description": "section headings" },
     "lg": { "$value": { "value": 20, "unit": "px" }, "$description": "page headings" },
     "xl": { "$value": { "value": 26, "unit": "px" }, "$description": "a motion's name" },
+    "preview-header": { "$value": { "value": 44, "unit": "px" }, "$description": "Artifact preview toolbar height" },
+    "preview-panel": { "$value": { "value": 420, "unit": "px" }, "$description": "Artifact preview management panel width" },
     "xxl": { "$value": { "value": 30, "unit": "px" }, "$description": "a docs page's title" }
   },
   "radius": {
