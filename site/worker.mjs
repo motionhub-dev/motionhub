@@ -1,3 +1,5 @@
+import {admin, sweepAdmin} from './admin/index.mjs';
+import {publicGate, publicResponse} from './admin/public.mjs';
 import {cliAuth} from './cli-auth.mjs';
 // motionhub.dev's Worker. The pages and files come from the static build (dist/); packages and the videos of reels come
 // from the R2 bucket, where every version ever published stays (HUB.md), since the build only holds the newest ones.
@@ -179,13 +181,17 @@ export default {
     const artifact = await artifacts(request, env);
     if (artifact) return artifact;
     const url = new URL(request.url);
+    const consoleResponse = await admin(request, env);
+    if (consoleResponse) return consoleResponse;
+    const gated = await publicGate(request, env);
+    if (gated) return gated;
     // a motion's id starts with its scope's @, which a link keeps as it is and a browser may send as %40: the routes
     // below read the id, so they see one spelling
     let pathname = url.pathname;
     try { pathname = decodeURIComponent(pathname); } catch {}
     const left = LEFT_PAGE.exec(pathname);
     if (left) return Response.redirect(BLOB + LEFT_THE_DOCS[left[1]], 301);
-    if (pathname === '/api/stats.json') return statsResponse(request, env, ctx);
+    if (pathname === '/api/stats.json') return publicResponse(request, env, await statsResponse(request, env, ctx));
     // the layout the Worker's own pages are written into (site/shell.mjs), never a page of its own
     if (pathname === '/app-shell/' || pathname === '/app-shell' || pathname.startsWith('/app-shell/')) {
       const page = await env.ASSETS.fetch(new Request(new URL('/404.html', request.url)));
@@ -217,11 +223,12 @@ export default {
     // a person opening a motion's page: a document navigation that found the page
     const page = PAGE.exec(pathname);
     if (page && request.method === 'GET' && response.status === 200 && request.headers.get('sec-fetch-dest') === 'document') count(env, request, 'view', page[1]);
-    return response;
+    return publicResponse(request, env, response);
   },
   async scheduled(controller, env, ctx) {
     ctx.waitUntil(rollup(env));
     ctx.waitUntil(sweep(env).catch(() => {}));
     ctx.waitUntil(sweepArtifacts(env));
+    ctx.waitUntil(sweepAdmin(env));
   },
 };

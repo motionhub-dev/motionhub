@@ -1,0 +1,33 @@
+// Isolated local admin development. Never binds remote production resources.
+{
+  "name": "motionhub-admin-local",
+  "main": "site/worker.mjs",
+  "compatibility_date": "2026-10-13",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "motionhub-admin-local",
+      "database_id": "00000000-0000-4000-8000-000000000006",
+      "migrations_dir": "site/migrations",
+    },
+  ],
+  "r2_buckets": [
+    { "binding": "PACKAGES", "bucket_name": "motionhub-admin-local" },
+    {
+      "binding": "ARTIFACTS",
+      "bucket_name": "motionhub-admin-artifacts-local",
+    },
+  ],
+  "vars": {
+    "ENVIRONMENT": "local",
+    "ADMIN_ENABLED": "on",
+    "SUBMISSIONS": "off",
+    "ARTIFACT_SITE_ORIGIN": "http://localhost:8787",
+    "ARTIFACT_CONTENT_ORIGIN": "https://content.example.test",
+  },
+}

@@ -1,3 +1,4 @@
+import {blocked} from './admin/policy.mjs';
 import {limitedBytes} from './artifact-files.mjs';
 import {person, sameOrigin, sha256} from './people.mjs';
 import {escapeHtml, shellPage} from './shell.mjs';
@@ -14,8 +15,9 @@ const bearer = (request) => /^Bearer ([a-f0-9]{64})$/.exec(request.headers.get('
 export async function cliPerson(request, env) {
   const credential = bearer(request);
   if (!credential) return null;
-  return env.DB.prepare(`SELECT p.id, p.login, p.name FROM cli_devices d JOIN people p ON p.id = d.person
+  const me = await env.DB.prepare(`SELECT p.id, p.login, p.name FROM cli_devices d JOIN people p ON p.id = d.person
     WHERE d.token_hash = ? AND d.expires_at > ?`).bind(await sha256(credential), now()).first();
+  return me && !await blocked(env, 'person', me.id) ? me : null;
 }
 
 export async function cliAuth(request, env) {

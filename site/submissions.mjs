@@ -1,3 +1,4 @@
+import {state as adminState, featureOff} from './admin/policy.mjs';
 // Sharing a motion without git or gh (the command line's `share`, tools/hub.mjs): the package is uploaded with no
 // account and kept a day; the person opens its link, signs in with GitHub, checks it, types the code their terminal
 // shows and certifies the DCO; then motionhub's GitHub App opens the pull request for them (site/github-app.mjs).
@@ -99,7 +100,7 @@ async function recorded(request, env) {
 }
 
 /** A package's files and its motion.json, or an error to show: the files sit under one motion's id, which motion.json names. */
-async function readPackage(bytes) {
+export async function readPackage(bytes) {
   const entries = await untgz(bytes);
   const root = /^(@[^/]+\/[^/]+)\//.exec(entries[0].path)?.[1];
   if (!root || !ID.test(root)) throw new PackageError('the files are not under @<scope>/<slug>/: pack the motion with npx @motionhub/cli share');
@@ -141,6 +142,7 @@ async function body(request, most) {
 }
 
 async function upload(request, env, now) {
+  if (await featureOff(env, 'submissions')) return json({error: 'Submissions are temporarily paused.'}, 503);
   if (!ready(env)) return json({error: 'sharing from motionhub.dev is not open yet: open the pull request yourself with npx @motionhub/cli share <dir> --pr'}, 503);
   const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
   if (env.SUBMIT_LIMIT && !(await env.SUBMIT_LIMIT.limit({key: ip})).success) return json({error: 'too many shares from here: try again in a minute'}, 429);
@@ -163,7 +165,7 @@ const changes = (result) => result?.meta?.changes ?? result?.changes ?? 0;
 const row = (env, id) => env.DB.prepare('SELECT * FROM submissions WHERE id = ?').bind(id).first();
 const prUrl = (r) => (r.pr ? `https://github.com/motionhub-dev/motions/pull/${r.pr}` : null);
 
-async function loadPackage(env, r) {
+export async function loadPackage(env, r) {
   const obj = await env.PACKAGES.get(`submissions/${r.id}.tgz`);
   if (!obj) return null;
   return readPackage(new Uint8Array(await obj.arrayBuffer()));
@@ -406,6 +408,8 @@ export async function sweep(env, now = Date.now()) {
 /** Handles the routes this file owns, or returns null. */
 export async function submissions(request, env, now = Date.now()) {
   const {pathname, searchParams} = new URL(request.url);
+  const submissionId = /^\/api\/submissions\/([A-Za-z0-9_-]{22})\/submit$/.exec(pathname);
+  if (request.method === 'POST' && submissionId && (await featureOff(env, 'submissions') || (await adminState(env, 'submission', submissionId[1]))?.status === 'rejected')) return json({error: 'This submission cannot be submitted.'}, 403);
   const m = request.method;
   const out = /^\/api\/me\/pulls\/([1-9]\d{0,8})\/withdraw$/.exec(pathname);
   if (out) return m === 'POST' ? withdraw(request, env, Number(out[1]), now) : json({error: 'method not allowed'}, 405);

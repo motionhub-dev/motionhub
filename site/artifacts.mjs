@@ -1,13 +1,14 @@
+import {artifactBlocked, versionBlocked, featureOff, quotas, enabled} from './admin/policy.mjs';
 import {cliPerson} from './cli-auth.mjs';
 import {person, sameOrigin, sha256} from './people.mjs';
 import {shellPage} from './shell.mjs';
-import {artifactFiles, limitedBytes, MAX_UPLOAD, mime, safePath} from './artifact-files.mjs';
+import {artifactFiles, limitedBytes, mime, safePath} from './artifact-files.mjs';
 
 const idPattern = '[a-f0-9-]{36}';
 const previewRoute = new RegExp(`^/artifact/(${idPattern})/preview/?$`);
 const draftRoute = new RegExp(`^/artifacts/(${idPattern})$`);
 const uploadRoute = new RegExp(`^/api/artifacts(?:/(${idPattern}))?$`);
-const contentRoute = /^\/(preview|shared|published)\/([a-f0-9-]+)\/(.+)$/;
+const contentRoute = /^\/(preview|shared|published|review)\/([a-f0-9-]+)\/(.+)$/;
 const privateHeaders = {'cache-control': 'private, no-store', 'referrer-policy': 'no-referrer', 'x-content-type-options': 'nosniff'};
 const now = () => Math.floor(Date.now() / 1000);
 const escape = (value) => String(value).replace(/[&<>"']/g, (char) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[char]));
@@ -36,14 +37,17 @@ async function content(request, env, url) {
   if (!match || !['GET', 'HEAD'].includes(request.method) || !env.ARTIFACTS || !env.DB) return reply('Not found', 404);
   const [, mode, token, path] = match;
   if (!safePath(path) || !mime(path)) return reply('Not found', 404);
-  const grant = mode === 'published'
+  if (mode === 'review' && !enabled(env)) return reply('Not found', 404);
+  const grant = mode === 'review'
+    ? await env.DB.prepare('SELECT g.version FROM admin_review_grants g JOIN artifact_versions v ON v.id=g.version AND v.ready=1 WHERE g.token_hash=? AND g.expires_at>?').bind(await sha256(token), now()).first()
+    : mode === 'published'
     ? await env.DB.prepare('SELECT public_version AS version FROM artifacts WHERE public_version = ?').bind(token).first()
     : mode === 'shared'
       ? await env.DB.prepare('SELECT version FROM artifact_shares WHERE id = ? AND expires_at > ?').bind(token, now()).first()
       : await env.DB.prepare(`SELECT g.version FROM artifact_preview_grants g
     JOIN artifact_versions v ON v.id = g.version AND v.ready = 1
     WHERE g.token_hash = ? AND g.expires_at > ?`).bind(await sha256(token), now()).first();
-  if (!grant) return reply('Not found', 404);
+  if (!grant || await featureOff(env, 'artifacts') || (mode !== 'review' && await versionBlocked(env, grant.version))) return reply('Not found', 404);
   const object = await env.ARTIFACTS.get(objectKey(grant.version, path));
   if (!object) return reply('Not found', 404);
   const site = env.ARTIFACT_SITE_ORIGIN ?? 'https://motionhub.dev';
@@ -57,6 +61,7 @@ async function content(request, env, url) {
 }
 
 async function upload(request, env, me, artifactId) {
+  const limits = await quotas(env);
   const existing = artifactId && await env.DB.prepare('SELECT id FROM artifacts WHERE id = ? AND person = ?').bind(artifactId, me.id).first();
   if (artifactId && !existing) return json({error: 'Artifact not found.'}, 404);
   let files, title;
@@ -64,7 +69,7 @@ async function upload(request, env, me, artifactId) {
     const suppliedTitle = request.headers.get('x-artifact-title');
     title = suppliedTitle === null ? null : decodeURIComponent(suppliedTitle).trim();
     if (title !== null && (!title || title.length > 100)) throw new Error('Title must contain 1 to 100 characters.');
-    const bytes = await limitedBytes(request.body, MAX_UPLOAD);
+    const bytes = await limitedBytes(request.body, limits.upload_mib * 1024 * 1024);
     files = await artifactFiles(bytes, request.headers.get('content-type')?.split(';')[0].trim());
   } catch (error) {
     return json({error: error.message}, 400);
@@ -74,12 +79,12 @@ async function upload(request, env, me, artifactId) {
   const time = now();
   if (!existing) {
     const result = await env.DB.prepare(`INSERT INTO artifacts (id, person, title, updated_at)
-      SELECT ?, ?, ?, ? WHERE (SELECT count(*) FROM artifacts WHERE person = ?) < 20`).bind(id, me.id, title ?? 'Untitled artifact', time, me.id).run();
+      SELECT ?, ?, ?, ? WHERE (SELECT count(*) FROM artifacts WHERE person = ?) < ?`).bind(id, me.id, title ?? 'Untitled artifact', time, me.id, limits.artifacts_per_account).run();
     if (!result.meta.changes) return json({error: 'Artifact limit reached.'}, 429);
   }
   const reserved = await env.DB.prepare(`INSERT INTO artifact_versions (id, artifact, created_at)
     SELECT ?, id, ? FROM artifacts WHERE id = ? AND person = ?
-    AND (SELECT count(*) FROM artifact_versions WHERE artifact = ?) < 20`).bind(version, time, id, me.id, id).run();
+    AND (SELECT count(*) FROM artifact_versions WHERE artifact = ?) < ?`).bind(version, time, id, me.id, id, limits.versions_per_artifact).run();
   if (!reserved.meta.changes) return json({error: 'Version limit reached.'}, 429);
   const keys = [];
   try {
@@ -188,7 +193,9 @@ async function publication(request, env, url, origin) {
   if (portfolio) {
     const owner = await env.DB.prepare('SELECT id, login, name FROM people WHERE lower(login) = lower(?) ORDER BY seen_at DESC LIMIT 1').bind(portfolio[1]).first();
     if (!owner) return notFound(request, env, 'No one on motionhub has that name.');
-    const {results} = await env.DB.prepare('SELECT id, title, description, updated_at FROM artifacts WHERE person = ? AND public_version IS NOT NULL ORDER BY updated_at DESC').bind(owner.id).all();
+    const listing = await env.DB.prepare('SELECT id, title, description, updated_at FROM artifacts WHERE person = ? AND public_version IS NOT NULL ORDER BY updated_at DESC').bind(owner.id).all();
+    const results = [];
+    for (const row of listing.results) if (!await artifactBlocked(env, row.id)) results.push(row);
     const name = owner.name || owner.login;
     return view(request, env, {
       title: `${name}'s artifacts`, description: `Artifacts @${owner.login} published on motionhub.`, indexable: true,
@@ -200,7 +207,7 @@ ${results.length ? `<ul class="art-list">${results.map(({id, title, description,
   if (share) {
     const row = await env.DB.prepare(`SELECT a.title, s.expires_at, p.id, p.login, p.name FROM artifact_shares s JOIN artifact_versions v ON s.version = v.id
       JOIN artifacts a ON a.id = v.artifact JOIN people p ON p.id = a.person WHERE s.id = ? AND s.expires_at > ?`).bind(share[1], now()).first();
-    if (!row) return notFound(request, env, 'This share link expired or was revoked. Ask whoever sent it for a new one.');
+    if (!row || await versionBlocked(env, (await env.DB.prepare('SELECT version FROM artifact_shares WHERE id=?').bind(share[1]).first())?.version)) return notFound(request, env, 'This share link expired or was revoked. Ask whoever sent it for a new one.');
     return view(request, env, {
       title: row.title, frame: origin,
       body: `<div class="art-head"><div><div class="art-tags"><span class="art-status is-shared">Shared privately</span></div><h1>${escape(row.title)}</h1><p>${byline(row)}</p></div></div>
@@ -209,7 +216,7 @@ ${results.length ? `<ul class="art-list">${results.map(({id, title, description,
   }
   const row = await env.DB.prepare(`SELECT a.*, p.login, p.name FROM artifacts a JOIN people p ON a.person = p.id
     WHERE a.id = ? AND a.public_version IS NOT NULL`).bind(work[1]).first();
-  if (!row) return notFound(request, env);
+  if (!row || await artifactBlocked(env, row.id)) return notFound(request, env);
   const related = [row.main_motion, ...row.other_motions.split(',')].filter((id) => motionId.test(id));
   return view(request, env, {
     title: row.title, frame: origin, indexable: true,
@@ -316,6 +323,9 @@ export async function artifacts(request, env) {
   const publicRoute = /^\/(works|artifact-share|portfolio)\//.test(url.pathname);
   if (!list && !draft && !api && !publicRoute && url.pathname !== '/artifacts/upload.js') return null;
   const origin = contentOrigin(env, url.origin);
+  if (await featureOff(env, 'artifacts')) return reply('Artifacts are temporarily paused.', 503);
+  if (draft && await artifactBlocked(env, draft[1])) return reply('Artifact access is restricted.', 404);
+  if (api?.[1] && await artifactBlocked(env, api[1])) return json({error: 'Artifact access is restricted.'}, 403);
   if (!origin || !env.DB || url.origin !== (env.ARTIFACT_SITE_ORIGIN ?? 'https://motionhub.dev')) return reply('Not found', 404);
   if (publicRoute) return await publication(request, env, url, origin) ?? notFound(request, env);
   if (url.pathname === '/artifacts/upload.js' && request.method === 'GET') return new Response(uploadScript, {

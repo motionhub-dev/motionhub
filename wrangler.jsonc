@@ -30,6 +30,9 @@
   // to use --pr. A package waits in PACKAGES under submissions/ for a day; the daily cron's sweep deletes it after.
   // Artifacts are served from their own origin, never the site's; without ARTIFACTS and ARTIFACT_CONTENT_ORIGIN they stay off.
   "vars": {
+    // Enable only after applying 0006_admin.sql and configuring Access + bootstrap identities.
+    "ENVIRONMENT": "production",
+    "ADMIN_ENABLED": "off",
     "GITHUB_CLIENT_ID": "Ov23liASjeKx0TOW1gNl",
     "SUBMISSIONS": "on",
     "ARTIFACT_CONTENT_ORIGIN": "https://artifacts.motionhub.dev",

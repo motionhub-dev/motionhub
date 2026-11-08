@@ -1,3 +1,4 @@
+import {blocked} from './admin/policy.mjs';
 // Signing in with GitHub, and likes. The Worker (worker.mjs) routes /auth/*, /api/me, /api/me/pulls (pulls.mjs) and
 // /api/likes/<id> here.
 //
@@ -48,8 +49,9 @@ export function safeNext(next) {
 export async function person(request, env, now = Date.now()) {
   const t = cookies(request)[SESSION];
   if (!t || !env.DB) return null;
-  return await env.DB.prepare('SELECT p.id, p.login, p.name, p.avatar FROM sessions s JOIN people p ON p.id = s.person WHERE s.token_hash = ? AND s.expires_at > ?')
+  const me = await env.DB.prepare('SELECT p.id, p.login, p.name, p.avatar FROM sessions s JOIN people p ON p.id = s.person WHERE s.token_hash = ? AND s.expires_at > ?')
     .bind(await sha256(t), Math.floor(now / 1000)).first();
+  return me && !await blocked(env, 'person', me.id) ? me : null;
 }
 
 /** A request that changes something must come from a page of this site. */
