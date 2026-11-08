@@ -181,6 +181,7 @@ test('a new motion starts as every required file but the poster, and shares only
   let published;
   const server = createServer((req, res) => {
     if (req.url === '/api/motions.json') res.end(JSON.stringify({spec: 'motion/0.1', motions: published ? [published.row] : []}));
+    else if (req.url === '/api/accounts.json') res.end(JSON.stringify({ana: 42}));
     else if (req.url === '/m/@ana/plain-ink/motion.json') res.end(JSON.stringify(published.manifest));
     else { res.statusCode = 404; res.end(); }
   });

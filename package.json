@@ -1,6 +1,6 @@
 {
   "name": "@motionhub/cli",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Search, get and check motions, reusable looks for narrated video, from motionhub.dev.",
   "keywords": ["motion", "design-tokens", "video", "agent-skills"],
   "homepage": "https://motionhub.dev",
@@ -10,7 +10,7 @@
   "engines": { "node": ">=20" },
   "bin": { "motionhub": "bin/motionhub.mjs" },
   "exports": { ".": "./tools/check.mjs", "./hub": "./tools/hub.mjs" },
-  "files": ["bin/", "tools/check.mjs", "tools/hub.mjs", "tools/pack.mjs"],
+  "files": ["bin/", "tools/check.mjs", "tools/hub.mjs", "tools/pack.mjs", "tools/security/"],
   "publishConfig": { "access": "public" },
   "scripts": {
     "check": "node tools/check.mjs",

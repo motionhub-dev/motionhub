@@ -1,59 +1,88 @@
-# Every push to main, every six hours and by hand: build motionhub.dev, publish each motion's newest package to R2
-# unless it is already there, and deploy the site. A package already published is never replaced: if a version's
-# package differs from the one at its URL, the motion changed without a new version (SPEC.md §9) and nothing deploys.
+# Production credentials are available only on fresh publishing runners, never during builds or dependency scripts.
 name: deploy
-
 on:
   push:
     branches: [main]
   schedule:
     - cron: '17 */6 * * *'
   workflow_dispatch:
-
 permissions:
   contents: read
-
 concurrency:
   group: deploy
   cancel-in-progress: false
-
 jobs:
-  deploy:
+  build:
+    if: github.ref == 'refs/heads/main' && vars.PUBLISHING != 'off'
     runs-on: ubuntu-latest
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      WRANGLER: npx --yes wrangler@4.154.0
+    timeout-minutes: 30
+    outputs:
+      artifact: ${{ steps.artifact.outputs.artifact-id }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          node-version: 22
-      # the faces the reels' players copy in, fetched from Google Fonts once and kept between runs
-      - uses: actions/cache@v4
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
-          path: site/.cache/fonts
-          key: fonts-${{ hashFiles('motions/**/tokens.json') }}
-          restore-keys: fonts-
-      - name: Build
+          node-version: 24
+      - uses: ./.github/actions/security-scan
+      - run: npm test
+      - run: node tools/check.mjs
+      - run: npm ci --prefix site --no-audit --no-fund
+      - run: npm ci --prefix site/ci --ignore-scripts --no-audit --no-fund
+      - name: Build the site
         working-directory: site
         env:
-          # creators are shown by their login now, looked up by account id (site/src/lib/catalogue.mjs)
-          GITHUB_TOKEN: ${{ github.token }}
-        run: npm ci --no-audit --no-fund && npm run build
-      - name: Publish new packages
+          PUBLIC_PLAYER_ORIGIN: https://player.motionhub.dev
+        run: npm run build
+      - name: Bundle the Worker without credentials
+        run: node site/ci/node_modules/wrangler/bin/wrangler.js deploy --dry-run --outdir "$RUNNER_TEMP/release/worker"
+      - name: Record every release file and its source
+        run: node site/ci/release.mjs create "$RUNNER_TEMP/release" site
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        id: artifact
+        with:
+          name: site-${{ github.sha }}
+          path: ${{ runner.temp }}/release
+          include-hidden-files: true
+          retention-days: 3
+          if-no-files-found: error
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+      - run: npm ci --prefix site/ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact }}
+          path: ${{ runner.temp }}/release
+          merge-multiple: true
+      - run: node site/ci/release.mjs verify "$RUNNER_TEMP/release" site
+      - name: Publish immutable packages
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node site/ci/release.mjs publish "$RUNNER_TEMP/release" site
+      - name: Deploy the isolated static player first
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_DEPLOY_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node site/ci/node_modules/wrangler/bin/wrangler.js deploy --config wrangler.player.jsonc --assets "$RUNNER_TEMP/release/player-assets"
+      - name: Deploy the prebuilt site and Worker
+        env:
+          SUBMISSIONS_SETTING: ${{ vars.SUBMISSIONS || 'off' }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_DEPLOY_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          for f in $(find dist/m -name "*.tgz" | sort); do
-            key=${f#dist/}
-            if $WRANGLER r2 object get "motionhub/$key" --remote --file /tmp/published.tgz >/dev/null 2>&1; then
-              if ! cmp -s "$f" /tmp/published.tgz; then
-                echo "::error::$key is already published with different contents: give the motion a new version"; exit 1
-              fi
-              echo "kept $key"
-            else
-              $WRANGLER r2 object put "motionhub/$key" --remote --file "$f" --content-type application/gzip >/dev/null
-              echo "published $key"
-            fi
-          done
-      - name: Deploy the site
-        run: $WRANGLER deploy
+          case "$SUBMISSIONS_SETTING" in on|off) ;; *) exit 1 ;; esac
+          node site/ci/node_modules/wrangler/bin/wrangler.js deploy "$RUNNER_TEMP/release/worker/worker.js" --config wrangler.jsonc --no-bundle --assets "$RUNNER_TEMP/release/assets" --var "SUBMISSIONS:$SUBMISSIONS_SETTING"

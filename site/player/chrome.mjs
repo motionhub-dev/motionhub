@@ -5,6 +5,7 @@ import {createServer} from 'node:http';
 import {existsSync, readFileSync, readdirSync, statSync} from 'node:fs';
 import {extname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {homedir} from 'node:os';
 import {chromium} from 'playwright-core';
 import sharp from 'sharp';
 
@@ -56,7 +57,9 @@ export function serve() {
  * `exact` rasterises on one thread: slower, but the same frame comes out the same pixels every time, which several threads do not promise
  */
 export function launch({exact = false} = {}) {
-  const executablePath = process.env.CHROME ?? ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium', '/usr/bin/chromium-browser'].find(existsSync);
+  const cache = process.env.PLAYWRIGHT_BROWSERS_PATH ?? join(homedir(), '.cache/ms-playwright');
+  const cached = existsSync(cache) ? readdirSync(cache).filter(n => /^chromium-\d+$/.test(n)).sort((a, b) => Number(b.slice(9)) - Number(a.slice(9))).flatMap(n => ['chrome-linux64/chrome', 'chrome-linux/chrome'].map(p => join(cache, n, p))) : [];
+  const executablePath = process.env.CHROME ?? ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium', '/usr/bin/chromium-browser', chromium.executablePath(), ...cached].find(existsSync);
   return chromium.launch({executablePath, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required',
     ...(exact ? ['--num-raster-threads=1', '--disable-gpu-rasterization'] : [])]});
 }

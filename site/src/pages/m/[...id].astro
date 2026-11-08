@@ -13,6 +13,8 @@ export function getStaticPaths() {
 }
 
 const {row} = Astro.props;
+const playerOrigin = process.env.PUBLIC_PLAYER_ORIGIN ?? '';
+if (playerOrigin && playerOrigin !== 'https://player.motionhub.dev') throw new Error('Unrecognized player origin');
 const id = row.slug, name = en(row.name), also = aka(row.name);
 const tokens = JSON.parse(read(id, 'tokens.json') || '{}');
 const doc = markdown(read(id, 'MOTION.md').replace(/^# .*\n+/, ''));
@@ -32,7 +34,7 @@ const engines = row.tools.flatMap(toolEngines);
     <div class="media">
       {reel ? (
         <>
-          <div class="stage" id="stage" data-src={`/play/${id}/?autoplay=1&sound=1`} data-video={`/m/${id}/${row.version}.mp4`} data-title={`${name}, playing`}>
+          <div class="stage" id="stage" data-src={`${playerOrigin}/play/${id}/?autoplay=1&sound=1`} data-video={`/m/${id}/${row.version}.mp4`} data-title={`${name}, playing`}>
             <img class="poster" src={row.poster} srcset={posterSet(row.poster)} sizes="(max-width: 1040px) calc(100vw - 32px), 900px" alt={`A frame of a film in ${name}`} width="960" height="540" fetchpriority="high">
             <button type="button" class="stage-play" id="stage-play" aria-label={`Play ${name}'s reel, with sound`}>
               <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor"/></svg>

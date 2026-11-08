@@ -30,25 +30,27 @@ jobs:
       GITHUB_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
       PR: ${{ github.event.pull_request.number }}
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       COMMITS: ${{ github.event.pull_request.commits }}
       CHANGED: ${{ github.event.pull_request.changed_files }}
       AUTHOR: ${{ github.event.pull_request.user.login }}
+      MOTIONHUB_BOT: ${{ vars.MOTIONHUB_BOT }}
       AUTHOR_ID: ${{ github.event.pull_request.user.id }}
     steps:
       - name: Main, whose checker judges
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
       # the head this event names, not whatever the branch holds by now: a later push runs this again
       - name: The pull request's files, to read and never run
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           path: pr
           persist-credentials: false
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
       - name: No links in the pull request's files
@@ -58,15 +60,19 @@ jobs:
           fi
       - name: What the pull request changes, and its commits, whole
         run: |
-          gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[]' | jq -s . > "$RUNNER_TEMP/files.json"
+          # Derive paths from the exact checked-out trees, not the PR API's moving current head.
+          git -C pr -c core.hooksPath=/dev/null fetch --no-tags --depth=1 origin "$BASE_SHA"
+          git -C pr diff --no-ext-diff --no-textconv --no-renames --name-only -z "$BASE_SHA" "$HEAD_SHA" > "$RUNNER_TEMP/changed-paths"
+          node --input-type=module <<'JS'
+          import {readFileSync, writeFileSync} from 'node:fs';
+          const paths = readFileSync(process.env.RUNNER_TEMP + '/changed-paths', 'utf8').split('\0').filter(Boolean);
+          if (paths.some(p => /[\r\n]/.test(p))) throw new Error('Paths with line breaks are refused.');
+          writeFileSync(process.env.RUNNER_TEMP + '/files', paths.join('\n') + '\n');
+          JS
           gh api "repos/$REPO/pulls/$PR/commits" --paginate --jq '.[]' | jq -s . > "$RUNNER_TEMP/commits.json"
-          # a file moved counts under both of its names
-          jq -r '.[] | .filename, (.previous_filename // empty)' "$RUNNER_TEMP/files.json" > "$RUNNER_TEMP/files"
-          # GitHub lists at most 3000 files and 250 commits: what it does not list could not be judged, so it fails
-          files=$(jq length "$RUNNER_TEMP/files.json")
           commits=$(jq length "$RUNNER_TEMP/commits.json")
-          if [ "$files" -ne "$CHANGED" ] || [ "$commits" -ne "$COMMITS" ]; then
-            echo "GitHub listed $files of $CHANGED files and $commits of $COMMITS commits: split the pull request."; exit 1
+          if [ "$commits" -ne "$COMMITS" ]; then
+            echo "GitHub did not list every commit: split the pull request."; exit 1
           fi
           if [ "$(jq -r '.[-1].sha' "$RUNNER_TEMP/commits.json")" != "$HEAD_SHA" ]; then
             echo "The pull request moved on since this run began; the run for its newest push judges it."; exit 1

@@ -90,7 +90,7 @@ const HEADERS = `/api/*
   Cache-Control: public, max-age=3600
 /play/*
   Access-Control-Allow-Origin: *
-  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; media-src 'self'; connect-src 'none'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'
+  Content-Security-Policy: sandbox allow-scripts; default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; media-src 'self'; connect-src 'none'; frame-ancestors 'self' https://motionhub.dev; base-uri 'none'; form-action 'none'
   X-Robots-Tag: noindex
 /play/_shared/*
   Cache-Control: public, max-age=31536000, immutable

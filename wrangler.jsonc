@@ -12,7 +12,7 @@
     "not_found_handling": "404-page",
     "run_worker_first": ["/m/*", "/play/*", "/api/stats.json", "/api/me", "/api/me/pulls", "/api/me/pulls/*", "/api/me/shares", "/api/likes/*", "/auth/*", "/avatar/*", "/api/submissions", "/api/submissions/*", "/share/*", "/docs/hub*", "/docs/skill*"]
   },
-  "r2_buckets": [{"binding": "PACKAGES", "bucket_name": "motionhub"}],
+  "r2_buckets": [{"binding": "PACKAGES", "bucket_name": "motionhub"}, {"binding": "SUBMISSIONS_BUCKET", "bucket_name": "motionhub-submissions"}],
   "analytics_engine_datasets": [{"binding": "EVENTS", "dataset": "motionhub_events"}],
   "analytics": {"binding": "ANALYTICS_SQL"},
   // signing in with GitHub and likes (site/people.mjs); GITHUB_CLIENT_SECRET is a secret set on the Worker, and so is
@@ -20,10 +20,12 @@
   "d1_databases": [{"binding": "DB", "database_name": "motionhub", "database_id": "b3cb4780-83d2-4424-9b6a-66edeec440c7", "migrations_dir": "site/migrations"}],
   // sharing without gh (site/submissions.mjs, site/github-app.mjs): GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY are
   // secrets on the Worker; until both are set, or with SUBMISSIONS "off", an upload is refused and the command line says
-  // to use --pr. A package waits in PACKAGES under submissions/ for a day; the daily cron's sweep deletes it after.
-  "vars": {"GITHUB_CLIENT_ID": "Ov23liASjeKx0TOW1gNl", "SUBMISSIONS": "on"},
+  // to use --pr. A package waits in SUBMISSIONS_BUCKET under submissions/ for a day; the daily cron's sweep deletes it after.
+  "vars": {"GITHUB_CLIENT_ID": "Ov23liASjeKx0TOW1gNl", "SUBMISSIONS": "off", "UPLOADS_PER_DAY": "1000"},
   "ratelimits": [{"name": "SUBMIT_LIMIT", "namespace_id": "1001", "simple": {"limit": 5, "period": 60}}],
   "triggers": {"crons": ["7 0 * * *"]},
   "routes": [{"pattern": "motionhub.dev", "custom_domain": true}],
-  "observability": {"enabled": true}
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": {"enabled": true, "redact_query_string": true}
 }

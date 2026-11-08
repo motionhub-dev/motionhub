@@ -9,7 +9,7 @@
 // the commit's Motionhub-Submitted-By line.
 //
 //   POST /api/submissions                   the package (a gzipped tar, tools/pack.mjs) → {id, url, code, poll, expires}
-//   GET  /api/submissions/<id>?poll=<token> its state, for the command line → {status, pr, prUrl}
+//   GET  /api/submissions/<id>/status (Bearer token) its state, for the command line → {status, pr, prUrl}
 //   GET  /api/submissions/<id>              signed in: what the page shows, and whether this person may submit it
 //   GET  /api/submissions/<id>/files/<path> signed in: one of its files, to look at, never to run
 //   POST /api/submissions/<id>/submit       signed in, from this site: {code, mine, dco} → {pr, prUrl}
@@ -20,14 +20,14 @@
 // submitted, and the branches of the app's pull requests that are closed.
 
 import {person, sameOrigin, sha256} from './people.mjs';
+import {authorProblem, ownerId, singleAuthor, accountId} from '../tools/security/ownership.mjs';
+import {sensitiveFile} from '../tools/security/package.mjs';
 import {LIMITS, PackageError, untgz} from './tar.mjs';
-import {BINARIES, closedPulls, commitSubmission, isText, pullState, sweepBranches, withdrawPull} from './github-app.mjs';
+import {BINARIES, closedPulls, commitSubmission, isText, pullState, submissionBase, sweepBranches, withdrawPull} from './github-app.mjs';
 
 const DAY = 86400;
 /** Seconds after which a submit that never finished (the Worker stopped mid-way) may be tried again. */
 const STUCK = 300;
-/** The authors a motion names at most (each may cost the app a call to GitHub). */
-const AUTHORS = 20;
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
 /** Submissions a person may make in a day, and wrong codes a link takes before it stops. */
 export const PER_DAY = 5, ATTEMPTS = 5;
@@ -64,38 +64,15 @@ export function compareVersions(a, b) {
   return 0;
 }
 
-/** Whether `login` is this person's: by the account id it is recorded with, else by the login itself. */
-const isMe = (login, me, accounts) => {
-  const l = String(login ?? '').toLowerCase();
-  return accounts.has(l) ? accounts.get(l) === me.id : l === me.login.toLowerCase();
-};
-
-/**
- * Whether this person may submit this motion, and why not: a new one under their own scope, among its authors; a
- * published one only by one of its published authors, at a higher version.
- */
+/** Ownership is resolved against an immutable main snapshot, never guessed from the login in a stale session. */
 export function eligibility(me, manifest, published, accounts) {
-  if (published) {
-    if (!(published.authors ?? []).some((a) => isMe(a?.github, me, accounts))) return {may: false, why: `${manifest.scope ? `@${manifest.scope}/${manifest.slug}` : manifest.slug} is published by ${(published.authors ?? []).map((a) => `@${a.github}`).join(', ')}; only one of them may change it. To build on it, make your own under @${me.login.toLowerCase()} and name it in basedOn.`};
-    if (compareVersions(manifest.version, published.version) <= 0) return {may: false, why: `${published.version} is published already: raise version in motion.json above it, then share again.`};
-    return {may: true};
-  }
-  if (!isMe(manifest.scope, me, accounts)) return {may: false, why: `The scope @${manifest.scope} is another GitHub account's. Publish yours as @${me.login.toLowerCase()}/${manifest.slug}.`};
-  if (!(manifest.authors ?? []).some((a) => isMe(a?.github, me, accounts))) return {may: false, why: `Add yourself (${me.login}) to authors in motion.json.`};
+  const problem = authorProblem(manifest, published, accounts);
+  if (problem) return {may: false, why: problem};
+  const owner = ownerId(published ?? manifest, accounts);
+  if (!owner || owner !== me.id || ownerId(manifest, accounts) !== me.id) return {may: false, why: 'only the sole author account may submit this motion'};
+  if (!published && accountId(manifest.scope, accounts) !== me.id) return {may: false, why: 'the scope belongs to another GitHub account'};
+  if (published && compareVersions(manifest.version, published.version) <= 0) return {may: false, why: `${published.version} is published already: raise version in motion.json above it, then share again.`};
   return {may: true};
-}
-
-/** The motion.json of the published version of `id`, or null. */
-async function publishedManifest(request, env, id) {
-  const r = await env.ASSETS.fetch(new Request(new URL(`/m/${id.replace('@', '%40')}/motion.json`, request.url))).catch(() => undefined);
-  return r?.ok ? r.json().catch(() => null) : null;
-}
-
-/** The recorded accounts, login → id (api/accounts.json, written by tools/build.mjs). */
-async function recorded(request, env) {
-  const r = await env.ASSETS.fetch(new Request(new URL('/api/accounts.json', request.url))).catch(() => undefined);
-  const body = r?.ok ? await r.json().catch(() => ({})) : {};
-  return new Map(Object.entries(body).map(([l, id]) => [l.toLowerCase(), id]));
 }
 
 /** A package's files and its motion.json, or an error to show: the files sit under one motion's id, which motion.json names. */
@@ -111,14 +88,18 @@ async function readPackage(bytes) {
   try { manifest = JSON.parse(new TextDecoder().decode(raw.data)); } catch { throw new PackageError('motion.json is not JSON'); }
   if (typeof manifest?.scope !== 'string' || `@${manifest.scope}/${manifest.slug}` !== root) throw new PackageError(`motion.json names @${manifest?.scope}/${manifest?.slug}, but its files are under ${root}/`);
   if (typeof manifest.version !== 'string' || !SEMVER.test(manifest.version)) throw new PackageError('motion.json has no version, or not a semantic one');
-  if (Array.isArray(manifest.authors) && manifest.authors.length > AUTHORS) throw new PackageError(`a motion names at most ${AUTHORS} authors`);
+  if (!singleAuthor(manifest)) throw new PackageError('a motion on motionhub has exactly one author');
+  for (const f of files) {
+    const issue = sensitiveFile(f.path, f.data);
+    if (issue) throw new PackageError(`${issue.at}: ${issue.message}`);
+  }
   // each file that is not text goes to GitHub on its own call, and a Worker makes only so many
   if (files.filter((f) => !isText(f.data)).length > BINARIES) throw new PackageError(`a motion shared this way holds at most ${BINARIES} files that are not text (pictures, fonts, sounds): open its pull request with --pr`);
   if (!files.some((f) => f.path === 'MOTION.md')) throw new PackageError('the motion has no MOTION.md');
   return {id: root, manifest, files};
 }
 
-const ready = (env) => env.SUBMISSIONS !== 'off' && env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.DB && env.PACKAGES;
+const ready = (env) => env.SUBMISSIONS !== 'off' && env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.DB && env.PACKAGES && env.SUBMISSIONS_BUCKET;
 
 /** A request's body, read no further than `most` bytes (with or without a content-length): its bytes, or null past it. */
 async function body(request, most) {
@@ -144,6 +125,11 @@ async function upload(request, env, now) {
   if (!ready(env)) return json({error: 'sharing from motionhub.dev is not open yet: open the pull request yourself with npx @motionhub/cli share <dir> --pr'}, 503);
   const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
   if (env.SUBMIT_LIMIT && !(await env.SUBMIT_LIMIT.limit({key: ip})).success) return json({error: 'too many shares from here: try again in a minute'}, 429);
+  const limit = Number(env.UPLOADS_PER_DAY ?? 1000);
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100000) return json({error: 'sharing is temporarily unavailable'}, 503);
+  const budget = await env.DB.prepare('INSERT INTO submission_budgets(day, attempts) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET attempts = attempts + 1 WHERE attempts < ? RETURNING attempts')
+    .bind(Math.floor(now / (DAY * 1000)), limit).first();
+  if (!budget) return json({error: 'the daily upload budget is exhausted; try again tomorrow'}, 429);
   const bytes = await body(request, 1024 * 1024);
   if (!bytes) return json({error: 'a motion is at most 1 MB, its poster included'}, 413);
   let pkg;
@@ -152,10 +138,18 @@ async function upload(request, env, now) {
     throw e;
   }
   const id = random(16), poll = random(32), code = makeCode(), at = Math.floor(now / 1000);
+  let base;
+  try { base = await submissionBase(env, pkg.id, pkg.manifest); }
+  catch { return json({error: 'the author and main revision could not be verified; check the author or try again later'}, 422); }
   const digest = await hex(bytes);
-  await env.PACKAGES.put(`submissions/${id}.tgz`, bytes, {httpMetadata: {contentType: 'application/gzip'}});
-  await env.DB.prepare('INSERT INTO submissions (id, poll_hash, code, motion, version, sha256, bytes, status, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-    .bind(id, await sha256(poll), code, pkg.id, pkg.manifest.version, digest, bytes.length, 'uploaded', at, at + DAY).run();
+  await env.SUBMISSIONS_BUCKET.put(`submissions/${id}.tgz`, bytes, {httpMetadata: {contentType: 'application/gzip'}});
+  try {
+    await env.DB.prepare('INSERT INTO submissions (id, poll_hash, code, motion, version, sha256, bytes, status, created_at, expires_at, owner_id, base_sha) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .bind(id, await sha256(poll), code, pkg.id, pkg.manifest.version, digest, bytes.length, 'uploaded', at, at + DAY, base.owner, base.sha).run();
+  } catch {
+    await env.SUBMISSIONS_BUCKET.delete(`submissions/${id}.tgz`).catch(() => console.error('submission_cleanup_failed'));
+    return json({error: 'the share could not be stored; try again later'}, 503);
+  }
   return json({id, url: `${new URL(request.url).origin}/share/${id}`, code, poll, motion: pkg.id, version: pkg.manifest.version, expires: new Date((at + DAY) * 1000).toISOString()}, 201);
 }
 
@@ -164,17 +158,22 @@ const row = (env, id) => env.DB.prepare('SELECT * FROM submissions WHERE id = ?'
 const prUrl = (r) => (r.pr ? `https://github.com/motionhub-dev/motions/pull/${r.pr}` : null);
 
 async function loadPackage(env, r) {
-  const obj = await env.PACKAGES.get(`submissions/${r.id}.tgz`);
-  if (!obj) return null;
-  return readPackage(new Uint8Array(await obj.arrayBuffer()));
+  const obj = await env.SUBMISSIONS_BUCKET.get(`submissions/${r.id}.tgz`);
+  if (!obj || obj.size > LIMITS.packed) return null;
+  const bytes = new Uint8Array(await obj.arrayBuffer());
+  if (await hex(bytes) !== r.sha256) return null;
+  return readPackage(bytes);
 }
 
 /** Kept but past its day, and never submitted: as good as gone. */
-const expired = (r, now) => r.status !== 'submitted' && r.expires_at <= Math.floor(now / 1000);
+const expired = (r, now) => r.status === 'expired' || (!r.owner_id && r.status !== 'submitted' && r.status !== 'withdrawn') || (r.status !== 'submitted' && r.status !== 'withdrawn' && r.expires_at <= Math.floor(now / 1000));
+const owns = (r, me) => Number.isSafeInteger(r?.owner_id) && r.owner_id === me?.id;
+const privateExpired = (r, now) => r.expires_at <= Math.floor(now / 1000);
 
 async function state(request, env, id, poll, now) {
   const r = await row(env, id);
   if (!r || !poll || r.poll_hash !== (await sha256(poll))) return json({error: 'no such share'}, 404);
+  if (privateExpired(r, now)) return json({status: 'expired'});
   return json({status: expired(r, now) ? 'expired' : r.status, motion: r.motion, version: r.version, pr: r.pr, prUrl: prUrl(r)});
 }
 
@@ -182,16 +181,18 @@ async function preview(request, env, id, now) {
   const me = await person(request, env, now);
   if (!me) return json({error: 'sign in with GitHub to see this share'}, 401);
   const r = await row(env, id);
-  if (!r || expired(r, now)) return json({error: 'this share link has expired or does not exist: share the motion again'}, 404);
+  if (!r || !owns(r, me) || expired(r, now)) return json({error: 'this share link has expired or does not exist: share the motion again'}, 404);
   // a submitted share's package may be gone already (the daily sweep): the page then shows what the record keeps
-  const pkg = await loadPackage(env, r).catch(() => null);
+  const pkg = privateExpired(r, now) ? null : await loadPackage(env, r).catch(() => null);
   if (r.status !== 'submitted' && !pkg) return json({error: 'this share link has expired: share the motion again'}, 404);
-  const published = pkg ? await publishedManifest(request, env, r.motion) : null;
+  let base;
+  try { base = pkg ? await submissionBase(env, r.motion, pkg.manifest) : null; } catch { return json({error: 'the current author could not be verified'}, 503); }
+  const published = base?.published ?? null;
   const verdict = r.status === 'submitted' ? {may: false, why: 'This share is submitted already.'}
     : r.status === 'withdrawn' ? {may: false, why: 'Its pull request was withdrawn. To submit the motion, share it again from your terminal.'}
-    : eligibility(me, pkg.manifest, published, await recorded(request, env));
+    : eligibility(me, pkg.manifest, published, base.accounts);
   // the first person who may submit it and opens it: their page lists it as waiting
-  if (verdict.may && r.status === 'uploaded') await env.DB.prepare("UPDATE submissions SET status = 'viewed', person = ? WHERE id = ? AND status = 'uploaded'").bind(me.id, id).run();
+  // GET never assigns an owner or records consent. owner_id was fixed at upload.
   const doc = pkg?.files.find((f) => f.path === 'MOTION.md');
   // a submitted share's page says where its pull request stands: published once its version (or a later one) is on
   // the site, else as GitHub says (merged, closed, open)
@@ -279,12 +280,12 @@ async function myShares(request, env, now) {
   if (!me) return json({error: 'sign in to see your shares'}, 401);
   if (!env.DB) return json({waiting: [], submitted: []});
   // one being submitted right now (or stopped while it was) waits with the rest: its page says where it stands
-  const {results} = await env.DB.prepare("SELECT id, motion, version, status, pr, created_at, dco_at, expires_at FROM submissions WHERE person = ? AND status IN ('viewed', 'submitting', 'submitted', 'withdrawn') ORDER BY created_at DESC LIMIT 100").bind(me.id).all();
+  const {results} = await env.DB.prepare("SELECT id, motion, version, status, pr, created_at, dco_at, expires_at FROM submissions WHERE (person = ?1 OR owner_id = ?1) AND status IN ('uploaded', 'viewed', 'submitting', 'submitted', 'withdrawn') ORDER BY created_at DESC LIMIT 100").bind(me.id).all();
   const site = await onSite(request, env);
   const at = Math.floor(now / 1000);
   const about = (r) => ({id: r.id, motion: r.motion, version: r.version, name: site.get(r.motion)?.name ?? null, poster: site.get(r.motion)?.poster ?? null});
   return json({
-    waiting: results.filter((r) => (r.status === 'viewed' || r.status === 'submitting') && r.expires_at > at).map((r) => ({...about(r), url: `/share/${r.id}`, created: new Date(r.created_at * 1000).toISOString(), expires: new Date(r.expires_at * 1000).toISOString()})),
+    waiting: results.filter((r) => (r.status === 'uploaded' || r.status === 'viewed' || r.status === 'submitting') && r.expires_at > at).map((r) => ({...about(r), url: `/share/${r.id}`, created: new Date(r.created_at * 1000).toISOString(), expires: new Date(r.expires_at * 1000).toISOString()})),
     submitted: await submittedStates(env, results.filter((r) => r.status === 'submitted' || r.status === 'withdrawn'), site, about),
   });
 }
@@ -295,13 +296,13 @@ async function file(request, env, id, path, now) {
   const me = await person(request, env, now);
   if (!me) return json({error: 'sign in with GitHub'}, 401);
   const r = await row(env, id);
-  if (!r || expired(r, now)) return json({error: 'no such share'}, 404);
+  if (!r || !owns(r, me) || expired(r, now) || privateExpired(r, now)) return json({error: 'no such share'}, 404);
   const pkg = await loadPackage(env, r);
   const f = pkg?.files.find((x) => x.path === path);
   if (!f) return json({error: 'no such file'}, 404);
   // a raster picture shows as one; anything else (SVG and HTML included) is plain text, in a sandbox, never run
   const type = IMAGES[path.split('.').pop().toLowerCase()] ?? 'text/plain; charset=utf-8';
-  return new Response(f.data, {headers: {'content-type': type, 'content-security-policy': "sandbox; default-src 'none'", 'x-content-type-options': 'nosniff', 'cache-control': 'private, max-age=300'}});
+  return new Response(f.data, {headers: {'content-type': type, 'content-security-policy': "sandbox; default-src 'none'", 'x-content-type-options': 'nosniff', 'cache-control': 'private, no-store'}});
 }
 
 async function submit(request, env, id, now) {
@@ -310,10 +311,13 @@ async function submit(request, env, id, now) {
   const me = await person(request, env, now);
   if (!me) return json({error: 'sign in with GitHub'}, 401);
   const r = await row(env, id);
-  if (!r || expired(r, now)) return json({error: 'this share link has expired: share the motion again'}, 404);
+  if (!r || !owns(r, me) || expired(r, now)) return json({error: 'this share link has expired: share the motion again'}, 404);
   if (r.status === 'submitted') return json({error: 'this share is submitted already', pr: r.pr, prUrl: prUrl(r)}, 409);
   if (r.status === 'withdrawn') return json({error: 'its pull request was withdrawn: share the motion again to submit it'}, 409);
-  const sent = await request.json().catch(() => ({}));
+  const sentBytes = await body(request, 4096);
+  if (!sentBytes) return json({error: 'the confirmation is too large'}, 413);
+  let sent;
+  try { sent = JSON.parse(new TextDecoder().decode(sentBytes)); } catch { sent = {}; }
   if (sent.mine !== true || sent.dco !== true) return json({error: 'confirm that you started this share and certify the DCO'}, 400);
   // a try is counted before the code is compared, in one step, so many tries at once never get past the limit; a
   // right code gives its try back
@@ -326,15 +330,20 @@ async function submit(request, env, id, now) {
   if ((today?.n ?? 0) >= PER_DAY) return json({error: `at most ${PER_DAY} shares a day: try again tomorrow`}, 429);
   const pkg = await loadPackage(env, r);
   if (!pkg) return json({error: 'this share link has expired: share the motion again'}, 404);
-  const published = await publishedManifest(request, env, r.motion);
-  const accounts = await recorded(request, env);
+  let base;
+  try { base = await submissionBase(env, r.motion, pkg.manifest); } catch { return json({error: 'the current author and main revision could not be verified'}, 503); }
+  const {published, accounts} = base;
+  if (base.owner !== r.owner_id) return json({error: 'the author changed; share again'}, 409);
   const verdict = eligibility(me, pkg.manifest, published, accounts);
   if (!verdict.may) return json({error: verdict.why}, 403);
   // claimed before GitHub is asked, in one step with the day's count, so two submits at once never make two commits
   // nor pass the limit; a claim whose Worker stopped before it finished is taken again after a while
-  const claim = await env.DB.prepare(`UPDATE submissions SET status = 'submitting', person = ?1, dco_at = ?2 WHERE id = ?3
-    AND (status IN ('uploaded', 'viewed') OR (status = 'submitting' AND dco_at < ?2 - ${STUCK}))
-    AND (SELECT COUNT(*) FROM submissions WHERE person = ?1 AND dco_at > ?2 - ${DAY} AND id != ?3) < ${PER_DAY}`).bind(me.id, at, id).run();
+  const lease = random(16);
+  let claim;
+  try { claim = await env.DB.prepare(`UPDATE submissions SET status = 'submitting', person = ?1, dco_at = ?2, claimed_at = ?2, claim_token = ?4, base_sha = ?5 WHERE id = ?3 AND owner_id = ?1 AND expires_at > ?2
+    AND (status IN ('uploaded', 'viewed') OR (status = 'submitting' AND claimed_at < ?2 - ${STUCK}))
+    AND (SELECT COUNT(*) FROM submissions WHERE person = ?1 AND dco_at > ?2 - ${DAY} AND id != ?3) < ${PER_DAY}`).bind(me.id, at, id, lease, base.sha).run(); }
+  catch { return json({error: 'another share of this motion is being submitted; try again later'}, 409); }
   if (!changes(claim)) {
     const now = await row(env, id);
     if (now?.status === 'submitting') return json({error: 'this share is being submitted already'}, 409);
@@ -343,13 +352,22 @@ async function submit(request, env, id, now) {
   }
   let done;
   try {
-    done = await commitSubmission(env, {id: r.motion, manifest: pkg.manifest, published: Boolean(published), files: pkg.files, me, accounts, submission: id, sha256: r.sha256});
+    const previous = await env.DB.prepare("SELECT pr FROM submissions WHERE motion = ? AND owner_id = ? AND status = 'submitted' ORDER BY dco_at DESC LIMIT 1").bind(r.motion, me.id).first();
+    done = await commitSubmission(env, {id: r.motion, manifest: pkg.manifest, published: Boolean(published), files: pkg.files, me, accounts, submission: id, sha256: r.sha256, baseSha: base.sha, initialBaseSha: r.base_sha, previousPull: previous?.pr});
   } catch (e) {
-    await env.DB.prepare("UPDATE submissions SET status = 'viewed', dco_at = NULL WHERE id = ?").bind(id).run();
-    return json({error: `GitHub could not take it just now (${e.message}); try again in a minute`}, 502);
+    // A timeout may have committed: retain the lease for reconciliation instead of blindly making another commit.
+    console.error('submission_github_failed');
+    return json({error: 'GitHub could not confirm the submission; try again in five minutes'}, 502);
   }
   // the pull request is open: from here nothing undoes the claim, so a retry never commits it twice
-  await env.DB.prepare("UPDATE submissions SET status = 'submitted', pr = ?, branch = ? WHERE id = ?").bind(done.pr, done.branch, id).run();
+  let saved;
+  try {
+    saved = await env.DB.prepare("UPDATE submissions SET status = 'submitted', pr = ?, branch = ?, commit_sha = ?, base_sha = ?, claim_token = NULL WHERE id = ? AND claim_token = ?").bind(done.pr, done.branch, done.commitSha, base.sha, id, lease).run();
+  } catch {
+    console.error('submission_receipt_save_failed');
+    return json({error: 'the submission needs reconciliation; try again in five minutes'}, 503);
+  }
+  if (!changes(saved)) return json({error: 'a newer request is reconciling this share'}, 409);
   return json({pr: done.pr, prUrl: done.url, added: done.added});
 }
 
@@ -380,26 +398,29 @@ async function withdraw(request, env, number, now) {
 
 /** What is past its day, let go: packages kept over a day, shares never submitted, closed pull requests' branches. */
 export async function sweep(env, now = Date.now()) {
-  if (!env.DB || !env.PACKAGES) return {};
+  if (!env.DB || !env.SUBMISSIONS_BUCKET) return {};
   const at = Math.floor(now / 1000);
   // each part on its own: one that fails leaves the others to do theirs, and tomorrow's sweep tries it again
   let packages = 0, shares = 0, branches = [];
   try {
     let cursor;
     do {
-      const page = await env.PACKAGES.list({prefix: 'submissions/', cursor});
+      const page = await env.SUBMISSIONS_BUCKET.list({prefix: 'submissions/', cursor});
       const old = page.objects.filter((o) => new Date(o.uploaded).getTime() < now - DAY * 1000).map((o) => o.key);
-      if (old.length) { await env.PACKAGES.delete(old); packages += old.length; }
+      if (old.length) { await env.SUBMISSIONS_BUCKET.delete(old); packages += old.length; }
       cursor = page.truncated ? page.cursor : undefined;
     } while (cursor);
-  } catch {}
+  } catch { console.error('submission_package_sweep_failed'); }
   try {
     // a share someone certified the DCO for stays (submitted, withdrawn, or stopped while GitHub was asked), as the
     // record of who certified what; its code goes
     shares = changes(await env.DB.prepare("DELETE FROM submissions WHERE status NOT IN ('submitted', 'withdrawn') AND dco_at IS NULL AND expires_at < ?").bind(at).run());
     await env.DB.prepare("UPDATE submissions SET code = '' WHERE expires_at < ? AND code != ''").bind(at).run();
-  } catch {}
-  if (ready(env)) branches = await sweepBranches(env).catch(() => []);
+    await env.DB.prepare("UPDATE submissions SET status = 'expired', claim_token = NULL WHERE status = 'submitting' AND expires_at < ?").bind(at).run();
+    await env.DB.prepare('DELETE FROM sessions WHERE expires_at <= ?').bind(at).run();
+    await env.DB.prepare('DELETE FROM submission_budgets WHERE day < ?').bind(Math.floor(at / DAY) - 2).run();
+  } catch { console.error('submission_record_sweep_failed'); }
+  if (ready(env)) branches = await sweepBranches(env).catch(() => { console.error('submission_branch_sweep_failed'); return []; });
   return {packages, shares, branches};
 }
 
@@ -411,10 +432,12 @@ export async function submissions(request, env, now = Date.now()) {
   if (out) return m === 'POST' ? withdraw(request, env, Number(out[1]), now) : json({error: 'method not allowed'}, 405);
   if (pathname === '/api/me/shares') return m === 'GET' ? myShares(request, env, now) : json({error: 'method not allowed'}, 405);
   if (pathname === '/api/submissions') return m === 'POST' ? upload(request, env, now) : json({error: 'method not allowed'}, 405);
-  const one = /^\/api\/submissions\/([A-Za-z0-9_-]{22})(?:\/(submit|files\/(.+)))?$/.exec(pathname);
+  const one = /^\/api\/submissions\/([A-Za-z0-9_-]{22})(?:\/(submit|status|files\/(.+)))?$/.exec(pathname);
   if (!one) return pathname.startsWith('/api/submissions/') ? json({error: 'no such share'}, 404) : null;
   const [, id, action, path] = one;
-  if (!action && m === 'GET') return searchParams.has('poll') ? state(request, env, id, searchParams.get('poll'), now) : preview(request, env, id, now);
+  if (searchParams.has('poll')) return json({error: 'upgrade @motionhub/cli: polling credentials must use the Authorization header'}, 426);
+  if (action === 'status' && m === 'GET') return state(request, env, id, /^Bearer ([A-Za-z0-9_-]{43})$/.exec(request.headers.get('authorization') ?? '')?.[1], now);
+  if (!action && m === 'GET') return preview(request, env, id, now);
   if (action === 'submit' && m === 'POST') return submit(request, env, id, now);
   if (path && m === 'GET') return file(request, env, id, path, now);
   return json({error: 'method not allowed'}, 405);

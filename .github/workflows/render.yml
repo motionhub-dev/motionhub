@@ -22,17 +22,18 @@ concurrency:
 jobs:
   plan:
     # only main's videos: a version is rendered once its package is published, which only main's deploy does
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    if: vars.PUBLISHING != 'off' && github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
       ids: ${{ steps.missing.outputs.ids }}
     steps:
       # the commit that was deployed, so each video is of the version the site now serves
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          persist-credentials: false
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
       - id: missing
@@ -55,13 +56,14 @@ jobs:
     env:
       ID: ${{ matrix.id }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          persist-credentials: false
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: site/.cache/fonts
           key: fonts-${{ hashFiles('motions/**/tokens.json') }}
@@ -75,17 +77,50 @@ jobs:
       - name: Render
         working-directory: site
         run: node player/render.mjs "$ID" --out "$RUNNER_TEMP/render"
-      # the token reaches this step alone, not the installs and the render before it
-      - name: Publish
+      - name: Record the rendered artifact
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: node site/ci/release.mjs create "$RUNNER_TEMP/render" video
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: video-${{ strategy.job-index }}
+          path: ${{ runner.temp }}/render
+          include-hidden-files: true
+          retention-days: 3
+          if-no-files-found: error
+
+  publish:
+    needs: [plan, render]
+    if: needs.plan.outputs.ids != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+      - run: npm ci --prefix site/ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: video-*
+          path: ${{ runner.temp }}/videos
+      - name: Verify every video before exposing credentials
+        run: |
+          for video in "$RUNNER_TEMP/videos"/*; do
+            node site/ci/release.mjs verify "$video" video
+          done
+      - name: Publish videos without executing motion code
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          version=$(node -p "require('./motions/$ID/motion.json').version")
-          key="m/$ID/$version.mp4"
-          # made once: a video the site already serves stays; one it cannot say anything about stops here
-          set +e; node site/player/missing.mjs --has "https://motionhub.dev/$key"; has=$?; set -e
-          if [ $has = 0 ]; then echo "kept $key"; exit 0; fi
-          if [ $has != 1 ]; then exit 1; fi
-          npx --yes wrangler@4.154.0 r2 object put "motionhub/$key" --remote --file "$RUNNER_TEMP/render/$key" --content-type video/mp4 >/dev/null
-          echo "published $key ($(stat -c %s "$RUNNER_TEMP/render/$key") bytes)"
+          for video in "$RUNNER_TEMP/videos"/*; do
+            node site/ci/release.mjs publish "$video" video
+          done

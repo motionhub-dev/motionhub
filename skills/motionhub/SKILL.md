@@ -106,11 +106,11 @@ To publish a new version of a motion the person published (only when they ask, a
 1. Have the motion at hand: their own copy in `./motions/<name>/`, or `npx @motionhub/cli get @<scope>/<slug>` and copy `./motions/@<scope>/<slug>/` to `./motions/<slug>/` to change it there.
 2. Make the change they want, from their project, holding to what `MOTION.md` says the look is; a new look is a new motion.
 3. Raise `version` in `motion.json` above the published one: the patch for a fix, the minor for something added (a component, a section), the major for a change films already made in it would not survive. A published version never changes.
-4. `npx @motionhub/cli share <dir> --wait`, as above: they open the link and submit; if their pull request for it is open already, the new version is added to it. Only one of the motion's authors can change it; another author's share opens a pull request of its own. `--wait` waits up to 30 minutes.
+4. `npx @motionhub/cli share <dir> --wait`, as above: they open the link and submit; if their pull request for it is open already, the new version is added to it. Only the motion's sole author account can change it; updates cannot replace or add an author. Credit help in CREDITS.md. `--wait` waits up to 30 minutes.
 
 To change a motion after review notes on its pull request, read the notes (`https://api.github.com/repos/motionhub-dev/motions/issues/<n>/comments` and `.../pulls/<n>/comments`, no token needed), make the changes they ask for, and share again the same way.
 
-To build on someone else's motion, publish yours under your own scope, name theirs in `motion.json`'s `basedOn` (`[{"id": "@iamsuosi/lab-notebook", "version": "1.0.2"}]`) and say in `CREDITS.md` what you took and changed; only its authors change the original.
+To build on someone else's motion, publish yours under your own scope, name theirs in `motion.json`'s `basedOn` (`[{"id": "@iamsuosi/lab-notebook", "version": "1.0.2"}]`) and say in `CREDITS.md` what you took and changed; only its sole author changes the original.
 
 ## 8. Check before you hand it over
 

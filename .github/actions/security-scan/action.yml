@@ -1,0 +1,11 @@
+name: Scan committed credentials
+description: Run a fixed Gitleaks version without repository or deployment credentials.
+runs:
+  using: composite
+  steps:
+    - name: Install the pinned scanner
+      shell: bash
+      run: GOBIN="$RUNNER_TEMP/security-bin" go install github.com/zricethezav/gitleaks/v8@v8.24.2
+    - name: Scan committed history with redacted findings
+      shell: bash
+      run: '"$RUNNER_TEMP/security-bin/gitleaks" git --redact --no-banner'

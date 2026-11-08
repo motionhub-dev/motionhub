@@ -1,41 +1,61 @@
 name: publish
-
-# A tag `v<version>` stages that version of @motionhub/cli on npm; a tag `<package>-v<version>`
-# (`runtime-v0.1.1`, `remotion-v…`, `hyperframes-v…`) stages that version of @motionhub/<package> from packages/<package>. The workflow holds no npm
-# token: npm trusts this repository and this file by OpenID Connect (npm, package settings, "Trusted Publisher"), so what it
-# can do is what npm allows it. It only stages; the release goes out when a maintainer approves the staged version with 2FA
-# (`npm stage approve <id>`).
 on:
   push:
     tags: ["v*", "runtime-v*", "remotion-v*", "hyperframes-v*"]
-
 permissions:
   contents: read
-  id-token: write
-
 jobs:
-  stage:
+  package:
+    if: vars.PUBLISHING != 'off'
     runs-on: ubuntu-latest
+    outputs:
+      artifact: ${{ steps.artifact.outputs.artifact-id }}
     steps:
-      - uses: actions/checkout@v5
-      # npm stage is in npm 11, which Node 24 ships; Node 22's npm 10 does not have it
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 24.19.0
-          registry-url: "https://registry.npmjs.org"
-      - name: What the tag publishes
-        id: what
-        run: |
-          case "$GITHUB_REF_NAME" in
-            v*) echo "dir=." >> "$GITHUB_OUTPUT"; echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT" ;;
-            *) echo "dir=./packages/${GITHUB_REF_NAME%%-v*}" >> "$GITHUB_OUTPUT"; echo "version=${GITHUB_REF_NAME#*-v}" >> "$GITHUB_OUTPUT" ;;
-          esac
+      - name: Only reviewed main history may be packaged
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
       - run: npm test
       - run: node tools/check.mjs
-      - name: The runtime's tests
-        if: startsWith(github.ref_name, 'runtime-v')
-        working-directory: packages/runtime
-        run: npm install --no-package-lock --no-save && npm test
-      - name: The tag names the version being published
-        run: test "$(node -p "require('./${{ steps.what.outputs.dir }}/package.json').version")" = "${{ steps.what.outputs.version }}"
-      - run: npm stage publish ${{ steps.what.outputs.dir }}
+      - run: node site/ci/npm-package.mjs "$RUNNER_TEMP/package"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        id: artifact
+        with:
+          name: npm-${{ github.sha }}
+          path: ${{ runner.temp }}/package
+          retention-days: 3
+          if-no-files-found: error
+  stage:
+    needs: package
+    runs-on: ubuntu-latest
+    environment: npm-release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24.19.0
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: ${{ needs.package.outputs.artifact }}
+          path: ${{ runner.temp }}/package
+          merge-multiple: true
+      - run: node site/ci/release.mjs verify "$RUNNER_TEMP/package" npm
+      - name: Stage a prepacked tarball without lifecycle scripts
+        env:
+          NPM_CONFIG_IGNORE_SCRIPTS: "true"
+        run: |
+          for package in "$RUNNER_TEMP/package"/*.tgz; do
+            npm stage publish "$package"
+          done

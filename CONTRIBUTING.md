@@ -2,7 +2,7 @@
 
 Sharing a look means writing it down as a [`MOTION.md`](docs/motion-md.md), with the tokens and components that come with it. In your own project one `MOTION.md` is enough; on motionhub a motion is a whole directory (`hub.directory`).
 
-A motion arrives as a pull request that adds `motions/@<you>/<slug>/` in the [format](SPEC.md). Your GitHub account is your identity here: the motion's `scope` is your GitHub username in lowercase, its id is `@<you>/<slug>`, and the `github` of at least one author in `motion.json` must be the account that opens the pull request. Every motion here has a scope, the maintainers' own included: there are no unscoped, official ids.
+A motion arrives as a pull request that adds `motions/@<you>/<slug>/` in the [format](SPEC.md). Your GitHub account is your identity here: the motion's `scope` is your GitHub username in lowercase, its id is `@<you>/<slug>`, and `authors` in `motion.json` must contain exactly one author, whose `github` resolves to the account that opens the pull request. Every motion here has a scope, the maintainers' own included: there are no unscoped, official ids.
 
 ## The quick way
 
@@ -25,11 +25,13 @@ npx @motionhub/cli init <slug> --github <you>   # ./motions/<slug>/ with every r
 npx @motionhub/cli share motions/<slug>         # the checks below, then a link: sign in with GitHub there to open the pull request
 ```
 
-`share` needs no git, `gh` or GitHub token, so it works from any machine an agent runs on, a cloud one included. It checks the motion and uploads it to motionhub.dev, then prints a link and a code. Open the link and sign in with GitHub; motionhub asks GitHub for no permissions. Check the motion, type the code your terminal shows, and certify the DCO. motionhub's GitHub App then opens the pull request on your behalf. The commit carries your name, signed off; the app shows as the pull request's author, and the pull request names you. Add `--wait` to have the command wait (up to 30 minutes) and print the pull request. To change it, share it again: while your pull request for it is open, the new version is added to it. Your page on motionhub.dev (`/you/`, In review) lists it, and Withdraw there closes it. A link works for a day. A new motion under your scope can be submitted only by your GitHub account; a published one only by one of its authors, each in a pull request of their own. Shared this way, a motion holds at most 40 files that are not text (pictures, fonts, sounds); open the pull request yourself with `--pr` for more.
+`share` needs no git, `gh` or GitHub token, so it works from any machine an agent runs on, a cloud one included. It checks the motion and uploads it to motionhub.dev, then prints a link and a code. Open the link and sign in with GitHub; motionhub asks GitHub for no permissions. Check the motion, type the code your terminal shows, and certify the DCO. motionhub's GitHub App then opens the pull request on your behalf. The App signs the commit, which records your account and DCO sign-off; the app shows as the pull request's author, and the pull request names you. Add `--wait` to have the command wait (up to 30 minutes) and print the pull request. To change it, share it again: while your pull request for it is open, the new version is added to it. Your page on motionhub.dev (`/you/`, In review) lists it, and Withdraw there closes it. A link works for a day. A new motion under your scope can be submitted only by your GitHub account; a published one only by its sole author account. Only that account may read the private draft; knowing the link is not enough. Shared this way, a motion holds at most 40 files that are not text (pictures, fonts, sounds); open the pull request yourself with `--pr` for more.
 
 Never type a share's code on a page you did not open from your own terminal.
 
 To open the pull request yourself instead, from your fork with git and gh: `npx @motionhub/cli share motions/<slug> --pr`.
+
+Never include credential files, private keys or secrets, even inside a tool directory. The CLI and server refuse recognized credential paths and values. Before confirming, inspect the complete file list: opening the PR makes every submitted file public, even if CI later fails or the PR is closed.
 
 ## Before you open it
 
@@ -111,7 +113,7 @@ A tool may add rules of its own for its directory.
 
 ## Changing a published motion
 
-Only one of a motion's published authors may change it: the checks compare the pull request's author with the authors of the version on the main branch, so adding yourself to `authors` does not make a motion yours. To build on someone else's motion, publish your own under your scope and credit theirs, by its id, in `CREDITS.md`.
+Only a motion's sole author may change it. The checks compare the submitter's numeric account id with the sole author on main, and require the updated author's id to remain the same. A rename is allowed through the immutable account mappings; replacing or adding an author is not. Credit help in CREDITS.md without granting permission. To build on someone else's motion, publish your own under your scope and credit theirs, by its id, in `CREDITS.md`.
 
 The checks compare accounts, not logins: the account's numeric id, recorded in `accounts/`, which GitHub never changes. So if you rename your GitHub account, you keep your motions and your scope. Change them from the new login, and publish new motions under the old scope or the new one. Add `accounts/<new-login>.json` the first time you credit the new login, which `share --pr` does for you. Whoever later takes your old login gets neither. A motion's id never changes with a rename: `@<old-login>/<slug>` is where it stays, and your creator page shows your login now.
 
@@ -121,4 +123,4 @@ A change carries a higher `version` than the published one, since a published ve
 
 ## Retiring a motion
 
-One of its authors asks, by an issue (your page opens it), and a maintainer takes its directory out. Its page and its place in the catalogue go; every published package stays at its URL, so films and projects that use it keep working. A motion that others name in `basedOn` stays until they stop naming it, since the checks refuse a `basedOn` that is not in the catalogue.
+Its sole author asks, by an issue (your page opens it), and a maintainer takes its directory out. Its page and its place in the catalogue go; every published package stays at its URL, so films and projects that use it keep working. A motion that others name in `basedOn` stays until they stop naming it, since the checks refuse a `basedOn` that is not in the catalogue.

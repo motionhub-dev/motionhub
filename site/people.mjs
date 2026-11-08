@@ -8,7 +8,7 @@
 
 import {pulls} from './pulls.mjs';
 
-const SESSION = 'mh_session', SIGNED_IN = 'mh_in', STATE = 'mh_state';
+const SESSION = '__Host-mh_session', SIGNED_IN = 'mh_in', STATE = '__Host-mh_state';
 const DAYS_30 = 30 * 86400;
 const ID = /^(?:@[a-z0-9-]+\/)?[a-z0-9-]+$/;
 const UA = 'motionhub.dev';
@@ -19,7 +19,9 @@ function cookies(request) {
   const out = {};
   for (const part of (request.headers.get('cookie') ?? '').split(';')) {
     const at = part.indexOf('=');
-    if (at > 0) out[part.slice(0, at).trim()] = decodeURIComponent(part.slice(at + 1).trim());
+    if (at > 0) {
+      try { out[part.slice(0, at).trim()] = decodeURIComponent(part.slice(at + 1).trim()); } catch { /* malformed cookie, not a session */ }
+    }
   }
   return out;
 }
@@ -65,13 +67,13 @@ function login(request, env) {
   github.searchParams.set('redirect_uri', `${url.origin}/auth/callback`);
   github.searchParams.set('state', state);
   github.searchParams.set('allow_signup', 'true');
-  return new Response(null, {status: 302, headers: {location: github.toString(), 'set-cookie': cookie(STATE, `${state} ${next}`, 600, {path: '/auth/'}), 'cache-control': 'no-store'}});
+  return new Response(null, {status: 302, headers: {location: github.toString(), 'set-cookie': cookie(STATE, `${state} ${next}`, 600, {path: '/'}), 'cache-control': 'no-store'}});
 }
 
 async function callback(request, env, now = Date.now()) {
   const url = new URL(request.url);
   const [state, next] = (cookies(request)[STATE] ?? '').split(' ');
-  const fail = (why) => new Response(`Signing in did not work: ${why}. Go back and try again.`, {status: 400, headers: {'content-type': 'text/plain; charset=utf-8', 'set-cookie': cookie(STATE, '', 0, {path: '/auth/'})}});
+  const fail = (why) => new Response(`Signing in did not work: ${why}. Go back and try again.`, {status: 400, headers: {'content-type': 'text/plain; charset=utf-8', 'set-cookie': cookie(STATE, '', 0, {path: '/'})}});
   if (!state || url.searchParams.get('state') !== state) return fail('the sign-in expired or came from somewhere else');
   const code = url.searchParams.get('code');
   if (!code) return fail('GitHub did not sign you in');
@@ -96,7 +98,7 @@ async function callback(request, env, now = Date.now()) {
   const headers = new Headers({location: safeNext(next), 'cache-control': 'no-store'});
   headers.append('set-cookie', cookie(SESSION, t, DAYS_30));
   headers.append('set-cookie', cookie(SIGNED_IN, '1', DAYS_30, {httpOnly: false}));
-  headers.append('set-cookie', cookie(STATE, '', 0, {path: '/auth/'}));
+  headers.append('set-cookie', cookie(STATE, '', 0, {path: '/'}));
   return new Response(null, {status: 302, headers});
 }
 
@@ -117,7 +119,18 @@ async function logout(request, env) {
 async function forget(request, env) {
   const me = await person(request, env);
   // their shares too (site/submissions.mjs): the pull requests already opened are GitHub's, public, and stay
-  if (me) await env.DB.batch(['likes', 'sessions', 'submissions'].map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE person = ?`).bind(me.id)).concat(env.DB.prepare('DELETE FROM people WHERE id = ?').bind(me.id)));
+  if (me) {
+    const {results} = await env.DB.prepare('SELECT id FROM submissions WHERE person = ?1 OR owner_id = ?1').bind(me.id).all();
+    if (results.length && !env.SUBMISSIONS_BUCKET) return json({error: 'private files could not be removed; try again later'}, 503);
+    try {
+      for (let at = 0; at < results.length; at += 500) await env.SUBMISSIONS_BUCKET.delete(results.slice(at, at + 500).map(r => `submissions/${r.id}.tgz`));
+    } catch { return json({error: 'private files could not be removed; try again later'}, 503); }
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM submissions WHERE person = ?1 OR owner_id = ?1').bind(me.id),
+      ...['likes', 'sessions'].map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE person = ?`).bind(me.id)),
+      env.DB.prepare('DELETE FROM people WHERE id = ?').bind(me.id),
+    ]);
+  }
   return signedOut({ok: true, forgotten: Boolean(me)});
 }
 

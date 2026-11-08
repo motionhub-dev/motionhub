@@ -1,6 +1,2 @@
-# What needs a maintainer's review, with the ruleset's "require review from code owners": everything (the rules, the
-# workflows that apply them, the tools, the site, and any file added later) but the motions and the accounts/ records
-# they need, which ownership.yml judges against GitHub. The last matching line wins, so the two below have no owner.
-*           @iamsuosi
-/motions/
-/accounts/
+# All changes, including executable motions and account records, require a maintainer review.
+* @iamsuosi

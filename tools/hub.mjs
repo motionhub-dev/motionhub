@@ -268,6 +268,27 @@ export function scaffold(slug, author) {
   ]);
 }
 
+/** Public account mappings make CLI rename checks consistent with the server; they never replace server authorization. */
+async function sharingAccounts(base, manifest, was) {
+  const registry = await (await get(`${base}/api/accounts.json`)).json();
+  if (!registry || typeof registry !== 'object' || Array.isArray(registry)) throw new Error('the hub account registry is invalid');
+  const accounts = new Map();
+  for (const [login, id] of Object.entries(registry)) {
+    if (!Number.isSafeInteger(id) || id <= 0) throw new Error('the hub account registry is invalid');
+    accounts.set(login.toLowerCase(), id);
+  }
+  for (const a of was?.authors ?? []) if (!accounts.has(String(a.github).toLowerCase())) throw new Error('the published author is not recorded; contact the maintainer');
+  for (const login of new Set([manifest.scope, ...(manifest.authors ?? []).map(a => a.github)].filter(l => typeof l === 'string').map(l => l.toLowerCase()))) {
+    if (accounts.has(login)) continue;
+    if (!/^[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,38}$/.test(login)) throw new Error('invalid GitHub author login');
+    const response = await fetch(`https://api.github.com/users/${login}`, {headers: {accept: 'application/vnd.github+json', 'user-agent': 'motionhub-cli'}, signal: AbortSignal.timeout(20000)});
+    const user = response.ok ? await response.json() : null;
+    if (!Number.isSafeInteger(user?.id) || user.id <= 0 || user.type !== 'User') throw new Error('the GitHub author could not be verified; try again later');
+    accounts.set(login, user.id);
+  }
+  return accounts;
+}
+
 /**
  * Share a motion through motionhub.dev, with no git, gh or GitHub token here: check it as its pull request will be
  * checked (all but who you are, which the site and the pull request judge), pack it, upload it, and say where to open
@@ -280,7 +301,8 @@ export async function shareLink(dir, {wait = false, log = () => {}, ask = 5000, 
   const id = motionId(manifest);
   const published = (await index(base)).find((m) => m.slug === id);
   const was = published ? await (await get(`${base}/m/${id}/motion.json`)).json() : undefined;
-  const issues = checkMotion(dir, {was, shared: true});
+  const accounts = await sharingAccounts(base, manifest, was);
+  const issues = checkMotion(dir, {was, shared: true, accounts});
   if (issues.length) throw new Error(`${dir} does not pass the hub's checks:\n${issues.map((i) => `${i.at}  ${i.code}  ${i.message}`).join('\n')}`);
   const bytes = tgz(filesOf(dir).map((n) => [`${id}/${n}`, readFileSync(join(dir, n))]));
   if (bytes.length > 1024 * 1024) throw new Error(`${id} packs to ${bytes.length} bytes: a motion is at most 1 MB, its poster included`);
@@ -291,6 +313,8 @@ export async function shareLink(dir, {wait = false, log = () => {}, ask = 5000, 
     `${id} ${manifest.version} passes the checks and is uploaded${published ? `, after ${published.version}` : ''}. Nothing is published yet. To open its pull request under your GitHub name:`,
     `  1. Open ${body.url}`,
     `  2. Sign in with GitHub, check the motion, and type this code: ${body.code}`,
+    `Files to publish: ${filesOf(dir).join(', ')}`,
+    `All listed files become public when you confirm the pull request.`,
     `The link works until ${body.expires}. Never type the code on a page you did not open from this terminal.`,
   ];
   if (!wait) return lines.join('\n');
@@ -298,7 +322,7 @@ export async function shareLink(dir, {wait = false, log = () => {}, ask = 5000, 
   for (const until = Date.now() + most; Date.now() < until;) {
     await new Promise((r) => setTimeout(r, ask));
     // a moment without the network, or an answer that is not one, is asked again next time
-    const res = await fetch(`${base}/api/submissions/${body.id}?poll=${encodeURIComponent(body.poll)}`, {headers: {'user-agent': 'motionhub-cli'}}).catch(() => undefined);
+    const res = await fetch(`${base}/api/submissions/${body.id}/status`, {headers: {'user-agent': 'motionhub-cli', authorization: `Bearer ${body.poll}`}}).catch(() => undefined);
     if (res?.status === 404) throw new Error('motionhub.dev no longer knows this share: share again');
     const s = res?.ok ? await res.json().catch(() => ({})) : {};
     if (s.prUrl) return `The pull request is open: ${s.prUrl}`;
@@ -323,7 +347,8 @@ export async function share(dir, {pr = false, github} = {}, base = HUB) {
   const id = motionId(manifest);
   const published = (await index(base)).find((m) => m.slug === id);
   const was = published ? await (await get(`${base}/m/${id}/motion.json`)).json() : undefined;
-  const issues = checkMotion(dir, {author: account.login, authorId: account.id, was});
+  const accounts = await sharingAccounts(base, manifest, was);
+  const issues = checkMotion(dir, {author: account.login, authorId: account.id, was, accounts});
   if (issues.length) throw new Error(`${dir} does not pass the hub's checks:\n${issues.map((i) => `${i.at}  ${i.code}  ${i.message}`).join('\n')}`);
   const what = `${published ? 'Update' : 'Add'} ${manifest.name.en} ${manifest.version}`;
   if (!pr) return `${id} ${manifest.version} passes the hub's checks as ${account.login}${published ? `, after ${published.version}` : ''}. Nothing is published yet: run again with --pr to open "${what}" on github.com/${REPO}.`;
