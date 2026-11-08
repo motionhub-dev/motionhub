@@ -1,6 +1,6 @@
 # Command line
 
-`@motionhub/cli` finds, fetches and checks motions. It needs Node.js 20 or later and has no dependencies; run it with `npx` or install it with `npm i -g @motionhub/cli` for the `motionhub` command.
+`@motionhub/cli` finds, fetches and checks motions, and uploads Artifacts. It needs Node.js 20 or later and has no dependencies; run it with `npx` or install it with `npm i -g @motionhub/cli` for the `motionhub` command.
 
 ```sh
 npx @motionhub/cli <command> [options]
@@ -75,3 +75,34 @@ npx @motionhub/cli share <dir> --pr [--github <login>]
 A motion through the checks its pull request will run, against what is published, then uploaded to motionhub.dev. It prints a link and a code. Open the link and sign in with GitHub; motionhub asks for no permissions. Check the motion and type the code: motionhub's GitHub App opens the pull request on your behalf, with your account and DCO sign-off recorded in an App-signed commit. The motion must have one author. Only that account can read its private draft. CLI 0.8.0 polls using a request header, never a token in the URL. No git, `gh` or GitHub token is needed, so it works from a cloud agent too. `--wait` waits for the pull request, up to 30 minutes, and prints its address. A link works for a day. Shared again while your pull request is open, the new version is added to it.
 
 With `--pr` it opens the pull request itself, from your fork, with git and `gh`, signed off, as the account `gh` is signed in as. `--github <login>` alone runs the checks as that account and opens nothing. [Share a motion](../CONTRIBUTING.md) explains what happens next.
+
+## login, whoami, logout
+
+```sh
+npx @motionhub/cli login
+npx @motionhub/cli whoami
+npx @motionhub/cli logout
+```
+
+`login` signs the command line in to motionhub.dev. It prints a link: open it, sign in with GitHub and confirm that it is you who started the login. Allow it only if you ran `login` yourself; a link someone sent you would sign their terminal in as you. The credential is kept in `~/.motionhub/`. `whoami` prints the account it belongs to. `logout` revokes it on motionhub.dev and deletes it.
+
+## artifact upload
+
+```sh
+npx @motionhub/cli artifact upload <index.html|site.zip|directory> [--id <artifact-id>] [--title <name>]
+```
+
+A page, a ZIP with `index.html` at its root, or a static site's directory (zipped for you) uploaded as a private Artifact draft, up to 8 MiB. `--id` uploads a new version of that draft. Use relative asset URLs; for Vite, build with `--base ./`. When the command line is not signed in, it signs in first, as `login` does.
+
+The CLI prints a single **Preview** link at `/artifact/<id>/preview`. Sign in to view your latest draft in a full-height sandboxed frame. A slim header provides reload and management controls.
+
+To update an Artifact, pass the UUID between `/artifact/` and `/preview` as `--id`. For example, `/artifact/12345678-1234-1234-1234-123456789abc/preview` uses `--id 12345678-1234-1234-1234-123456789abc`.
+
+Use `--title` to name a new Artifact or rename an existing one while uploading. Titles accept 1–100 characters after trimming whitespace. Omit it on updates to keep the existing title. A failed upload keeps the previous title.
+
+```sh
+npx @motionhub/cli artifact upload ./dist --title "Ledger Bridge"
+npx @motionhub/cli artifact upload ./dist --id <artifact-id> --title "账目桥"
+```
+
+The upload API rejects titles over 100 characters instead of truncating them.

@@ -42,10 +42,12 @@ test('tags narrow, and any other facet widens within itself', () => {
   assert.deepEqual(found('', {tag: []}), all);
 });
 
-test('a filter counts what picking it would leave, given the search and the other filters', () => {
+test('a filter counts its motions given the search and the other facets, and narrowing tags given the tags picked', () => {
   assert.equal(countWith(all, [], {}, 'tag', 'light'), 2);
   assert.equal(countWith(all, [], {tag: ['light']}, 'tag', 'dark'), 0);
-  assert.equal(countWith(all, [], {colour: ['red']}, 'colour', 'blue'), 3);
+  assert.equal(countWith(all, [], {colour: ['red']}, 'colour', 'blue'), 2, 'picks in its own facet leave it as it is');
+  assert.equal(countWith(all, [], {colour: ['red'], type: ['mono']}, 'colour', 'blue'), 1, 'picks in another facet narrow it');
+  assert.equal(countWith(all, [], {colour: ['red', 'blue']}, 'colour', 'red'), 1);
   assert.equal(countWith(all, parseQuery('-clay'), {}, 'tag', 'light'), 1);
   assert.equal(countWith(all, [], {tag: ['light']}, 'tag', 'light'), 2, 'what is already picked counts once');
 });

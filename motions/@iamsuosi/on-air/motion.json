@@ -2,7 +2,7 @@
   "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "on-air",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "name": {
     "en": "On Air",
     "zh-CN": "口播字条"
@@ -26,7 +26,6 @@
     "modern"
   ],
   "fit": {
-    "kind": "overlay",
     "for": {
       "en": "Labels over your own footage: reviews, unboxings, vlogs and interviews. Needs your own video.",
       "zh-CN": "叠在你自己画面上的标签：评测、开箱、vlog、访谈。需要你自己的视频。"

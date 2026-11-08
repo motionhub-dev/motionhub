@@ -67,13 +67,13 @@ function login(request, env) {
   github.searchParams.set('redirect_uri', `${url.origin}/auth/callback`);
   github.searchParams.set('state', state);
   github.searchParams.set('allow_signup', 'true');
-  return new Response(null, {status: 302, headers: {location: github.toString(), 'set-cookie': cookie(STATE, `${state} ${next}`, 600, {path: '/'}), 'cache-control': 'no-store'}});
+  return new Response(null, {status: 302, headers: {location: github.toString(), 'set-cookie': cookie(STATE, `${state} ${next}`, 600), 'cache-control': 'no-store'}});
 }
 
 async function callback(request, env, now = Date.now()) {
   const url = new URL(request.url);
   const [state, next] = (cookies(request)[STATE] ?? '').split(' ');
-  const fail = (why) => new Response(`Signing in did not work: ${why}. Go back and try again.`, {status: 400, headers: {'content-type': 'text/plain; charset=utf-8', 'set-cookie': cookie(STATE, '', 0, {path: '/'})}});
+  const fail = (why) => new Response(`Signing in did not work: ${why}. Go back and try again.`, {status: 400, headers: {'content-type': 'text/plain; charset=utf-8', 'set-cookie': cookie(STATE, '', 0)}});
   if (!state || url.searchParams.get('state') !== state) return fail('the sign-in expired or came from somewhere else');
   const code = url.searchParams.get('code');
   if (!code) return fail('GitHub did not sign you in');
@@ -98,7 +98,7 @@ async function callback(request, env, now = Date.now()) {
   const headers = new Headers({location: safeNext(next), 'cache-control': 'no-store'});
   headers.append('set-cookie', cookie(SESSION, t, DAYS_30));
   headers.append('set-cookie', cookie(SIGNED_IN, '1', DAYS_30, {httpOnly: false}));
-  headers.append('set-cookie', cookie(STATE, '', 0, {path: '/'}));
+  headers.append('set-cookie', cookie(STATE, '', 0));
   return new Response(null, {status: 302, headers});
 }
 

@@ -32,6 +32,7 @@ export function tokensCss(tokens) {
     ...entries(tokens.font).map(([name, t]) => `--font-${name}: ${stack(t.$value)};`),
     ...entries(tokens.weight).map(([name, t]) => `--weight-${name}: ${t.$value};`),
     ...entries(tokens.size).map(([name, t]) => `--size-${name}: ${dimension(t.$value)};`),
+    ...entries(tokens.layout).map(([name, t]) => `--layout-${name}: ${dimension(t.$value)};`),
     ...entries(tokens.radius).map(([name, t]) => `--radius-${name}: ${dimension(t.$value)};`),
   ];
   const dark = ['color-scheme: dark;', ...themeColours(tokens, 'dark')];

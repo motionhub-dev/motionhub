@@ -28,6 +28,9 @@
   --size-lg: 20px;
   --size-xl: 26px;
   --size-xxl: 30px;
+  --layout-preview-header: 44px;
+  --layout-preview-panel: 420px;
+  --layout-preview-padding: 8px;
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;

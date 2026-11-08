@@ -35,9 +35,14 @@ export function meetsPicks(motion, picks) {
   });
 }
 
-/** How many motions picking `value` as well would leave: what a filter's count says before it is picked. */
+/**
+ * A filter's count: the motions with `value`, given the search and the picks in every other facet. In a facet that
+ * widens within itself, what else is picked there does not change it, so its counts hold still as its boxes are ticked;
+ * in one that narrows (tags), it is what picking `value` as well would leave.
+ */
 export function countWith(motions, terms, picks, facet, value) {
   const chosen = picks[facet] ?? [];
-  const next = {...picks, [facet]: chosen.includes(value) ? chosen : [...chosen, value]};
+  const mine = ALL_OF.has(facet) ? (chosen.includes(value) ? chosen : [...chosen, value]) : [value];
+  const next = {...picks, [facet]: mine};
   return motions.filter((m) => meetsQuery(m, terms) && meetsPicks(m, next)).length;
 }

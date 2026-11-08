@@ -62,5 +62,11 @@
     "lg": { "$value": { "value": 8, "unit": "px" }, "$description": "inputs, buttons, code" },
     "xl": { "$value": { "value": 10, "unit": "px" }, "$description": "panels" },
     "pill": { "$value": { "value": 999, "unit": "px" }, "$description": "filter chips" }
+  },
+  "layout": {
+    "$type": "dimension",
+    "preview-header": { "$value": { "value": 44, "unit": "px" } },
+    "preview-panel": { "$value": { "value": 420, "unit": "px" } },
+    "preview-padding": { "$value": { "value": 8, "unit": "px" } }
   }
 }

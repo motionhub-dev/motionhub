@@ -62,7 +62,7 @@ async function signIn(next = '/m/red-pencil/') {
   return {done, cookie: session};
 }
 
-test('login sends the person to GitHub with no scope and a state remembered in a cookie for /auth/', async () => {
+test('login sends the person to GitHub with no scope and a state remembered in a host-only cookie', async () => {
   const r = await get('/auth/login?next=/m/red-pencil/');
   assert.equal(r.status, 302);
   const to = new URL(r.headers.get('location'));

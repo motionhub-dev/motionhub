@@ -10,9 +10,16 @@
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "404-page",
-    "run_worker_first": ["/m/*", "/play/*", "/api/stats.json", "/api/me", "/api/me/pulls", "/api/me/pulls/*", "/api/me/shares", "/api/likes/*", "/auth/*", "/avatar/*", "/api/submissions", "/api/submissions/*", "/share/*", "/docs/hub*", "/docs/skill*"]
+    // every request runs the Worker first: on the Artifact content origin it answers only uploaded content, never the
+    // site's pages; on the site it falls back to these assets for any path no route of its own claims (site/worker.mjs)
+    "run_worker_first": true
   },
-  "r2_buckets": [{"binding": "PACKAGES", "bucket_name": "motionhub"}, {"binding": "SUBMISSIONS_BUCKET", "bucket_name": "motionhub-submissions"}],
+  // Private draft and Artifact buckets have no public endpoint.
+  "r2_buckets": [
+    {"binding": "PACKAGES", "bucket_name": "motionhub"},
+    {"binding": "SUBMISSIONS_BUCKET", "bucket_name": "motionhub-submissions"},
+    {"binding": "ARTIFACTS", "bucket_name": "motionhub-artifacts"}
+  ],
   "analytics_engine_datasets": [{"binding": "EVENTS", "dataset": "motionhub_events"}],
   "analytics": {"binding": "ANALYTICS_SQL"},
   // signing in with GitHub and likes (site/people.mjs); GITHUB_CLIENT_SECRET is a secret set on the Worker, and so is
@@ -21,10 +28,19 @@
   // sharing without gh (site/submissions.mjs, site/github-app.mjs): GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY are
   // secrets on the Worker; until both are set, or with SUBMISSIONS "off", an upload is refused and the command line says
   // to use --pr. A package waits in SUBMISSIONS_BUCKET under submissions/ for a day; the daily cron's sweep deletes it after.
-  "vars": {"GITHUB_CLIENT_ID": "Ov23liASjeKx0TOW1gNl", "SUBMISSIONS": "off", "UPLOADS_PER_DAY": "1000"},
+  "vars": {
+    "GITHUB_CLIENT_ID": "Ov23liASjeKx0TOW1gNl",
+    "SUBMISSIONS": "off",
+    "UPLOADS_PER_DAY": "1000",
+    "ARTIFACT_CONTENT_ORIGIN": "https://artifacts.motionhub.dev",
+    "ARTIFACT_SITE_ORIGIN": "https://motionhub.dev"
+  },
   "ratelimits": [{"name": "SUBMIT_LIMIT", "namespace_id": "1001", "simple": {"limit": 5, "period": 60}}],
   "triggers": {"crons": ["7 0 * * *"]},
-  "routes": [{"pattern": "motionhub.dev", "custom_domain": true}],
+  "routes": [
+    {"pattern": "motionhub.dev", "custom_domain": true},
+    {"pattern": "artifacts.motionhub.dev", "custom_domain": true}
+  ],
   "workers_dev": false,
   "preview_urls": false,
   "observability": {"enabled": true, "redact_query_string": true}

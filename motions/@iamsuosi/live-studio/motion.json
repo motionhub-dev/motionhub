@@ -2,7 +2,7 @@
   "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "live-studio",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "name": {
     "en": "Live Studio",
     "zh-CN": "演播台"
@@ -27,7 +27,6 @@
     "dark"
   ],
   "fit": {
-    "kind": "overlay",
     "for": {
       "en": "A news-show package over your own footage: weekly roundups, briefings, interview shows. Needs your own video.",
       "zh-CN": "叠在你自己画面上的新闻节目包装：周报、简报、访谈节目。需要你自己的视频。"

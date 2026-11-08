@@ -2,7 +2,7 @@
   "spec": "motion/0.4",
   "scope": "iamsuosi",
   "slug": "stage-light",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "name": {
     "en": "Stage Light",
     "zh-CN": "聚光台"
@@ -27,7 +27,6 @@
     "dark"
   ],
   "fit": {
-    "kind": "general",
     "for": {
       "en": "Explainers built on numbers and comparisons: growth and scale, rankings, before and after, business and technology stories.",
       "zh-CN": "数字与对比为主的讲解：规模变化、排名、前后对比、商业与科技叙事。"
