@@ -17,7 +17,10 @@ import {submissions, sweep} from './submissions.mjs';
 const PACKAGE = /^\/m\/((?:@[a-z0-9-]+\/)?[a-z0-9-]+)\/([0-9A-Za-z.+-]+)\.tgz$/;
 // the video of a motion at a version (site/player/render.mjs), beside its package: the default player on its page
 const VIDEO = /^\/m\/@[a-z0-9-]+\/[a-z0-9-]+\/[0-9A-Za-z.+-]+\.mp4$/;
-const PAGE = /^\/m\/((?:@[a-z0-9-]+\/)?[a-z0-9-]+)\/$/;
+// a motion's page is at its id, /@<scope>/<slug>/; its files stay under /m/<id>/ (HUB.md)
+const PAGE = /^\/(@[a-z0-9-]+\/[a-z0-9-]+)\/$/;
+// where a motion's page was until it moved to its id: sent there for good, a file under it is not
+const OLD_PAGE = /^\/m\/(@[a-z0-9-]+\/[a-z0-9-]+)\/?$/;
 const DATASET = 'events.analyticsEngine.motionhub_events';
 const TOTALS = 'stats/totals.json';
 const DAY = 86400000;
@@ -208,10 +211,12 @@ export default {
       const page = await env.ASSETS.fetch(new Request(new URL('/share/', request.url), request));
       return new Response(page.body, {status: page.status, headers: new Headers({...Object.fromEntries(page.headers), 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex'})});
     }
+    const old = OLD_PAGE.exec(pathname);
+    if (old && (request.method === 'GET' || request.method === 'HEAD')) return Response.redirect(new URL(`/${old[1]}/${url.search}`, url.origin).toString(), 301);
     if (VIDEO.test(pathname)) return videoResponse(request, env, pathname);
     const pkg = PACKAGE.exec(pathname);
     if (pkg) return packageResponse(request, env, ctx, pkg, pathname);
-    // the static files under m/@<scope>/ and play/@<scope>/ (wrangler.jsonc runs the Worker first for both) are found
+    // the static files under @<scope>/, m/@<scope>/ and play/@<scope>/ (wrangler.jsonc runs the Worker first for all) are found
     // at the %40 spelling; asked for with @, the
     // assets would answer with a redirect to it, so the Worker asks for it directly and the address keeps its @
     let response;

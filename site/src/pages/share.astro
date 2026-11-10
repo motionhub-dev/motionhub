@@ -197,7 +197,7 @@ const working = [
     $('share-done').dataset.outcome = outcome ?? 'open';
     step(3, true);
     const name = `${en(share.name) || share.motion} ${share.version}`;
-    const page = `/m/${share.motion}/`;
+    const page = `/${share.motion}/`;
     const [title, sub] = {
       open: [`Pull request #${n} is open`, `${name} · opened by motionhub's GitHub App for @${share.me.login}`],
       merged: [`Pull request #${n} is merged`, `${name} goes live on motionhub.dev in a few minutes.`],
@@ -213,8 +213,8 @@ const working = [
     } else { primary.href = url; primary.textContent = settled ? 'View the pull request' : 'View it on GitHub'; }
     if (outcome === 'closed') $('share-change').textContent = 'Change what its comments ask for, then share it again: a new pull request opens.';
     else if (settled) $('share-change').textContent = 'Raise its version in motion.json, then share it again: a new pull request opens.';
-    $<HTMLAnchorElement>('share-live').href = `/m/${share.motion}/`;
-    $<HTMLAnchorElement>('share-live').textContent = `motionhub.dev/m/${share.motion}`;
+    $<HTMLAnchorElement>('share-live').href = `/${share.motion}/`;
+    $<HTMLAnchorElement>('share-live').textContent = `motionhub.dev/${share.motion}`;
   };
 
   /** What it changes from the published version, or its files when it is new. */
