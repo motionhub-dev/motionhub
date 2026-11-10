@@ -125,22 +125,36 @@ test('a video is served whole or by range, never counted, and only for a scoped 
 });
 
 test('a view is a document navigation to a motion page that exists', async () => {
-  const e = env();
-  await worker.fetch(req('/m/red-pencil/', {'sec-fetch-dest': 'document'}), e, ctx);
-  await worker.fetch(req('/m/red-pencil/'), e, ctx);
-  await worker.fetch(req('/m/nothing/', {'sec-fetch-dest': 'document'}), e, ctx);
-  await worker.fetch(req('/m/red-pencil/poster.jpg', {'sec-fetch-dest': 'document'}), e, ctx);
-  assert.deepEqual(e.points.map((p) => p.blobs.slice(0, 2)), [['view', 'red-pencil']]);
+  const e = {...env(), ASSETS: {fetch: async (r) => new Response('page', {status: new URL(r.url).pathname === '/%40ana/red-pencil/' ? 200 : 404})}};
+  await worker.fetch(req('/@ana/red-pencil/', {'sec-fetch-dest': 'document'}), e, ctx);
+  await worker.fetch(req('/@ana/red-pencil/'), e, ctx);
+  await worker.fetch(req('/@ana/nothing/', {'sec-fetch-dest': 'document'}), e, ctx);
+  await worker.fetch(req('/@ana/', {'sec-fetch-dest': 'document'}), e, ctx);
+  await worker.fetch(req('/m/@ana/red-pencil/poster.jpg', {'sec-fetch-dest': 'document'}), e, ctx);
+  assert.deepEqual(e.points.map((p) => p.blobs.slice(0, 2)), [['view', '@ana/red-pencil']]);
 });
 
-test('a scoped page is served at its @ address without a redirect, and counted under its id either way', async () => {
+test('a motion page is served at its id without a redirect, and counted under its id either way', async () => {
   const asked = [];
-  const e = {...env(), ASSETS: {fetch: async (r) => { asked.push(new URL(r.url).pathname); return new Response('page', {status: new URL(r.url).pathname === '/m/%40ana/red-pencil/' ? 200 : 307}); }}};
-  const r = await worker.fetch(req('/m/@ana/red-pencil/', {'sec-fetch-dest': 'document'}), e, ctx);
+  const e = {...env(), ASSETS: {fetch: async (r) => { asked.push(new URL(r.url).pathname); return new Response('page', {status: new URL(r.url).pathname === '/%40ana/red-pencil/' ? 200 : 307}); }}};
+  const r = await worker.fetch(req('/@ana/red-pencil/', {'sec-fetch-dest': 'document'}), e, ctx);
   assert.equal(r.status, 200);
-  await worker.fetch(req('/m/%40ana/red-pencil/', {'sec-fetch-dest': 'document'}), e, ctx);
-  assert.deepEqual(asked, ['/m/%40ana/red-pencil/', '/m/%40ana/red-pencil/']);
+  await worker.fetch(req('/%40ana/red-pencil/', {'sec-fetch-dest': 'document'}), e, ctx);
+  assert.deepEqual(asked, ['/%40ana/red-pencil/', '/%40ana/red-pencil/']);
   assert.deepEqual(e.points.map((p) => p.blobs.slice(0, 2)), [['view', '@ana/red-pencil'], ['view', '@ana/red-pencil']]);
+});
+
+test('a motion page once under /m/ is sent to its id for good; its files stay under /m/', async () => {
+  const asked = [];
+  const e = {...env(), ASSETS: {fetch: async (r) => { asked.push(new URL(r.url).pathname); return new Response('{}', {status: 200}); }}};
+  for (const [path, to] of [['/m/@ana/red-pencil/', '/@ana/red-pencil/'], ['/m/%40ana/red-pencil', '/@ana/red-pencil/'], ['/m/@ana/red-pencil/?sound=1', '/@ana/red-pencil/?sound=1']]) {
+    const r = await worker.fetch(req(path, {'sec-fetch-dest': 'document'}), e, ctx);
+    assert.equal(r.status, 301, path);
+    assert.equal(r.headers.get('location'), `https://motionhub.dev${to}`, path);
+  }
+  assert.equal((await worker.fetch(req('/m/@ana/red-pencil/motion.json'), e, ctx)).status, 200);
+  assert.deepEqual(asked, ['/m/%40ana/red-pencil/motion.json']);
+  assert.equal(e.points.length, 0, 'a redirect is not a view');
 });
 
 test('a docs page that left the site goes to its document on GitHub, and nothing else does', async () => {

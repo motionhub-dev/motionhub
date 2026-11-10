@@ -222,8 +222,8 @@ export const creators = await (async () => {
 const creatorOf = new Map(creators.flatMap((c) => [...c.logins].map((l) => [l, c])));
 /** The creator a login belongs to: the account it is recorded for, whatever it is called now. */
 export const creator = (login) => creatorOf.get(login.toLowerCase());
-/** A creator's page, by the creator or by any login they have published under. */
-export const creatorPath = (c) => `/creators/${typeof c === 'string' ? (creatorOf.get(c.toLowerCase())?.key ?? c.toLowerCase()) : c.key}/`;
+/** A creator's page, /@<key>/, by the creator or by any login they have published under. */
+export const creatorPath = (c) => `/@${typeof c === 'string' ? (creatorOf.get(c.toLowerCase())?.key ?? c.toLowerCase()) : c.key}/`;
 /** A creator's picture: by account id, which a rename does not change, from motionhub itself (site/avatars.mjs); else GitHub's, by login. */
 export const avatar = (c, size = 64) => (typeof c?.id === 'number' ? `/avatar/${c.id}?s=${size}` : `https://github.com/${c.login}.png?size=${size}`);
 

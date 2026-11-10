@@ -107,7 +107,13 @@ test('a creator has one page, at a key every build agrees on; their other logins
   assert.deepEqual([...creatorKeys(rows)].sort(), [['bo', 'bo'], ['tess', 'tess'], ['tester', 'tester']], 'unrecorded logins are each their own');
   const out = mkdtempSync(join(tmpdir(), 'site-'));
   writeSiteFiles(out, rows, [], accounts);
-  assert.equal(readFileSync(join(out, '_redirects'), 'utf8'), '/creators/tester/ /creators/tess/ 301\n/creators/tester /creators/tess/ 301\n');
+  assert.deepEqual(readFileSync(join(out, '_redirects'), 'utf8').trim().split('\n'), [
+    '/creators/bo/ /@bo/ 301', '/creators/bo /@bo/ 301',
+    '/creators/tess/ /@tess/ 301', '/creators/tess /@tess/ 301',
+    '/creators/tester/ /@tess/ 301', '/creators/tester /@tess/ 301',
+    '/%40tester/ /@tess/ 301', '/%40tester /@tess/ 301', '/@tester/ /@tess/ 301', '/@tester /@tess/ 301',
+  ], 'the old /creators/ addresses and the other logins, and never a motion under a scope (/@tester/a/)');
   const sitemap = readFileSync(join(out, 'sitemap.xml'), 'utf8');
-  assert.ok(sitemap.includes('/creators/tess/') && sitemap.includes('/creators/bo/') && !sitemap.includes('/creators/tester/'));
+  assert.ok(sitemap.includes('/@tess/<') && sitemap.includes('/@bo/<') && !sitemap.includes('/@tester/<') && !sitemap.includes('/creators/tess/'));
+  assert.ok(sitemap.includes('/@tester/a/<') && !sitemap.includes('/m/'), 'a motion at its id');
 });

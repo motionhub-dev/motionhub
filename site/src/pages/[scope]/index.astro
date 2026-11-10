@@ -4,7 +4,8 @@ import Card from '../../components/Card.astro';
 import {avatar, creatorPath, creators, en} from '../../lib/catalogue.mjs';
 
 export function getStaticPaths() {
-  return creators.map((c) => ({params: {login: c.key}, props: {c}}));
+  // a creator's page is at /@<key>/, beside their motions' pages at /@<scope>/<slug>/
+  return creators.map((c) => ({params: {scope: `@${c.key}`}, props: {c}}));
 }
 const {c} = Astro.props;
 const n = c.motions.length;

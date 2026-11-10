@@ -69,7 +69,7 @@ const SHOWN = 8;
             {recommended.map((r) => (
               <tr data-id={r.slug}>
                 <td class="p"><img src={r.poster.replace(/\.jpg$/, '-480.webp')} alt="" loading="lazy" decoding="async" width="96" height="54"></td>
-                <td class="n"><a href={`/m/${r.slug}/`}>{en(r.name)}</a><div>{en(r.line)}</div></td>
+                <td class="n"><a href={`/${r.slug}/`}>{en(r.name)}</a><div>{en(r.line)}</div></td>
                 <td>{r.catalogs?.length ? r.catalogs.map((c) => catalogById.get(c)?.name ?? c).join(', ') : '–'}</td>
                 <td>{r.tags.join(', ')}</td>
                 <td>{r.tools.length ? r.tools.flatMap(toolEngines).join(', ') : 'Any, from MOTION.md'}</td>
