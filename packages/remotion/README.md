@@ -41,25 +41,39 @@ export const Film = () => {
 
 ## A film of scenes
 
-A film drawn as `@motionhub/runtime`'s `<Film>` of `<Scene>`s (0.6 or later; the Open Motion Studio's films are) plays in Remotion as it is:
-inside `<MotionProvider>`, its scenes are drawn as a Remotion `<Series>`, each a clip named by its id on the Studio's timeline, and
-`filmMetadata` gives the composition its length from them, so it follows them as they change:
+A film drawn as `@motionhub/runtime`'s `<Film>` of `<Scene>`s (0.6 or later; the Open Motion Studio's films are, and its Remotion export
+writes this for one) plays in Remotion with each scene in a `Series.Sequence` of its own, so the scenes are named clips on the Studio's
+timeline. `<FilmScene id>` draws one scene of the film on the sequence's clock; `sceneFrames` gives each its length in frames, and
+`filmMetadata` the composition's, checking that the film's scenes are the ones placed:
 
 ```tsx
-import {Composition} from 'remotion';
-import {MotionProvider, filmMetadata} from '@motionhub/remotion';
+import {Composition, Series} from 'remotion';
+import {FilmScene} from '@motionhub/runtime';
+import {MotionProvider, filmMetadata, sceneFrames} from '@motionhub/remotion';
 import Main, {film} from '../film';
 
-const Film = () => <MotionProvider tokens={{}} root={false}><Main /></MotionProvider>;
+const frames = sceneFrames(Main, film);
+const scene = (id: string) => <FilmScene id={id}><Main /></FilmScene>;
+
+const Film = () => (
+  <MotionProvider tokens={{}} root={false}>
+    <Series>
+      <Series.Sequence name="intro" durationInFrames={frames.intro}>{scene('intro')}</Series.Sequence>
+      <Series.Sequence name="how" durationInFrames={frames.how}>{scene('how')}</Series.Sequence>
+    </Series>
+  </MotionProvider>
+);
 
 export const Root = () => (
   <Composition id="film" component={Film} durationInFrames={1} fps={film.fps ?? 30} width={film.width ?? 1920} height={film.height ?? 1080}
-    calculateMetadata={() => filmMetadata(Main, film)} />
+    calculateMetadata={() => filmMetadata(Main, film, ['intro', 'how'])} />
 );
 ```
 
-A scene's seconds are put on whole frames that meet end to end. The film's own motions are its `<MotionScope>`s, so the provider's own
-tokens can be empty.
+Each `Series.Sequence` is written on a line of its own because Remotion Studio's timeline tells sequences apart by where they are written:
+made in a loop, they would show as one row. A scene's seconds are put on whole frames that meet end to end. A scene's length changed in
+the film follows by itself; a scene added, taken out or moved is an error until the `Series` places it. The film's own motions are its
+`<MotionScope>`s, so the provider's tokens can be empty.
 
 ## Several motions in one film
 

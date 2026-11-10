@@ -1,10 +1,10 @@
 // @motionhub/remotion: a motion in Remotion. <MotionProvider> gives a motion's React components the runtime they draw with
 // (@motionhub/runtime) from Remotion's own frame, so they run unchanged; <MotionFonts> loads its faces; useMotion() turns its
-// tokens into Remotion values (frames, Easing) for anything you draw yourself. A film of scenes (@motionhub/runtime's <Film>) draws
-// its scenes as the clips of a Remotion <Series>, each named by its scene, and filmMetadata() gives a composition its length from them.
+// tokens into Remotion values (frames, Easing) for anything you draw yourself. For a film of scenes (@motionhub/runtime's <Film>),
+// sceneFrames() and filmMetadata() give each scene and the composition their length in frames, from the scenes.
 import {createElement, useEffect, useMemo, useState} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
-import {Easing, OffthreadVideo, Sequence, Series, continueRender, delayRender, interpolate, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
+import {Easing, OffthreadVideo, Sequence, continueRender, delayRender, interpolate, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {MotionRoot, MotionRuntimeProvider, resolveTokens, useTokens} from '@motionhub/runtime';
 
 const sequenceSeconds = () => useCurrentFrame() / useVideoConfig().fps;
@@ -17,27 +17,37 @@ const RemotionVideo = ({src, startAt = 0, trimBefore = 0, playbackRate = 1, obje
     createElement(OffthreadVideo, {src: url, trimBefore: Math.round(trimBefore * fps), playbackRate, style: {width: '100%', height: '100%', objectFit, ...style}}));
 };
 
-/**
- * A <Film>'s scenes on Remotion's: a <Series> of them, each a clip named by its scene on the Studio's timeline, their seconds on whole frames
- * that meet end to end
- */
-const RemotionScenes = ({scenes}) => {
-  const {fps} = useVideoConfig();
-  return createElement(Series, null, scenes.map(({name, from, duration, children}) => createElement(Series.Sequence, {
-    key: name, name, durationInFrames: Math.max(1, Math.round((from + duration) * fps) - Math.round(from * fps)),
-  }, children)));
-};
+/** The structure of the <Film> a component draws, learned by drawing it once, off the page, at its start */
+function outlineOf(Component, {fps = 30, width = 1920, height = 1080, props = {}}) {
+  let outline = null;
+  const value = {useTime: () => 0, useCompositionTime: () => 0, fps, width, height, tokens: {}, Video: () => null, onFilm: (o) => { outline = o; }};
+  renderToStaticMarkup(createElement(MotionRuntimeProvider, {value}, createElement(Component, props)));
+  if (!outline) throw new Error('the component draws no <Film> (@motionhub/runtime 0.5 or later)');
+  return outline;
+}
 
 /**
- * A composition's metadata for a component that draws a <Film> (`calculateMetadata: () => filmMetadata(Main, film)`): its length in frames
- * from the film's scenes, at `fps`, so it follows the scenes as they change. It draws the component once, off the page, at its start.
+ * Each scene of the <Film> a component draws, by id, in whole frames at `fps` that meet end to end and add up to the film: the
+ * `durationInFrames` of a Series.Sequence that holds `<FilmScene id>` around the film.
  */
-export function filmMetadata(Component, {fps = 30, width = 1920, height = 1080, props = {}} = {}) {
-  let seconds = null;
-  const value = {useTime: () => 0, useCompositionTime: () => 0, fps, width, height, tokens: {}, Video: () => null, onFilm: (outline) => { seconds = outline.seconds; }};
-  renderToStaticMarkup(createElement(MotionRuntimeProvider, {value}, createElement(Component, props)));
-  if (seconds === null) throw new Error('filmMetadata: the component draws no <Film> (@motionhub/runtime 0.5 or later)');
-  return {durationInFrames: Math.max(1, Math.round(seconds * fps)), fps, width, height};
+export function sceneFrames(Component, film = {}) {
+  const fps = film.fps ?? 30;
+  return Object.fromEntries(outlineOf(Component, film).scenes.map(({id, start, duration}) => [id, Math.round((start + duration) * fps) - Math.round(start * fps)]));
+}
+
+/**
+ * A composition's metadata for a component that draws a <Film> (`calculateMetadata: () => filmMetadata(Main, film, ['intro', 'how'])`): its
+ * length in frames from the film's scenes, so it follows them as they change. With `ids`, the scenes the composition places one by one,
+ * the film's scenes must be those, in that order: a scene added, taken out or moved is named in the error.
+ */
+export function filmMetadata(Component, film = {}, ids) {
+  const {fps = 30, width = 1920, height = 1080} = film;
+  const outline = outlineOf(Component, film);
+  const has = outline.scenes.map((scene) => scene.id);
+  if (ids && has.join('\n') !== ids.join('\n')) {
+    throw new Error(`the film's scenes are ${has.map((id) => `"${id}"`).join(', ')}, the composition places ${ids.map((id) => `"${id}"`).join(', ')}: give each scene its Series.Sequence, in order`);
+  }
+  return {durationInFrames: Math.max(1, Math.round(outline.seconds * fps)), fps, width, height};
 }
 
 /**
@@ -49,7 +59,7 @@ export const MotionProvider = ({tokens, root = true, children}) => {
   const frame = useCurrentFrame();
   const {fps, width, height} = useVideoConfig();
   const resolved = useMemo(() => resolveTokens(tokens), [tokens]);
-  const value = {useTime: sequenceSeconds, useCompositionTime: () => frame / fps, fps, width, height, tokens: resolved, Video: RemotionVideo, Scenes: RemotionScenes};
+  const value = {useTime: sequenceSeconds, useCompositionTime: () => frame / fps, fps, width, height, tokens: resolved, Video: RemotionVideo};
   return createElement(MotionRuntimeProvider, {value}, root ? createElement(MotionRoot, {tokens: resolved}, children) : children);
 };
 

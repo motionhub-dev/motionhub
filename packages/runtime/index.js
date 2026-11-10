@@ -38,8 +38,7 @@ const Runtime = createContext(null);
 /**
  * The engine's side: `value` has `useTime()` (seconds since the component's sequence began, a hook), `useCompositionTime()` (seconds since the film
  * began, a hook), `fps`, `width`, `height`, `tokens` (resolved, as resolveTokens gives them), if the engine plays video `Video`, if it wants a
- * <Film>'s structure `onFilm(outline)`, and, if it draws a film's scenes as a run of spans of its own, `Scenes` (`{scenes: [{name, from,
- * duration, children}]}`, in seconds, end to end: it shows each scene only in its span, with the engine's useTime() counting from its start).
+ * <Film>'s structure, `onFilm(outline)`.
  */
 export const MotionRuntimeProvider = ({value, children}) => createElement(Runtime.Provider, {value}, children);
 const runtime = () => {
@@ -184,25 +183,32 @@ export const Film = ({children}) => {
   const onFilm = r.onFilm;
   useMemo(() => onFilm?.(JSON.parse(reported)), [reported]); // eslint-disable-line react-hooks/exhaustive-deps
   const t = r.useTime();
+  const only = useContext(OnlyScene);
+  if (only !== null && !outline.scenes.some((scene) => scene.id === only)) {
+    throw new Error(`<FilmScene id="${only}">: the film has no scene "${only}", only ${outline.scenes.map((scene) => `"${scene.id}"`).join(', ')}`);
+  }
+  // Drawn one scene at a time (an engine that places each scene itself, as Remotion does in a <Series>), the scene keeps the engine's clock
+  // and the rest of the film, its own layers, is drawn on the film's.
+  const engine = only === null ? r : {...r, useTime: r.useCompositionTime};
   let index = 0;
-  const all = elements(children);
-  return createElement(InFilm.Provider, {value: true}, all.map((e) => {
+  return createElement(Runtime.Provider, {value: engine}, createElement(InFilm.Provider, {value: true}, elements(children).map((e) => {
     if (!isValidElement(e) || e.type !== Scene) return e;
     const scene = outline.scenes[index++];
     const key = e.key ?? scene.id;
-    // An engine that draws a run of spans itself (Remotion, as a <Series>) is given all the scenes, where the first one is, and
-    // keeps its clock.
-    if (r.Scenes) {
-      if (index > 1) return null;
-      const scenes = all.filter((s) => isValidElement(s) && s.type === Scene);
-      return createElement(r.Scenes, {key: 'scenes', scenes: outline.scenes.map((s, i) => ({name: s.id, from: s.start, duration: s.duration, children: scenes[i]}))});
-    }
+    if (only !== null) return scene.id === only ? createElement(Runtime.Provider, {key, value: r}, e) : null;
     const last = index === outline.scenes.length;
     if (t < scene.start || (t >= scene.start + scene.duration && !(last && t <= outline.seconds))) return null;
     const value = {...r, useTime: () => r.useTime() - scene.start};
     return createElement(Runtime.Provider, {key, value}, e);
-  }));
+  })));
 };
+
+const OnlyScene = createContext(null);
+/**
+ * The <Film> under it drawn as its scene `id` alone, on the engine's clock, with the film's own layers on the film's: for an engine that places
+ * each scene itself (Remotion: one in each Series.Sequence)
+ */
+export const FilmScene = ({id, children}) => createElement(OnlyScene.Provider, {value: id}, children);
 
 /** One scene of a <Film>: `duration` seconds of it, `id` naming it. Its children (<Layer>s, <Line>s) belong to it and end with it */
 export const Scene = ({id, children}) => {
