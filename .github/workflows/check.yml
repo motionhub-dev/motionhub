@@ -28,6 +28,10 @@ jobs:
       - name: The runtime's tests
         working-directory: packages/runtime
         run: npm install --no-package-lock --no-save && npm test
+      # the runtime is copied in (--install-links), so the binding and it share one React
+      - name: The Remotion binding's tests
+        working-directory: packages/remotion
+        run: npm install --no-package-lock --no-save --install-links && npm test
       - name: Every motion
         run: node tools/check.mjs
       - name: The hub builds

@@ -4,7 +4,7 @@
 // the motion's tokens follow the W3C design tokens format, and their CSS custom properties follow Style Dictionary's
 // naming (--color-ink, --font-display). An engine binding (@motionhub/remotion, @motionhub/hyperframes, or an engine's own) supplies
 // the runtime through <MotionRuntimeProvider>; this package holds no engine.
-import {createContext, createElement, useContext, useMemo} from 'react';
+import {Children, Fragment, createContext, createElement, isValidElement, useContext, useMemo} from 'react';
 
 // ---- seeded randomness: the same seed gives the same stream on every machine and in every engine ----
 /** mulberry32 */
@@ -37,7 +37,8 @@ import {resolveTokens, tokenVariables} from './tokens.js';
 const Runtime = createContext(null);
 /**
  * The engine's side: `value` has `useTime()` (seconds since the component's sequence began, a hook), `useCompositionTime()` (seconds since the film
- * began, a hook), `fps`, `width`, `height`, `tokens` (resolved, as resolveTokens gives them) and, if the engine plays video, `Video`.
+ * began, a hook), `fps`, `width`, `height`, `tokens` (resolved, as resolveTokens gives them), if the engine plays video `Video`, if it wants a
+ * <Film>'s structure, `onFilm(outline)`.
  */
 export const MotionRuntimeProvider = ({value, children}) => createElement(Runtime.Provider, {value}, children);
 const runtime = () => {
@@ -109,6 +110,127 @@ export const Sequence = ({from = 0, duration = Infinity, children}) => {
   const value = {...parent, useTime: () => parent.useTime() - from};
   return createElement(Runtime.Provider, {value}, children);
 };
+
+// ---- a film's structure: scenes laid end to end, each with its layers (boxes of React) and its lines (what it says) ----
+const InFilm = createContext(false);
+
+/** The elements among `children`, fragments opened */
+const elements = (children) => Children.toArray(children).flatMap((c) => (isValidElement(c) && c.type === Fragment ? elements(c.props.children) : [c]));
+/** The words of a node's text, its markup left out */
+const words = (node) => (typeof node === 'string' || typeof node === 'number' ? String(node) : isValidElement(node) ? words(node.props.children) : Array.isArray(node) ? node.map(words).join('') : '');
+const named = (what, id) => {
+  if (typeof id !== 'string' || !id) throw new Error(`a <${what}> needs an id`);
+  return id;
+};
+
+/**
+ * The structure of a <Film>'s children, read from the elements themselves without drawing them, so it is known before the first frame:
+ * `{seconds, scenes: [{id, start, duration, layers, lines}], layers}`, a layer `{id, x, y, w, h, z}` in the frame's pixels (a box left out
+ * fills the frame), a line `{id, text}`. `layers` are the film's own, drawn across every scene. A scene without an id or a positive
+ * duration, and an id used twice where it must be unique, are errors.
+ */
+export function filmOutline(children, {width = 1920, height = 1080} = {}) {
+  const box = (e) => ({id: named('Layer', e.props.id), x: e.props.x ?? 0, y: e.props.y ?? 0, w: e.props.w ?? width, h: e.props.h ?? height, z: e.props.z ?? 0});
+  const unique = (what, items) => {
+    const seen = new Set();
+    for (const {id} of items) {
+      if (seen.has(id)) throw new Error(`two ${what} are called "${id}"`);
+      seen.add(id);
+    }
+    return items;
+  };
+  const scenes = [];
+  const layers = [];
+  let start = 0;
+  for (const e of elements(children)) {
+    if (!isValidElement(e)) continue;
+    if (e.type === Scene) {
+      const id = named('Scene', e.props.id);
+      const {duration} = e.props;
+      if (!(Number.isFinite(duration) && duration > 0)) throw new Error(`<Scene id="${id}"> needs its duration in seconds: duration={4}`);
+      const inner = elements(e.props.children).filter(isValidElement);
+      const lines = inner.filter((c) => c.type === Line).map((c) => ({id: named('Line', c.props.id), text: c.props.text ?? words(c.props.children)}));
+      scenes.push({id, start, duration, layers: unique(`layers in scene "${id}"`, inner.filter((c) => c.type === Layer).map(box)), lines});
+      start += duration;
+    } else if (e.type === Layer) {
+      layers.push(box(e));
+    }
+  }
+  if (!scenes.length) throw new Error('a <Film> needs at least one <Scene>');
+  unique('scenes', scenes);
+  unique('lines', scenes.flatMap((scene) => scene.lines));
+  unique('of the film\'s own layers', layers);
+  // A picked element is told by its layer's id, so a scene's layer may not take the name of one drawn across the film.
+  for (const scene of scenes) {
+    const taken = scene.layers.find((layer) => layers.some((own) => own.id === layer.id));
+    if (taken) throw new Error(`scene "${scene.id}" has a layer called "${taken.id}", the name of one of the film's own layers`);
+  }
+  return {seconds: start, scenes, layers};
+}
+
+/**
+ * A film made of scenes: its <Scene>s laid end to end, each drawn only in its span with useTime() counting from its start (the last one holds
+ * at the film's end), and anything else among its children (a <Layer>, a background) drawn across them all. It reports its structure
+ * (filmOutline) to the engine's `onFilm`, if the engine has one, while it is drawn: the engine learns the length from the scenes.
+ */
+export const Film = ({children}) => {
+  const r = runtime();
+  // Read on every frame (it is cheap: a film's children are new elements each frame), and reported while drawing, once for each
+  // structure, whether or not the engine's onFilm is the same function each time: an engine that renders the film once, off the
+  // page, learns it before the first frame is shown.
+  const outline = filmOutline(children, r);
+  const reported = JSON.stringify(outline);
+  const onFilm = r.onFilm;
+  useMemo(() => onFilm?.(JSON.parse(reported)), [reported]); // eslint-disable-line react-hooks/exhaustive-deps
+  const t = r.useTime();
+  const only = useContext(OnlyScene);
+  if (only !== null && !outline.scenes.some((scene) => scene.id === only)) {
+    throw new Error(`<FilmScene id="${only}">: the film has no scene "${only}", only ${outline.scenes.map((scene) => `"${scene.id}"`).join(', ')}`);
+  }
+  // Drawn one scene at a time (an engine that places each scene itself, as Remotion does in a <Series>), the scene keeps the engine's clock
+  // and the rest of the film, its own layers, is drawn on the film's.
+  const engine = only === null ? r : {...r, useTime: r.useCompositionTime};
+  let index = 0;
+  return createElement(Runtime.Provider, {value: engine}, createElement(InFilm.Provider, {value: true}, elements(children).map((e) => {
+    if (!isValidElement(e) || e.type !== Scene) return e;
+    const scene = outline.scenes[index++];
+    const key = e.key ?? scene.id;
+    if (only !== null) return scene.id === only ? createElement(Runtime.Provider, {key, value: r}, e) : null;
+    const last = index === outline.scenes.length;
+    if (t < scene.start || (t >= scene.start + scene.duration && !(last && t <= outline.seconds))) return null;
+    const value = {...r, useTime: () => r.useTime() - scene.start};
+    return createElement(Runtime.Provider, {key, value}, e);
+  })));
+};
+
+const OnlyScene = createContext(null);
+/**
+ * The <Film> under it drawn as its scene `id` alone, on the engine's clock, with the film's own layers on the film's: for an engine that places
+ * each scene itself (Remotion: one in each Series.Sequence)
+ */
+export const FilmScene = ({id, children}) => createElement(OnlyScene.Provider, {value: id}, children);
+
+/** One scene of a <Film>: `duration` seconds of it, `id` naming it. Its children (<Layer>s, <Line>s) belong to it and end with it */
+export const Scene = ({id, children}) => {
+  if (!useContext(InFilm)) throw new Error(`<Scene id="${id}"> is drawn only inside a <Film>`);
+  return createElement('div', {'data-scene': id, style: {position: 'absolute', inset: 0}}, children);
+};
+
+/**
+ * A box of the frame, `x`, `y`, `w`, `h` in its pixels (the whole frame when left out), stacked by `z`: what it draws is its children, on the
+ * clock of the scene it is in (of the film, for one of the film's own). It is shown for the whole of its scene; how its content moves is the
+ * content's own, from useTime().
+ */
+export const Layer = ({id, x = 0, y = 0, w, h, z = 0, style, children}) => {
+  const {width, height} = runtime();
+  return createElement('div', {
+    'data-layer': id,
+    style: {position: 'absolute', left: x, top: y, width: w ?? width, height: h ?? height, zIndex: z, ...style},
+  }, children);
+};
+
+/** What a scene says: its words (the children, or `text` where the caption differs). It draws nothing; an engine may speak or caption it */
+export const Line = () => null;
 
 /** The ground a motion's components expect: the tokens as custom properties, filling the frame */
 export const MotionRoot = ({tokens, style, children}) => createElement('div', {

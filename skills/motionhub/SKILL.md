@@ -23,7 +23,7 @@ A motion can also be one file: a `MOTION.md` that starts with front matter holdi
 
 ## 1. Choose the motion
 
-- **The person named one** (a name, an id, or a `motionhub.dev/m/<id>` link): use it.
+- **The person named one** (a name, an id, or a `motionhub.dev/<id>` link, or the older `motionhub.dev/m/<id>`): use it.
 - **The project has one**: `MOTION.md` at the project's root, or else `motion/MOTION.md`: use it, and go to section 3. A project may hold several in `motions/`: copies from motionhub at `motions/@<scope>/<slug>/`, and its own at `motions/<name>/`. Use the one each scene is planned in; if the plan does not say, ask which. A project may also hold other design files, such as `frame.md` or `design.md`. The motion decides how the film looks and moves; follow the others for what it does not say, and tell the person where they disagree.
 - **Otherwise** search: `npx @motionhub/cli search <words>` (no words lists them all), or read the index, `https://motionhub.dev/api/motions.json`, whose rows have `slug` (the id), `name`, `line`, `fit`, `catalogs`, `tags`, `lang`, `poster` and `package`, with paths relative to `https://motionhub.dev`. Start from the form of the film: `catalogs` names the catalogs a motion is in (`explainers`, `data`, `stories`, `tutorials`, `breakdowns`, and `footage` for one drawn over a video the person brings, so offer that only when they have it; `https://motionhub.dev/api/catalogs.json` lists them). Then match the subject and the medium against `fit`, where a motion has it: `fit.for` says what it is for and `fit.not` what it handles badly. A motion made for the film's subject is the better choice over one that carries many. Offer two or three with their posters, and let the person choose. Choose yourself only when they asked you to.
 
@@ -85,7 +85,7 @@ If the motion also has a directory for your engine (`remotion/`), its pieces add
 
 - Install the faces `CREDITS.md` names, from their sources and under their licences. If one is unavailable, use the closest open face in the same role and tell the person which.
 - Assets named in `CREDITS.md` are used under their licences, with the credit they ask for.
-- `license.text` covers the motion's words, tokens and pictures; `CC-BY-4.0` and `CC-BY-SA-4.0` ask for credit. Put a line like this in the film's description or end credits: *Look: Ink Scroll by SuoSi, motionhub.dev/m/@iamsuosi/ink-scroll, CC BY 4.0.* `license.code` covers the code in tool directories.
+- `license.text` covers the motion's words, tokens and pictures; `CC-BY-4.0` and `CC-BY-SA-4.0` ask for credit. Put a line like this in the film's description or end credits: *Look: Ink Scroll by SuoSi, motionhub.dev/@iamsuosi/ink-scroll, CC BY 4.0.* `license.code` covers the code in tool directories.
 
 ## 7. Changing it, and sharing a look of your own
 

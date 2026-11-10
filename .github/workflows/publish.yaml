@@ -22,6 +22,14 @@ jobs:
         run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
       - run: npm test
       - run: node tools/check.mjs
+      - name: The runtime's tests
+        if: startsWith(github.ref_name, 'runtime-v')
+        working-directory: packages/runtime
+        run: npm install --no-package-lock --no-save && npm test
+      - name: The Remotion binding's tests
+        if: startsWith(github.ref_name, 'remotion-v')
+        working-directory: packages/remotion
+        run: npm install --no-package-lock --no-save --install-links && npm test
       - run: node site/ci/npm-package.mjs "$RUNNER_TEMP/package"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         id: artifact

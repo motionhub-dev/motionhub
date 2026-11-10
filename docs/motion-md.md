@@ -104,7 +104,7 @@ It describes a look and never a particular film. It has no story, script, scenes
 
 ## An example
 
-From [Lab Notebook](https://motionhub.dev/m/@iamsuosi/lab-notebook/), a look on motionhub:
+From [Lab Notebook](https://motionhub.dev/@iamsuosi/lab-notebook/), a look on motionhub:
 
 ```md
 # Lab Notebook

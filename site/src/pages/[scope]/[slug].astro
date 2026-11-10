@@ -9,7 +9,11 @@ import {join} from 'node:path';
 import {REPO, ROOT, SPEC, aka, catalogById, avatar, posterSet, builtOn, builtOnBy, byAuthor, colours, creator, creatorPath, en, kb, markdown, read, rows, skillInstall, toolEngines, translations} from '../../lib/catalogue.mjs';
 
 export function getStaticPaths() {
-  return rows.map((row) => ({params: {id: row.slug}, props: {row}}));
+  // a motion's page is at its id: /@<scope>/<slug>/
+  return rows.map((row) => {
+    const [scope, slug] = row.slug.split('/');
+    return {params: {scope, slug}, props: {row}};
+  });
 }
 
 const {row} = Astro.props;
@@ -27,7 +31,7 @@ const on = builtOn(row), by = builtOnBy(id);
 
 const engines = row.tools.flatMap(toolEngines);
 ---
-<Base title={`${name}: a motion on motionhub`} description={en(row.line)} path={`/m/${id}/`} image={row.poster}>
+<Base title={`${name}: a motion on motionhub`} description={en(row.line)} path={`/${id}/`} image={row.poster}>
   <p class="crumb"><a href="/motions/">Motions</a> / <a href={creatorPath(row.scope)}>@{row.scope}</a> / {id.split('/')[1]}</p>
 
   <section class="head">
@@ -92,8 +96,8 @@ const engines = row.tools.flatMap(toolEngines);
         {row.fit?.for && <><dt>Made for</dt><dd>{en(row.fit.for)}</dd></>}
         {row.fit?.not && <><dt>Not for</dt><dd>{en(row.fit.not)}</dd></>}
         {row.catalogs?.length > 0 && <><dt>Catalogs</dt><dd>{row.catalogs.filter((c) => catalogById.has(c)).map((c) => <a class="chip" href={`/motions/?catalog=${c}`}>{catalogById.get(c).name}</a>)}</dd></>}
-        {on.length > 0 && <><dt>Built on</dt><dd>{on.map((b, i) => <>{i > 0 && ', '}<a href={`/m/${b.id}/`}>{en(b.row.name)}</a>{b.version && <span class="mono"> {b.version}</span>}</>)}</dd></>}
-        {by.length > 0 && <><dt>Built on by</dt><dd>{by.map((r, i) => <>{i > 0 && ', '}<a href={`/m/${r.slug}/`}>{en(r.name)}</a></>)}</dd></>}
+        {on.length > 0 && <><dt>Built on</dt><dd>{on.map((b, i) => <>{i > 0 && ', '}<a href={`/${b.id}/`}>{en(b.row.name)}</a>{b.version && <span class="mono"> {b.version}</span>}</>)}</dd></>}
+        {by.length > 0 && <><dt>Built on by</dt><dd>{by.map((r, i) => <>{i > 0 && ', '}<a href={`/${r.slug}/`}>{en(r.name)}</a></>)}</dd></>}
         <dt>Works in</dt><dd>{engines.map((e) => <Engine name={e} />)}{engines.length === 0 && 'Any engine'}</dd>
         <dt>Version</dt><dd class="mono">{row.version}</dd>
         <dt>Format</dt><dd><span class="mono">{row.spec}</span>{row.spec !== SPEC && <span class="muted" title={`The format version this motion is written to. Every later version of the spec reads it; the newest is ${SPEC}.`}>· read by {SPEC}</span>}</dd>

@@ -138,11 +138,16 @@ export function creatorKeys(rows, accounts = new Map()) {
 export function writeSiteFiles(out, rows, docs = [], accounts = new Map()) {
   writeFileSync(join(out, '_headers'), HEADERS);
   writeFileSync(join(out, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml\n`);
-  // one address per creator; every other login a creator published under is sent there for good (_redirects)
+  // one address per creator, /@<key>/; every other login a creator published under is sent there for good, and so is
+  // every page once at /creators/<login>/ (_redirects). The Worker asks the assets for an address with @ at its %40
+  // spelling (site/worker.mjs); the rules are written in both spellings, so they match however the assets compare
   const keys = creatorKeys(rows, accounts);
   const creators = [...new Set(keys.values())].sort();
-  const moved = [...keys].filter(([login, key]) => login !== key).sort();
-  writeFileSync(join(out, '_redirects'), moved.map(([login, key]) => `/creators/${login}/ /creators/${key}/ 301\n/creators/${login} /creators/${key}/ 301\n`).join(''));
-  const urls = ['/', '/motions/', ...docs, '/creators/', ...creators.map((c) => `/creators/${c}/`), ...rows.map((r) => `/m/${r.slug}/`)];
+  const lines = [...keys].sort().flatMap(([login, key]) => [
+    `/creators/${login}/ /@${key}/ 301`, `/creators/${login} /@${key}/ 301`,
+    ...(login === key ? [] : ['%40', '@'].flatMap((at) => [`/${at}${login}/ /@${key}/ 301`, `/${at}${login} /@${key}/ 301`])),
+  ]);
+  writeFileSync(join(out, '_redirects'), lines.map((l) => `${l}\n`).join(''));
+  const urls = ['/', '/motions/', ...docs, '/creators/', ...creators.map((c) => `/@${c}/`), ...rows.map((r) => `/${r.slug}/`)];
   writeFileSync(join(out, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((u) => `  <url><loc>${SITE}${u}</loc></url>`).join('\n')}\n</urlset>\n`);
 }
