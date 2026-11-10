@@ -92,3 +92,12 @@ test('lab-notebook\'s hand label draws its underline by a clip, not a dash, on a
   const source = readFileSync(new URL('../motions/@iamsuosi/lab-notebook/react/parts/label.tsx', import.meta.url), 'utf8');
   assert.ok(!/\.\.\.drawn\(/.test(source));
 });
+
+test('the Remotion binding makes fields for the vocabulary of SPEC.md §12, the checker\'s, and reads choices the same way', async () => {
+  const checker = await import('../tools/check.mjs');
+  const binding = await import('../packages/remotion/params.js');
+  assert.deepEqual(binding.PARAM_TYPES, Object.keys(checker.PARAM_TYPES));
+  for (const type of ['ink | red | pencil', '1 | -1', 'number | null', 'left | right', 'text', '{label, value}[]', 'a|b']) {
+    assert.deepEqual(binding.paramChoices(type), checker.paramChoices(type), type);
+  }
+});

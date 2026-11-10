@@ -1,6 +1,6 @@
 # Motion format 0.5
 
-> **Status:** Draft · **Version:** `motion/0.5` · what each version added: §10
+> **Status:** Draft · **Version:** `motion/0.6` · what each version added: §10
 
 What a motion is on disk: the files, their fields and the rules any tool can rely on. This document only grows: a later version adds to it and never changes the meaning of what is here.
 
@@ -178,6 +178,7 @@ A motion's `version` changes whenever any of its files change. A published versi
 | `motion/0.3` | `basedOn`: the motions a motion builds on (§3, Building on another motion) |
 | `motion/0.4` | `fit`: what a motion is for and what it handles badly (§3, What it is for). Changed in place while the format is below 1.0, by its maintainers' decision: `fit.kind` is no longer used and `fit.for` is optional; every motion valid before is valid still |
 | `motion/0.5` | A motion in one file (§11), components as part of the format (§12), and a `Components` section and recommended sections in `MOTION.md` (§5) |
+| `motion/0.6` | A vocabulary of parameter types, and a parameter's `default` as a value of its type (§12, Parameters). A motion at `motion/0.5` is read as before, and a tool may read its types by the same vocabulary, since they were free text |
 
 ## 11. A motion in one file
 
@@ -248,6 +249,31 @@ A component in `react/parts/`:
 - exports a literal `meta` with `name`, `purpose`, `line`, `fits`, `params` (each with `type` and `doc`) and `preview`
 
 `purpose` is what the component is for: one of `title`, `open`, `close`, `data`, `compare`, `steps`, `term`, `link`, `quote`, `mark`, `transition` or `ground`.
+
+### Parameters
+
+Each entry of `params` is `{type, doc, default?}`: its `type` and `doc` are strings, and `default`, when it is given, is the value the
+component takes without one. Since `motion/0.6`, a `type` from this vocabulary means what it says, so a tool can build a control for
+it (a field, a slider, a list of choices) and check a value against it:
+
+| `type` | A value of it |
+| --- | --- |
+| `text` | Words a viewer reads |
+| `string` | Any other string |
+| `color` | A colour: the name of one of the motion's colour tokens (`ink`), or a CSS colour |
+| `number` | A number |
+| `px` | A length in the frame's pixels |
+| `degrees` | An angle in degrees |
+| `progress` | A share from 0 to 1, most often how far something has gone, animated |
+| `boolean` | `true` or `false` |
+| `[x, y]` | A point: two numbers, in the frame's pixels or the component's box |
+| `text[]` | A list of words, each a string |
+| `a \| b \| c` | One of the choices written: words of `a`–`z`, `0`–`9` and hyphens, or numbers, joined by ` \| ` |
+
+Any other `type` (`list`, `object`, a shape such as `{label, value}[]`) is free text that `doc` explains, and a tool leaves it to code.
+Since `motion/0.6`, a `default` is a value of its type, or `null` for none: a description of what happens without one goes in `doc`
+(`upTo: {type: 'number', default: null, doc: 'the last step drawn; all of them without one'}`). A `default` that is not a literal (a
+name, a call) is not checked. The `meta` is read as data, never run.
 
 ## 13. A project's motions
 

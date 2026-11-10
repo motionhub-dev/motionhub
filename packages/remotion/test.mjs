@@ -5,6 +5,8 @@ import assert from 'node:assert/strict';
 import {createElement as h} from 'react';
 import {Film, Scene, useTokens} from '@motionhub/runtime';
 import {filmMetadata, sceneFrames} from './film.js';
+import {z} from 'zod';
+import {paramDefaults, paramsSchema} from './params.js';
 
 const filmOf = (scenes) => () => h(Film, null, ...scenes.map(([id, duration]) => h(Scene, {key: id, id, duration})));
 
@@ -30,4 +32,25 @@ test('a scene shorter than a frame, a component that draws no Film, and one that
   assert.throws(() => filmMetadata(() => h('div')), /draws no <Film>/);
   const Inked = () => h('i', null, useTokens().color.ink);
   assert.throws(() => sceneFrames(() => h(Film, null, h(Scene, {id: 'a', duration: 1}, h(Inked)))), /off the page, at its start, to learn its scenes: .*<MotionScope>/);
+});
+
+const META = {params: {
+  title: {type: 'text', doc: 'what it says', default: 'Heat'},
+  draw: {type: 'progress', doc: 'how much is drawn', default: 1},
+  at: {type: '[x, y]', doc: 'where'},
+  pen: {type: 'ink | red | pencil', doc: 'which pen', default: 'ink'},
+  look: {type: '1 | -1', doc: 'which way', default: 1},
+  to: {type: '[x, y]', doc: 'where it points; none without one', default: null},
+  rows: {type: '{label, value}[]', doc: 'free: left to code'},
+}};
+
+test('a component\'s params become a schema Remotion edits: the vocabulary\'s types as fields, described, the rest left to code', () => {
+  const schema = paramsSchema(META, z);
+  const props = {...paramDefaults(META), rows: [{label: 'a', value: 1}]};
+  assert.deepEqual(schema.parse(props), props, 'defaults fit, and a free param passes through untouched');
+  assert.deepEqual(Object.keys(schema.shape), ['title', 'draw', 'at', 'pen', 'look', 'to']);
+  assert.equal(schema.shape.draw.description, 'how much is drawn');
+  for (const bad of [{draw: 2}, {pen: 'blue'}, {look: 2}, {at: [1]}, {title: 3}]) assert.equal(schema.safeParse({...props, ...bad}).success, false, JSON.stringify(bad));
+  assert.equal(schema.safeParse({...props, to: null, at: undefined}).success, true, 'null where the default is none, nothing where there is no default');
+  assert.deepEqual(paramDefaults(META), {title: 'Heat', draw: 1, pen: 'ink', look: 1, to: null});
 });

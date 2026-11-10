@@ -16,7 +16,7 @@ Put this at your project's root, as `MOTION.md`:
 
 ```markdown
 ---
-spec: motion/0.5
+spec: motion/0.6
 name: Harbour Chart
 tokens:
   color:

@@ -481,6 +481,39 @@ test('a motion/0.5 directory is held to the rules for components; an earlier one
   assert.deepEqual(raised({spec: 'motion/0.4'}, PART("import x from 'lodash';"), (t) => t.replace(/^## Components.*$/m, '## Parts')), [], 'a published version keeps its meaning');
 });
 
+test('a component\'s params each have a type and a doc; since motion/0.6 a default is a value of its type', () => {
+  const meta = (params) => `export const meta = {name: 'T', purpose: 'title', line: 'l', fits: 'f', params: ${params}, preview: 'p'};`;
+  const param = (params, spec = 'motion/0.6') => raised({spec}, PART('', meta(params))).filter((c) => c === 'react.param').length;
+  assert.equal(param("{title: {type: 'text', doc: 'what it says'}}", 'motion/0.5'), 0);
+  assert.equal(param("{title: {type: 'text'}}", 'motion/0.5'), 1, 'a doc is required at motion/0.5 already');
+  assert.equal(param("{title: {doc: 'd'}, size: {type: 3, doc: 'd'}}", 'motion/0.5'), 2);
+  const fits = `{
+    words: {type: 'text', default: 'Heat', doc: 'd'},
+    draw: {type: 'progress', default: 0.5, doc: 'd'},
+    at: {type: '[x, y]', default: [80, -60], doc: 'd'},
+    pen: {type: 'ink | red | pencil', default: 'red', doc: 'd'},
+    look: {type: '1 | -1', default: -1, doc: 'd'},
+    to: {type: '[x, y]', default: null, doc: 'none: it points nowhere'},
+    size: {type: 'px', default: SIZE * 2, doc: 'an expression is not checked'},
+    rows: {type: '{label, value}[]', default: 'anything', doc: 'a free type takes anything'},
+    land: {type: 'number | null', default: 880, doc: 'a type with a type in it is free'},
+    shown: {type: 'boolean', default: true, doc: 'd'},
+    lines: {type: 'text[]', default: ['a', 'b'], doc: 'd'},
+  }`;
+  assert.equal(param(fits), 0);
+  for (const bad of [
+    "{draw: {type: 'progress', default: 2, doc: 'd'}}",
+    "{upTo: {type: 'number', default: 'all', doc: 'd'}}",
+    "{at: {type: '[x, y]', default: '[80, 56]', doc: 'd'}}",
+    "{pen: {type: 'ink | red | pencil', default: 'blue', doc: 'd'}}",
+    "{shown: {type: 'boolean', default: 'yes', doc: 'd'}}",
+    "{lines: {type: 'text[]', default: [1], doc: 'd'}}",
+  ]) {
+    assert.equal(param(bad), 1, bad);
+    assert.equal(param(bad, 'motion/0.5'), 0, `a published version keeps its meaning: ${bad}`);
+  }
+});
+
 test('every motion in the catalogue holds when raised to motion/0.5', () => {
   const root = fileURLToPath(new URL('../motions', import.meta.url));
   const dirs = listMotions(root);

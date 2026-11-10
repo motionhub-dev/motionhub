@@ -1,6 +1,6 @@
 {
   "name": "@motionhub/remotion",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Use a motion from motionhub.dev in Remotion: its React components as they are, and its tokens as Remotion values.",
   "license": "MIT",
   "repository": {
@@ -21,6 +21,7 @@
   "files": [
     "index.js",
     "film.js",
+    "params.js",
     "index.d.ts",
     "README.md"
   ],
@@ -36,6 +37,7 @@
   "devDependencies": {
     "@motionhub/runtime": "file:../runtime",
     "react": "19.1.1",
-    "react-dom": "19.1.1"
+    "react-dom": "19.1.1",
+    "zod": "4.6.7"
   }
 }

@@ -7,6 +7,7 @@ import {Easing, OffthreadVideo, Sequence, continueRender, delayRender, interpola
 import {MotionRoot, MotionRuntimeProvider, resolveTokens, useTokens} from '@motionhub/runtime';
 
 export {filmMetadata, sceneFrames} from './film.js';
+export {PARAM_TYPES, paramChoices, paramDefaults, paramsSchema} from './params.js';
 
 const sequenceSeconds = () => useCurrentFrame() / useVideoConfig().fps;
 

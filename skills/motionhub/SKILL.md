@@ -5,7 +5,7 @@ description: Find a motion (a reusable look for narrated and explanatory video) 
 
 # Making a film in a motion
 
-A **motion** is a look for narrated and explanatory video, written down: how a film looks (ground, colour, type) and how it moves (how things arrive, change and leave). It holds no film: no story, script, scenes or timings. You bring the story; the motion decides how it looks and moves. The format is [SPEC.md](https://github.com/motionhub-dev/motions/blob/main/SPEC.md) (`motion/0.5`). A motion is named by its id, its creator's GitHub name and its slug: `@iamsuosi/lab-notebook`. On motionhub every id has both.
+A **motion** is a look for narrated and explanatory video, written down: how a film looks (ground, colour, type) and how it moves (how things arrive, change and leave). It holds no film: no story, script, scenes or timings. You bring the story; the motion decides how it looks and moves. The format is [SPEC.md](https://github.com/motionhub-dev/motions/blob/main/SPEC.md) (`motion/0.6`). A motion is named by its id, its creator's GitHub name and its slug: `@iamsuosi/lab-notebook`. On motionhub every id has both.
 
 A motion is a directory:
 
@@ -64,7 +64,7 @@ Read all of `MOTION.md` before drawing anything, and `tokens.json` beside it, or
 | Remotion | `npm i @motionhub/remotion` | Wrap the composition in `<MotionProvider tokens={tokens}>` (`import tokens from '../motions/<id>/tokens.json'`), add `<MotionFonts />`, and import components from `../motions/<id>/react/parts/<file>.tsx`. In several motions, wrap each scene in `<MotionScope tokens>` from `@motionhub/runtime` |
 | HyperFrames | `npm i @motionhub/hyperframes`, then `npx motionhub-hyperframes --out assets/motion` (every motion in `./motions/`) | Load `assets/motion/motion.css` and `motion.js`; `Motion.mount(el, (t) => [...])` draws `Motion.components` from your GSAP timeline. In several motions, `Motions[<id>]` is each |
 
-Read the binding's README first. Each component's `meta` says what it is for (`purpose`, `line`, `fits`) and what each parameter means, and `react/previews/<file>.jpg` shows it; read a component's code only when you use it. A parameter of type `progress` runs from 0 to 1: animate it in your engine, on the words that call for it. A component that draws in 3D imports `three`, which you install. `Caption` (from `@motionhub/runtime`) draws a spoken line in the motion's caption skin. Lay out each scene for your story; the components are the look, not the film.
+Read the binding's README first. Each component's `meta` says what it is for (`purpose`, `line`, `fits`) and what each parameter means, and `react/previews/<file>.jpg` shows it; read a component's code only when you use it. A parameter's `type` says what it takes (SPEC.md §12, Parameters: `text`, `number`, `px`, `progress`, `color`, `[x, y]`, a choice written `a | b`, …): a parameter of type `progress` runs from 0 to 1: animate it in your engine, on the words that call for it. A component that draws in 3D imports `three`, which you install. `Caption` (from `@motionhub/runtime`) draws a spoken line in the motion's caption skin. Lay out each scene for your story; the components are the look, not the film.
 
 **Otherwise**, or for anything the components do not draw: the tokens are DTCG values, and `npx @motionhub/cli tokens --out tokens.json` writes them out from a motion in one file, for a binding or a theme; turn each into your engine's own once, in one place (a theme module), and use it by name everywhere:
 
