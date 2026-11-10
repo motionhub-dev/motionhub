@@ -113,3 +113,14 @@ test('a Film draws the scene whose span holds the time, on its own clock, holds 
   assert.doesNotMatch(at(1), /Said/, 'a line draws nothing');
   assert.throws(() => renderToStaticMarkup(h(MotionRuntimeProvider, {value: {useTime: () => 0, useCompositionTime: () => 0, fps: 30, width: 1, height: 1}}, h(Scene, {id: 'a', duration: 1}))), /only inside a <Film>/);
 });
+
+test('a Film reports its structure to the engine while it is drawn, once for each structure', () => {
+  const reports = [];
+  const onFilm = (outline) => reports.push(outline.scenes.map((scene) => scene.id).join(' '));
+  const film = (ids) => h(Film, null, ...ids.map((id) => h(Scene, {key: id, id, duration: 1})));
+  const value = {useTime: () => 0, useCompositionTime: () => 0, fps: 30, width: 1920, height: 1080, onFilm};
+  renderToStaticMarkup(h(MotionRuntimeProvider, {value}, film(['a', 'b'])));
+  assert.deepEqual(reports, ['a b']);
+  renderToStaticMarkup(h(MotionRuntimeProvider, {value: {...value, onFilm: undefined}}, film(['a'])));
+  assert.deepEqual(reports, ['a b'], 'an engine with no onFilm hears nothing');
+});

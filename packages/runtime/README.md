@@ -49,7 +49,7 @@ check it scene by scene without running it:
   it or caption it.
 - Anything else among `<Film>`'s children is drawn across the whole film.
 - `filmOutline(children, {width, height})` reads that structure from the elements themselves, without drawing them: `{seconds, scenes:
-  [{id, start, duration, layers, lines}], layers}`. `<Film>` reports it to the engine's `onFilm`, when its value has one. A scene without an
+  [{id, start, duration, layers, lines}], layers}`. `<Film>` reports it to the engine's `onFilm` while it is drawn, once for each structure, when its value has one. A scene without an
   id or a positive duration, and an id used twice (scenes, lines, layers in one scene, the film's own layers), is an error.
 
 ## Sound

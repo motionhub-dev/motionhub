@@ -4,7 +4,7 @@
 // the motion's tokens follow the W3C design tokens format, and their CSS custom properties follow Style Dictionary's
 // naming (--color-ink, --font-display). An engine binding (@motionhub/remotion, @motionhub/hyperframes, or an engine's own) supplies
 // the runtime through <MotionRuntimeProvider>; this package holds no engine.
-import {Children, Fragment, createContext, createElement, isValidElement, useContext, useLayoutEffect, useMemo} from 'react';
+import {Children, Fragment, createContext, createElement, isValidElement, useContext, useMemo} from 'react';
 
 // ---- seeded randomness: the same seed gives the same stream on every machine and in every engine ----
 /** mulberry32 */
@@ -166,15 +166,16 @@ export function filmOutline(children, {width = 1920, height = 1080} = {}) {
 /**
  * A film made of scenes: its <Scene>s laid end to end, each drawn only in its span with useTime() counting from its start (the last one holds
  * at the film's end), and anything else among its children (a <Layer>, a background) drawn across them all. It reports its structure
- * (filmOutline) to the engine's `onFilm`, if the engine has one: the engine learns the length from the scenes.
+ * (filmOutline) to the engine's `onFilm`, if the engine has one, while it is drawn: the engine learns the length from the scenes.
  */
 export const Film = ({children}) => {
   const r = runtime();
-  // Read on every frame (it is cheap), reported only when it changes: a film's children are new elements each frame.
+  // Read on every frame (it is cheap: a film's children are new elements each frame), and reported while drawing, once for each
+  // structure: an engine that renders the film once, off the page, learns it before the first frame is shown.
   const outline = filmOutline(children, r);
   const reported = JSON.stringify(outline);
   const {onFilm} = r;
-  useLayoutEffect(() => onFilm?.(JSON.parse(reported)), [onFilm, reported]);
+  useMemo(() => onFilm?.(JSON.parse(reported)), [onFilm, reported]);
   const t = r.useTime();
   let index = 0;
   return createElement(InFilm.Provider, {value: true}, elements(children).map((e) => {
