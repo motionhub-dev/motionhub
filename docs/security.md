@@ -35,7 +35,7 @@ Sessions last 30 days and are stored as hashes; expired sessions are swept. Forg
 
 Worker query strings are redacted. Application logs contain event names and aggregate sweep results, not body contents, cookies, tokens or request authorization. Keep log readers restricted and use the shortest operational retention available. Cleanup failures emit named error events; configure an alert for `submission_*_failed` and for repeated deployment failures. Actions artifacts contain only scanned public review material or intended public release content, with one-day AI and three-day release retention.
 
-The portable scanner refuses known credential paths, private keys and recognized token patterns. It does not prove a file contains no secrets. Gitleaks separately scans committed history with redacted reports. Always inspect the CLI's source directory and file list before publication; a closed public PR is not a private draft.
+The portable scanner refuses known credential paths, private keys and recognized token patterns. It does not prove a file contains no secrets. Gitleaks separately scans the committed history of the commit being checked (not every fetched branch) with redacted reports; a finding that is not a secret is listed by its fingerprint, with the reason, in `.gitleaksignore`. Always inspect the CLI's source directory and file list before publication; a closed public PR is not a private draft.
 
 ## Pause and recover
 
