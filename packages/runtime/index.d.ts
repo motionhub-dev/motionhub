@@ -61,5 +61,7 @@ export declare const Film: FC<{children?: ReactNode}>;
 export declare const Scene: FC<{id: string; duration: number; children?: ReactNode}>;
 /** A box of the frame (`x`, `y`, `w`, `h` in pixels, the whole frame when left out), stacked by `z`, shown for its whole scene */
 export declare const Layer: FC<{id: string; x?: number; y?: number; w?: number; h?: number; z?: number; style?: CSSProperties; children?: ReactNode}>;
+/** The <Film> under it drawn as its scene `id` alone, on the engine's clock (its own layers on the film's), for an engine that places each scene */
+export declare const FilmScene: FC<{id: string; children?: ReactNode}>;
 /** What a scene says; it draws nothing */
 export declare const Line: FC<{id: string; text?: string; children?: ReactNode}>;

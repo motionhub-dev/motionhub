@@ -1,9 +1,12 @@
 // @motionhub/remotion: a motion in Remotion. <MotionProvider> gives a motion's React components the runtime they draw with
 // (@motionhub/runtime) from Remotion's own frame, so they run unchanged; <MotionFonts> loads its faces; useMotion() turns its
-// tokens into Remotion values (frames, Easing) for anything you draw yourself.
+// tokens into Remotion values (frames, Easing) for anything you draw yourself. For a film of scenes (@motionhub/runtime's <Film>),
+// sceneFrames() and filmMetadata() give each scene and the composition their length in frames, from the scenes.
 import {createElement, useEffect, useMemo, useState} from 'react';
 import {Easing, OffthreadVideo, Sequence, continueRender, delayRender, interpolate, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {MotionRoot, MotionRuntimeProvider, resolveTokens, useTokens} from '@motionhub/runtime';
+
+export {filmMetadata, sceneFrames} from './film.js';
 
 const sequenceSeconds = () => useCurrentFrame() / useVideoConfig().fps;
 

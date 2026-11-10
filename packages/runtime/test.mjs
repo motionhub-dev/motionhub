@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {createElement as h} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {Fragment} from 'react';
-import {Caption, Easing, Film, Layer, Line, MotionRuntimeProvider, MotionScope, Scene, Sequence, filmOutline, interpolate, useTime, resolveTokens, seededRandom, tokenVariables, useCompositionTime, useCurrentFrame, useTokens, useVideoConfig} from './index.js';
+import {Caption, Easing, Film, FilmScene, Layer, Line, MotionRuntimeProvider, MotionScope, Scene, Sequence, filmOutline, interpolate, useTime, resolveTokens, seededRandom, tokenVariables, useCompositionTime, useCurrentFrame, useTokens, useVideoConfig} from './index.js';
 
 test('a seed draws the same stream every time, and another seed another one', () => {
   const take = (seed) => { const r = seededRandom(seed); return [r(), r(), r()]; };
@@ -114,6 +114,16 @@ test('a Film draws the scene whose span holds the time, on its own clock, holds 
   assert.match(at(5), /data-scene="b".*<i>3<\/i>/, 'the last scene holds at the end');
   assert.doesNotMatch(at(1), /Said/, 'a line draws nothing');
   assert.throws(() => renderToStaticMarkup(h(MotionRuntimeProvider, {value: {useTime: () => 0, useCompositionTime: () => 0, fps: 30, width: 1, height: 1}}, h(Scene, {id: 'a', duration: 1}))), /only inside a <Film>/);
+});
+
+test('a FilmScene draws one scene of its film on the engine\'s clock, the film\'s own layers on the film\'s', () => {
+  const Clock = ({id}) => h('i', null, `${id} ${useTime()}`);
+  const film = h(Film, null, h(Layer, {id: 'logo'}, h(Clock, {id: 'own'})), h(Scene, {id: 'a', duration: 2}, h(Clock, {id: 'a'})), h(Scene, {id: 'b', duration: 3}, h(Clock, {id: 'b'})));
+  const value = {useTime: () => 0.25, useCompositionTime: () => 2.25, fps: 30, width: 1920, height: 1080};
+  const html = renderToStaticMarkup(h(MotionRuntimeProvider, {value}, h(FilmScene, {id: 'b'}, film)));
+  assert.match(html, /<i>own 2.25<\/i>.*data-scene="b".*<i>b 0.25<\/i>/);
+  assert.doesNotMatch(html, /data-scene="a"/);
+  assert.throws(() => renderToStaticMarkup(h(MotionRuntimeProvider, {value}, h(FilmScene, {id: 'c'}, film))), /has no scene "c", only "a", "b"/);
 });
 
 test('a Film reports its structure to the engine while it is drawn, once for each structure', () => {

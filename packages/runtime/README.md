@@ -49,6 +49,9 @@ check it scene by scene without running it:
 - **`<Line id text>`**: what a scene says, its words as children (`text` where the caption differs). It draws nothing; an engine may speak
   it or caption it.
 - Anything else among `<Film>`'s children is drawn across the whole film.
+- `<FilmScene id>` around a film draws its scene `id` alone, on the engine's clock, with the film's own layers on the film's: for an
+  engine that places each scene itself. A Remotion project exported from the Open Motion Studio puts each scene in a `Series.Sequence`
+  this way, so the scenes are named clips on Remotion Studio's timeline. A scene the film does not have is an error.
 - `filmOutline(children, {width, height})` reads that structure from the elements themselves, without drawing them: `{seconds, scenes:
   [{id, start, duration, layers, lines}], layers}`. `<Film>` reports it to the engine's `onFilm` while it is drawn, once for each structure (a new `onFilm` function on every
   render is not called again for the same structure), when its value has one. A scene without an
