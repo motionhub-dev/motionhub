@@ -26,27 +26,35 @@ export async function verifyAccess(token, env, fetcher = fetch) {
     const header = JSON.parse(new TextDecoder().decode(decode(parts[0])));
     if (header.alg !== "RS256" || typeof header.kid !== "string") return null;
     const issuer = `https://${env.ACCESS_TEAM_DOMAIN}`;
-    let cached = sets.get(issuer);
-    if (!cached || cached.until < Date.now()) {
+    // the issuer's keys, kept for 5 minutes; a key id they don't have asks again at most once a minute, so a rotation
+    // is picked up on its first request and made-up key ids can't make every request fetch them
+    const load = async () => {
       const response = await fetcher(`${issuer}/cdn-cgi/access/certs`, {
         signal: AbortSignal.timeout(5000),
       });
       if (!response.ok) return null;
       const body = await response.json();
       if (!Array.isArray(body.keys)) return null;
-      cached = { keys: body.keys, until: Date.now() + 300000 };
-      sets.set(issuer, cached);
+      const loaded = { keys: body.keys, fetched: Date.now(), until: Date.now() + 300000 };
+      sets.set(issuer, loaded);
+      return loaded;
+    };
+    const find = (set) =>
+      set.keys.find(
+        (key) =>
+          key.kid === header.kid &&
+          key.kty === "RSA" &&
+          (!key.alg || key.alg === "RS256"),
+      );
+    let cached = sets.get(issuer);
+    if (!cached || cached.until < Date.now()) cached = await load();
+    if (!cached) return null;
+    let jwk = find(cached);
+    if (!jwk && Date.now() - cached.fetched > 60000) {
+      cached = await load();
+      jwk = cached && find(cached);
     }
-    const jwk = cached.keys.find(
-      (key) =>
-        key.kid === header.kid &&
-        key.kty === "RSA" &&
-        (!key.alg || key.alg === "RS256"),
-    );
-    if (!jwk) {
-      sets.delete(issuer);
-      return null;
-    }
+    if (!jwk) return null;
     const key = await crypto.subtle.importKey(
       "jwk",
       jwk,

@@ -3,7 +3,7 @@ import { can, bootstrapEmails } from "./auth.mjs";
 import { limitedBytes } from "../artifact-files.mjs";
 import { state, hiddenMotions, quotas, quotaDefaults } from "./policy.mjs";
 import { sameOrigin } from "../people.mjs";
-import { loadPackage, eligibility } from "../submissions.mjs";
+import { loadPackage, eligibility, recorded } from "../submissions.mjs";
 import { commitSubmission } from "../github-app.mjs";
 import { REPO } from "../repo.mjs";
 
@@ -190,6 +190,8 @@ export async function editState(env, actor, data) {
   if (entity === "setting" && !["submissions", "artifacts"].includes(id))
     fail("Unknown setting.");
   if (entity === "motion" && !idPattern.test(id)) fail("Invalid motion ID.");
+  // a person is their GitHub account's numeric id, written one way only: "0123" would match the row but not the block
+  if (entity === "person" && !/^[1-9]\d{0,15}$/.test(id)) fail("Invalid person ID.");
   if (["artifact", "person", "submission"].includes(entity)) {
     const table = {
       artifact: "artifacts",
@@ -616,9 +618,11 @@ async function proposal(request, env, actor, data) {
   });
   if (!check.ok || (await check.json()).id !== me.id)
     fail("GitHub identity mapping could not be verified.", 403);
-  return proposalPackage(env, actor, data, row, me, reason);
+  // the published authors are judged by the account ids recorded for their logins (accounts/), never by login alone
+  const accounts = await recorded(request, env);
+  return proposalPackage(env, actor, data, row, me, reason, accounts);
 }
-async function proposalPackage(env, actor, data, row, me, reason) {
+async function proposalPackage(env, actor, data, row, me, reason, accounts) {
   const obj = await env.PACKAGES.get(`m/${data.id}/${row.version}.tgz`);
   if (!obj) fail("Published package is unavailable.", 503);
   const bytes = new Uint8Array(await obj.arrayBuffer());
@@ -636,7 +640,7 @@ async function proposalPackage(env, actor, data, row, me, reason) {
       me,
       { ...pkg.manifest, version: data.new_version },
       pkg.manifest,
-      new Map(),
+      accounts,
     ).may
   )
     fail("Only a published author may propose a new version.", 403);
@@ -690,7 +694,7 @@ async function proposalPackage(env, actor, data, row, me, reason) {
         published: true,
         files,
         me,
-        accounts: new Map(),
+        accounts,
         submission: jobId,
         sha256: digest,
       });

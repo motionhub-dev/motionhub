@@ -93,7 +93,7 @@ async function publishedManifest(request, env, id) {
 }
 
 /** The recorded accounts, login → id (api/accounts.json, written by tools/build.mjs). */
-async function recorded(request, env) {
+export async function recorded(request, env) {
   const r = await env.ASSETS.fetch(new Request(new URL('/api/accounts.json', request.url))).catch(() => undefined);
   const body = r?.ok ? await r.json().catch(() => ({})) : {};
   return new Map(Object.entries(body).map(([l, id]) => [l.toLowerCase(), id]));

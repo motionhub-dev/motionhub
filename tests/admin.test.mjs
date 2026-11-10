@@ -234,6 +234,49 @@ test("Access checks signature, issuer, audience, expiry, algorithm and required 
     null,
   );
 });
+test("the local administrator bypass is only ever configured locally", () => {
+  const vars = (file) =>
+    JSON.parse(
+      readFileSync(new URL("../" + file, import.meta.url), "utf8").replace(/^\s*\/\/.*$/gm, ""),
+    ).vars ?? {};
+  // the deployed Worker's config, and every other Wrangler config but the local console's own
+  assert.equal(vars("wrangler.jsonc").ENVIRONMENT, "production");
+  for (const file of readdirSync(new URL("../", import.meta.url)).filter((f) => /^wrangler\..*jsonc$/.test(f)))
+    if (file !== "wrangler.admin.local.jsonc") assert.notEqual(vars(file).ENVIRONMENT, "local", file);
+  // a production Worker never answers as local admin, whatever host it is asked for
+  const production = { ENVIRONMENT: "production" };
+  for (const host of ["localhost", "127.0.0.1", "[::1]"])
+    assert.equal(localAdmin(new Request(`http://${host}/admin`), production), false);
+});
+test("Access asks for the issuer's keys again on an unknown key id, at most once a minute", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
+  const key = await crypto.subtle.generateKey(
+    { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
+    true,
+    ["sign", "verify"],
+  );
+  const jwk = { ...(await crypto.subtle.exportKey("jwk", key.publicKey)), kid: "rotated-key" };
+  const env = { ACCESS_TEAM_DOMAIN: "rotation-test.cloudflareaccess.com", ACCESS_AUD: "aud" };
+  const b64 = (v) => Buffer.from(v).toString("base64url");
+  const token = async () => {
+    const at = Math.floor(Date.now() / 1000);
+    const input =
+      b64(JSON.stringify({ alg: "RS256", kid: jwk.kid })) + "." +
+      b64(JSON.stringify({ iss: "https://" + env.ACCESS_TEAM_DOMAIN, aud: "aud", iat: at, exp: at + 300, email: "a@example.test" }));
+    return input + "." + b64(await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key.privateKey, new TextEncoder().encode(input)));
+  };
+  let fetches = 0;
+  // the first answer predates the rotation; every later one has the new key
+  const fetcher = async () => Response.json({ keys: fetches++ ? [jwk] : [] });
+  assert.equal(await verifyAccess(await token(), env, fetcher), null);
+  assert.equal(await verifyAccess(await token(), env, fetcher), null);
+  assert.equal(fetches, 1);
+  t.mock.timers.tick(61000);
+  assert.equal(await verifyAccess(await token(), env, fetcher), "a@example.test");
+  assert.equal(fetches, 2);
+  assert.equal(await verifyAccess(await token(), env, fetcher), "a@example.test");
+  assert.equal(fetches, 2);
+});
 test("roles and origin checks protect writes without modifying data", async () => {
   const { env, db } = fixture(),
     data = state("motion", "@alice/demo", "blocked");
@@ -481,6 +524,65 @@ test("account restriction revokes web and CLI credentials and blocks the account
     ).status,
     404,
   );
+});
+test("a person is blocked by one spelling of their id; a restricted artifact's owner can still take it down", async () => {
+  const { env, db, artifact } = fixture();
+  for (const id of ["01", "1.0", "-1", "1e3"])
+    assert.equal((await action(env, "state", state("person", id, "blocked"))).status, 400, id);
+  const hash = await sha256("alice");
+  db.prepare("INSERT INTO sessions VALUES (?,1,0,?)").run(hash, Math.floor(Date.now() / 1000) + 300);
+  await action(env, "state", state("artifact", artifact, "blocked"));
+  const page = "https://motionhub.dev/artifact/" + artifact + "/preview";
+  const owner = { cookie: "__Host-mh_session=alice" };
+  const form = (action) =>
+    worker.fetch(
+      new Request(page, {
+        method: "POST",
+        headers: { ...owner, origin: "https://motionhub.dev", "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ action, version: db.prepare("SELECT public_version AS v FROM artifacts").get().v ?? "" }),
+      }),
+      env,
+      {},
+    );
+  assert.equal((await worker.fetch(new Request(page, { headers: owner }), env, {})).status, 404);
+  assert.equal((await form("share")).status, 403);
+  assert.equal((await form("publish")).status, 403);
+  const down = await form("unpublish");
+  assert.equal(down.status, 303);
+  assert.equal(new URL(down.headers.get("location")).pathname, "/artifacts");
+  assert.equal(db.prepare("SELECT public_version AS v FROM artifacts WHERE id = ?").get(artifact).v, null);
+});
+test("a version proposal is refused when the published author's login is now another account's", async () => {
+  const { env } = fixture();
+  const { tgz } = await import("../tools/pack.mjs");
+  const manifest = { scope: "alice", slug: "demo", version: "1.0.0", name: { en: "Demo" }, line: { en: "Demo" }, authors: [{ github: "alice" }] };
+  const catalogue = env.ASSETS.fetch;
+  // accounts/alice.json records the account alice was published by: 99, not the account that holds the login now
+  env.ASSETS = {
+    fetch: async (r) =>
+      new URL(r.url).pathname === "/api/accounts.json" ? Response.json({ alice: 99 }) : catalogue(r),
+  };
+  env.PACKAGES = {
+    get: async (key) =>
+      key === "m/@alice/demo/1.0.0.tgz"
+        ? { arrayBuffer: async () => tgz([["@alice/demo/motion.json", Buffer.from(JSON.stringify(manifest))], ["@alice/demo/MOTION.md", Buffer.from("Look.")]]) }
+        : null,
+  };
+  env.GITHUB_APP_ID = "123";
+  env.GITHUB_APP_PRIVATE_KEY = "unused: the proposal is refused before the App is asked";
+  env.ADMIN_GITHUB_IDENTITIES = JSON.stringify({ [actor.email]: { id: 1, login: "alice", name: "Alice" } });
+  const original = globalThis.fetch;
+  globalThis.fetch = async (url) =>
+    new URL(url).pathname === "/users/alice" ? Response.json({ id: 1 }) : new Response("", { status: 500 });
+  try {
+    const r = await action(env, "proposal", {
+      id: "@alice/demo", new_version: "1.0.1", name: "Demo", line: "Demo", document: "Look.", dco: true, reason: "Update",
+    });
+    assert.equal(r.status, 403);
+    assert.match((await r.json()).error, /published author/);
+  } finally {
+    globalThis.fetch = original;
+  }
 });
 test("collections validate items, prevent stale edits, publish ordered visible selections and preserve drafts", async () => {
   const { env } = fixture(),

@@ -226,7 +226,7 @@ ${results.length ? `<ul class="art-list">${results.map(({id, title, description,
   });
 }
 
-async function manage(request, env, me, id) {
+async function manage(request, env, me, id, restricted = false) {
   if (!sameOrigin(request)) return reply('Invalid request origin', 403);
   const owner = await env.DB.prepare('SELECT id FROM artifacts WHERE id = ? AND person = ?').bind(id, me.id).first();
   if (!owner) return notFound(request, env);
@@ -234,6 +234,8 @@ async function manage(request, env, me, id) {
   try { data = new URLSearchParams(new TextDecoder().decode(await limitedBytes(request.body, 8192))); }
   catch { return problem(request, env, id, 'The form was too large to read.', 400); }
   const action = data.get('action'), version = data.get('version');
+  // while restricted, only what takes it down: unpublish, revoke a link, delete an old version
+  if (restricted && !['unpublish', 'revoke', 'delete-version'].includes(action)) return reply('Artifact access is restricted.', 403);
   if (action === 'publish' || action === 'share') {
     const ready = await env.DB.prepare('SELECT id FROM artifact_versions WHERE id = ? AND artifact = ? AND ready = 1').bind(version, id).first();
     if (!ready) return problem(request, env, id, 'That version is gone. Pick another one.', 404);
@@ -262,7 +264,7 @@ async function manage(request, env, me, id) {
     await env.DB.prepare('DELETE FROM artifact_shares WHERE id = ? AND version IN (SELECT id FROM artifact_versions WHERE artifact = ?)')
       .bind(data.get('share'), id).run();
   } else return problem(request, env, id, 'That is not something this page does.', 400);
-  return Response.redirect(new URL(`/artifact/${id}/preview`, request.url), 303);
+  return Response.redirect(new URL(restricted ? '/artifacts' : `/artifact/${id}/preview`, request.url), 303);
 }
 
 async function draftPage(request, env, id, row, origin, token) {
@@ -324,7 +326,9 @@ export async function artifacts(request, env) {
   if (!list && !draft && !api && !publicRoute && url.pathname !== '/artifacts/upload.js') return null;
   const origin = contentOrigin(env, url.origin);
   if (await featureOff(env, 'artifacts')) return reply('Artifacts are temporarily paused.', 503);
-  if (draft && await artifactBlocked(env, draft[1])) return reply('Artifact access is restricted.', 404);
+  // a restricted artifact is shown to no one, its owner included, but its owner may still take it down (manage)
+  const restricted = Boolean(draft) && await artifactBlocked(env, draft[1]);
+  if (restricted && request.method !== 'POST') return reply('Artifact access is restricted.', 404);
   if (api?.[1] && await artifactBlocked(env, api[1])) return json({error: 'Artifact access is restricted.'}, 403);
   if (!origin || !env.DB || url.origin !== (env.ARTIFACT_SITE_ORIGIN ?? 'https://motionhub.dev')) return reply('Not found', 404);
   if (publicRoute) return await publication(request, env, url, origin) ?? notFound(request, env);
@@ -340,7 +344,7 @@ export async function artifacts(request, env) {
     body: `<section class="you-out"><h1>Artifacts</h1><p>Upload a page or a site you made with motions, look at it privately, then publish it or share a link.</p>
 <a class="btn primary" href="/auth/login?next=${encodeURIComponent(url.pathname)}" rel="nofollow">Sign in with GitHub</a></section>`,
   });
-  if (draft && request.method === 'POST') return manage(request, env, me, draft[1]);
+  if (draft && request.method === 'POST') return manage(request, env, me, draft[1], restricted);
   if (api) return upload(request, env, me, api[1]).catch(() => json({error: 'Upload failed. Try again.'}, 500));
   if (list) {
     const {results} = await env.DB.prepare('SELECT id, title, updated_at, public_version IS NOT NULL AS live FROM artifacts WHERE person = ? AND draft_version IS NOT NULL ORDER BY updated_at DESC').bind(me.id).all();
