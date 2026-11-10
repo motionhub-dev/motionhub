@@ -224,7 +224,7 @@ export async function main(command, args, base = HUB) {
   }
   const row = await getMotion(slug, out, base, rows);
   if (!custom) { lock.motions[row.slug] = {version: row.version, sha256: row.package.sha256}; writeLock(lock); }
-  console.log(`${row.slug} ${row.version} in ${at}${custom ? '' : `, recorded in ${LOCK}`}: read its MOTION.md and tokens.json before drawing. Credit: ${row.name.en} by ${row.authors.map((a) => a.name).join(', ')}, ${base}/m/${row.slug}/, ${row.license.text}`);
+  console.log(`${row.slug} ${row.version} in ${at}${custom ? '' : `, recorded in ${LOCK}`}: read its MOTION.md and tokens.json before drawing. Credit: ${row.name.en} by ${row.authors.map((a) => a.name).join(', ')}, ${base}/${row.slug}/, ${row.license.text}`);
   return 0;
 }
 

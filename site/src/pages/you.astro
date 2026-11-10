@@ -59,7 +59,7 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
           <li class="mrow" hidden data-id={r.slug} data-owners={owners(r)} data-name={en(r.name)} data-version={r.version} data-poster={r.poster.replace(/\.jpg$/, '-480.webp')} data-built={JSON.stringify(builtOnBy(r.slug).map((b) => ({id: b.slug, name: en(b.name)})))}>
             <img class="poster" src={r.poster.replace(/\.jpg$/, '-480.webp')} alt="" width="960" height="540" loading="lazy" decoding="async">
             <div class="mmain">
-              <a class="mname" href={`/m/${r.slug}/`}>{en(r.name)}</a>
+              <a class="mname" href={`/${r.slug}/`}>{en(r.name)}</a>
               <span class="mid">{r.slug} · {r.version}</span>
               <a class="pr-chip" hidden></a>
             </div>
@@ -204,7 +204,7 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
     for (const li of rowsAll) if (!mine.includes(li)) li.remove();
     const ids = new Set(mine.map((li) => li.dataset.id!));
     const page = pages.ids[String(p.id)] ?? pages.logins[p.login.toLowerCase()];
-    if (page) { $('you-public').hidden = false; $('you-public').querySelector('a')!.href = `/creators/${page}/`; }
+    if (page) { $('you-public').hidden = false; $('you-public').querySelector('a')!.href = `/@${page}/`; }
     const count = (name: string, n: number) => { document.querySelector(`[data-n="${name}"]`)!.textContent = String(n); };
     count('motions', mine.length);
     if (mine.length) {
@@ -384,7 +384,7 @@ const pages = {ids: Object.fromEntries(creators.filter((c) => typeof c.id === 'n
         text.append(title(s), about);
         const badge = document.createElement('span'); badge.className = `shared-status is-${kind}`; badge.textContent = LABEL[kind as keyof typeof LABEL];
         const acts = document.createElement('div'); acts.className = 'shared-acts';
-        if (kind === 'published') { const a = document.createElement('a'); a.className = 'btn'; a.href = `/m/${s.motion}/`; a.textContent = 'View the motion'; acts.append(a); }
+        if (kind === 'published') { const a = document.createElement('a'); a.className = 'btn'; a.href = `/${s.motion}/`; a.textContent = 'View the motion'; acts.append(a); }
         else if (s.prUrl) { const a = document.createElement('a'); a.className = 'btn'; a.href = s.prUrl; a.textContent = 'Open on GitHub'; acts.append(a); }
         li.append(thumb(s.poster), text, badge, acts);
         const row = {li, kind, pr: s.pr};

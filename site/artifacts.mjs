@@ -176,7 +176,7 @@ ${id ? '' : '<label class="field"><span>Title <small>Optional</small></span><inp
 
 const frame = (origin, mode, key) => `<iframe class="art-frame" title="Artifact preview" sandbox="allow-scripts" referrerpolicy="no-referrer" src="${origin}/${mode}/${key}/index.html"></iframe>`;
 const motionId = /^@[a-z0-9-]+\/[a-z0-9-]+$/;
-const motionLink = (id) => `<a class="pill" href="/m/${id}/">${escape(id)}</a>`;
+const motionLink = (id) => `<a class="pill" href="/${id}/">${escape(id)}</a>`;
 const byline = (person) => `<a class="art-by" href="/portfolio/${encodeURIComponent(person.login)}"><img src="/avatar/${person.id}?s=44" alt="" width="22" height="22">${escape(person.name || '@' + person.login)}</a>`;
 
 async function publication(request, env, url, origin) {
