@@ -29,6 +29,9 @@
   // secrets on the Worker; until both are set, or with SUBMISSIONS "off", an upload is refused and the command line says
   // to use --pr. A package waits in SUBMISSIONS_BUCKET under submissions/ for a day; the daily cron's sweep deletes it after.
   "vars": {
+    // Enable only after applying 0006_admin.sql and configuring Access + bootstrap identities.
+    "ENVIRONMENT": "production",
+    "ADMIN_ENABLED": "off",
     "GITHUB_CLIENT_ID": "Ov23liASjeKx0TOW1gNl",
     "SUBMISSIONS": "off",
     "UPLOADS_PER_DAY": "1000",

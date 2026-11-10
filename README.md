@@ -169,6 +169,8 @@ node tools/check.mjs motions/@<scope>/<slug>   # or one
 node tools/build.mjs                      # the files motionhub.dev serves, into dist/
 ```
 
+The protected management console, local development configuration and production activation are documented in [Admin console](site/admin/CONSOLE.md).
+
 For a change to the site, in `site/`:
 
 ```sh
