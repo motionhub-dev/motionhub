@@ -1,4 +1,4 @@
-# Motion format 0.5
+# Motion format 0.6
 
 > **Status:** Draft · **Version:** `motion/0.6` · what each version added: §10
 
@@ -35,7 +35,7 @@ A JSON object with these members and no others, except extension members (§7).
 
 | Member | Required | Value |
 | --- | --- | --- |
-| `spec` | yes | `"motion/0.5"`; or `"motion/0.4"` for a motion not held to §12, `"motion/0.3"` for one also without `fit`, `"motion/0.2"` for one without `fit` and `basedOn`, or `"motion/0.1"` for one without `fit`, `scope` and `basedOn` |
+| `spec` | yes | `"motion/0.6"`; or `"motion/0.5"` for a motion whose parameters' defaults are not held to their types, `"motion/0.4"` for one not held to §12, `"motion/0.3"` for one also without `fit`, `"motion/0.2"` for one without `fit` and `basedOn`, or `"motion/0.1"` for one without `fit`, `scope` and `basedOn` |
 | `scope` | no | The GitHub username, in lowercase, of the person or organization that publishes the motion (since 0.2) |
 | `slug` | yes | 3 to 40 characters of `a-z`, `0-9` and single hyphens, starting and ending with a letter or digit; the name of the directory it is published in (§2) |
 | `version` | yes | A [Semantic Versioning 2.0](https://semver.org) version of this motion, for example `"1.0.0"` |
@@ -167,7 +167,7 @@ What several tools come to share moves into a later version of this format, as `
 
 A motion's `version` changes whenever any of its files change. A published version is never changed: a fix is a new version. A film that uses a motion keeps the copy it took.
 
-`spec` names the version of this format. A tool that meets a `spec` it does not know does not guess its meaning. A tool that reads a version reads every version before it: a `motion/0.1` motion is a `motion/0.2` motion without a scope, a `motion/0.2` motion is a `motion/0.3` motion without `basedOn`, and a `motion/0.3` motion is a `motion/0.4` motion without `fit`. A `motion/0.4` motion is a `motion/0.5` motion not held to §12.
+`spec` names the version of this format. A tool that meets a `spec` it does not know does not guess its meaning. A tool that reads a version reads every version before it: a `motion/0.1` motion is a `motion/0.2` motion without a scope, a `motion/0.2` motion is a `motion/0.3` motion without `basedOn`, and a `motion/0.3` motion is a `motion/0.4` motion without `fit`. A `motion/0.4` motion is a `motion/0.5` motion not held to §12, and a `motion/0.5` motion is a `motion/0.6` motion whose parameters' defaults are not held to their types (§12, Parameters).
 
 ## 10. Versions of this format
 
@@ -186,7 +186,7 @@ Since `motion/0.5`, a `MOTION.md` is a motion on its own. It starts with front m
 
 ```markdown
 ---
-spec: motion/0.5
+spec: motion/0.6
 name: Clay World
 tokens:
   color:
