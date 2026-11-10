@@ -92,6 +92,8 @@ test('a Film reads its structure from its elements: scenes end to end, their lay
   for (const [bad, message] of [
     [[], /at least one <Scene>/],
     [[h(Scene, {key: 1, id: 'a'})], /needs its duration/],
+    [[h(Scene, {key: 1, id: 'a', duration: Infinity})], /needs its duration/],
+    [[h(Layer, {key: 0, id: 'logo'}), h(Scene, {key: 1, id: 'a', duration: 1}, h(Layer, {id: 'logo'}))], /the name of one of the film's own layers/],
     [[h(Scene, {key: 1, duration: 1})], /needs an id/],
     [[h(Scene, {key: 1, id: 'a', duration: 1}), h(Scene, {key: 2, id: 'a', duration: 1})], /two scenes are called "a"/],
     [[h(Scene, {key: 1, id: 'a', duration: 1}, h(Line, {id: 'x'}), h(Line, {id: 'x'}))], /two lines are called "x"/],
@@ -123,4 +125,7 @@ test('a Film reports its structure to the engine while it is drawn, once for eac
   assert.deepEqual(reports, ['a b']);
   renderToStaticMarkup(h(MotionRuntimeProvider, {value: {...value, onFilm: undefined}}, film(['a'])));
   assert.deepEqual(reports, ['a b'], 'an engine with no onFilm hears nothing');
+  const Twice = () => h(Fragment, null, film(['a', 'b']), film(['c']));
+  renderToStaticMarkup(h(MotionRuntimeProvider, {value: {...value, onFilm: (o) => onFilm(o)}}, h(Twice)));
+  assert.deepEqual(reports, ['a b', 'a b', 'c'], 'each Film reports its own structure');
 });

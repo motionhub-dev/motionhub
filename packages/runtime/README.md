@@ -40,16 +40,18 @@ check it scene by scene without running it:
 </Film>
 ```
 
-- **`<Scene id duration>`**: the scenes are laid end to end, so the film is as long as their durations together. A scene is drawn only in
-  its span, and `useTime()` inside it counts from its start; the last one holds at the film's end.
+- **`<Scene id duration>`**: the scenes are laid end to end, so the film is as long as their durations together (each a finite number of
+  seconds above 0). A scene is drawn only in its span, and `useTime()` inside it counts from its start; the last one holds at the film's
+  end, and past the end no scene is drawn.
 - **`<Layer id x y w h z>`**: a box of the frame in its pixels (the whole frame when left out), stacked by `z`, shown for the whole of its
   scene. How its content moves is the content's own, from `useTime()`. A layer that is a child of `<Film>` is the film's own: drawn across
-  every scene, on the film's clock.
+  every scene, on the film's clock, and no scene's layer may take its id, since a picked element is told by its layer.
 - **`<Line id text>`**: what a scene says, its words as children (`text` where the caption differs). It draws nothing; an engine may speak
   it or caption it.
 - Anything else among `<Film>`'s children is drawn across the whole film.
 - `filmOutline(children, {width, height})` reads that structure from the elements themselves, without drawing them: `{seconds, scenes:
-  [{id, start, duration, layers, lines}], layers}`. `<Film>` reports it to the engine's `onFilm` while it is drawn, once for each structure, when its value has one. A scene without an
+  [{id, start, duration, layers, lines}], layers}`. `<Film>` reports it to the engine's `onFilm` while it is drawn, once for each structure (a new `onFilm` function on every
+  render is not called again for the same structure), when its value has one. A scene without an
   id or a positive duration, and an id used twice (scenes, lines, layers in one scene, the film's own layers), is an error.
 
 ## Sound

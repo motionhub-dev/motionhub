@@ -147,7 +147,7 @@ export function filmOutline(children, {width = 1920, height = 1080} = {}) {
     if (e.type === Scene) {
       const id = named('Scene', e.props.id);
       const {duration} = e.props;
-      if (!(typeof duration === 'number' && duration > 0)) throw new Error(`<Scene id="${id}"> needs its duration in seconds: duration={4}`);
+      if (!(Number.isFinite(duration) && duration > 0)) throw new Error(`<Scene id="${id}"> needs its duration in seconds: duration={4}`);
       const inner = elements(e.props.children).filter(isValidElement);
       const lines = inner.filter((c) => c.type === Line).map((c) => ({id: named('Line', c.props.id), text: c.props.text ?? words(c.props.children)}));
       scenes.push({id, start, duration, layers: unique(`layers in scene "${id}"`, inner.filter((c) => c.type === Layer).map(box)), lines});
@@ -160,6 +160,11 @@ export function filmOutline(children, {width = 1920, height = 1080} = {}) {
   unique('scenes', scenes);
   unique('lines', scenes.flatMap((scene) => scene.lines));
   unique('of the film\'s own layers', layers);
+  // A picked element is told by its layer's id, so a scene's layer may not take the name of one drawn across the film.
+  for (const scene of scenes) {
+    const taken = scene.layers.find((layer) => layers.some((own) => own.id === layer.id));
+    if (taken) throw new Error(`scene "${scene.id}" has a layer called "${taken.id}", the name of one of the film's own layers`);
+  }
   return {seconds: start, scenes, layers};
 }
 
@@ -171,11 +176,12 @@ export function filmOutline(children, {width = 1920, height = 1080} = {}) {
 export const Film = ({children}) => {
   const r = runtime();
   // Read on every frame (it is cheap: a film's children are new elements each frame), and reported while drawing, once for each
-  // structure: an engine that renders the film once, off the page, learns it before the first frame is shown.
+  // structure, whether or not the engine's onFilm is the same function each time: an engine that renders the film once, off the
+  // page, learns it before the first frame is shown.
   const outline = filmOutline(children, r);
   const reported = JSON.stringify(outline);
-  const {onFilm} = r;
-  useMemo(() => onFilm?.(JSON.parse(reported)), [onFilm, reported]);
+  const onFilm = r.onFilm;
+  useMemo(() => onFilm?.(JSON.parse(reported)), [reported]); // eslint-disable-line react-hooks/exhaustive-deps
   const t = r.useTime();
   let index = 0;
   return createElement(InFilm.Provider, {value: true}, elements(children).map((e) => {
