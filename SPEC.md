@@ -268,7 +268,7 @@ it (a field, a slider, a list of choices) and check a value against it:
 | `boolean` | `true` or `false` |
 | `[x, y]` | A point: two numbers, in the frame's pixels or the component's box |
 | `text[]` | A list of words, each a string |
-| `a \| b \| c` | One of the choices written: words of `a`–`z`, `0`–`9` and hyphens, or numbers, joined by ` \| ` |
+| `a \| b \| c` | One of the choices written: words of `a`–`z`, `0`–`9` and hyphens, or numbers (`1 \| -1`, `0.5 \| 1`), joined by ` \| ` |
 
 Any other `type` (`list`, `object`, a shape such as `{label, value}[]`) is free text that `doc` explains, and a tool leaves it to code.
 Since `motion/0.6`, a `default` is a value of its type, or `null` for none: a description of what happens without one goes in `doc`

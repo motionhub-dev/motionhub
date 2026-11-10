@@ -493,6 +493,7 @@ test('a component\'s params each have a type and a doc; since motion/0.6 a defau
     at: {type: '[x, y]', default: [80, -60], doc: 'd'},
     pen: {type: 'ink | red | pencil', default: 'red', doc: 'd'},
     look: {type: '1 | -1', default: -1, doc: 'd'},
+    pace: {type: '0.5 | 1 | 1.5', default: 1.5, doc: 'd'},
     to: {type: '[x, y]', default: null, doc: 'none: it points nowhere'},
     size: {type: 'px', default: SIZE * 2, doc: 'an expression is not checked'},
     rows: {type: '{label, value}[]', default: 'anything', doc: 'a free type takes anything'},
@@ -506,6 +507,7 @@ test('a component\'s params each have a type and a doc; since motion/0.6 a defau
     "{upTo: {type: 'number', default: 'all', doc: 'd'}}",
     "{at: {type: '[x, y]', default: '[80, 56]', doc: 'd'}}",
     "{pen: {type: 'ink | red | pencil', default: 'blue', doc: 'd'}}",
+    "{pace: {type: '0.5 | 1 | 1.5', default: 2, doc: 'd'}}",
     "{shown: {type: 'boolean', default: 'yes', doc: 'd'}}",
     "{lines: {type: 'text[]', default: [1], doc: 'd'}}",
   ]) {

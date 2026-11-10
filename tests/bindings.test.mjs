@@ -97,7 +97,7 @@ test('the Remotion binding makes fields for the vocabulary of SPEC.md §12, the 
   const checker = await import('../tools/check.mjs');
   const binding = await import('../packages/remotion/params.js');
   assert.deepEqual(binding.PARAM_TYPES, Object.keys(checker.PARAM_TYPES));
-  for (const type of ['ink | red | pencil', '1 | -1', 'number | null', 'left | right', 'text', '{label, value}[]', 'a|b']) {
+  for (const type of ['ink | red | pencil', '1 | -1', '0.5 | 1 | 1.5', 'number | null', 'left | right', 'text', '{label, value}[]', 'a|b', 'a | B', '1. | 2']) {
     assert.deepEqual(binding.paramChoices(type), checker.paramChoices(type), type);
   }
 });

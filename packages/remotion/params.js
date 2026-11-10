@@ -20,8 +20,8 @@ export const PARAM_TYPES = Object.keys(TYPES);
 
 /** The choices of a type written `a | b | c` (words or numbers, none of them a type of the vocabulary or null); null for any other type */
 export function paramChoices(type) {
-  if (!/^[a-z0-9-]+( \| [a-z0-9-]+)+$/.test(type)) return null;
   const words = type.split(' | ');
+  if (words.length < 2 || !words.every((w) => /^(-?\d+(\.\d+)?|[a-z0-9-]+)$/.test(w))) return null;
   return words.some((w) => w in TYPES || w === 'null') ? null : words;
 }
 
