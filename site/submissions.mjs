@@ -122,16 +122,18 @@ async function body(request, most) {
   return out;
 }
 
+/** What a command line that shares this way sends as its motionhub-share header (tools/hub.mjs): CLI 0.9.0 and later. */
+export const PROTOCOL = '2';
+
 async function upload(request, env, now) {
   if (await featureOff(env, 'submissions')) return json({error: 'Submissions are temporarily paused.'}, 503);
   if (!ready(env)) return json({error: 'sharing from motionhub.dev is not open yet: open the pull request yourself with npx @motionhub/cli share <dir> --pr'}, 503);
   const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
   if (env.SUBMIT_LIMIT && !(await env.SUBMIT_LIMIT.limit({key: ip})).success) return json({error: 'too many shares from here: try again in a minute'}, 429);
+  // a command line from before header polling would upload, then wait on a status it can no longer ask for
+  if (request.headers.get('motionhub-share') !== PROTOCOL) return json({error: 'this version of @motionhub/cli can no longer share through motionhub.dev: run npx @motionhub/cli@latest share <dir> (0.9.0 or later)'}, 426);
   const limit = Number(env.UPLOADS_PER_DAY ?? 1000);
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100000) return json({error: 'sharing is temporarily unavailable'}, 503);
-  const budget = await env.DB.prepare('INSERT INTO submission_budgets(day, attempts) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET attempts = attempts + 1 WHERE attempts < ? RETURNING attempts')
-    .bind(Math.floor(now / (DAY * 1000)), limit).first();
-  if (!budget) return json({error: 'the daily upload budget is exhausted; try again tomorrow'}, 429);
   const bytes = await body(request, 1024 * 1024);
   if (!bytes) return json({error: 'a motion is at most 1 MB, its poster included'}, 413);
   let pkg;
@@ -139,6 +141,10 @@ async function upload(request, env, now) {
     if (e instanceof PackageError) return json({error: e.message}, 422);
     throw e;
   }
+  // the day's budget is for what is then asked of GitHub and stored: a body that is not a motion never spends it
+  const budget = await env.DB.prepare('INSERT INTO submission_budgets(day, attempts) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET attempts = attempts + 1 WHERE attempts < ? RETURNING attempts')
+    .bind(Math.floor(now / (DAY * 1000)), limit).first();
+  if (!budget) return json({error: 'the daily upload budget is exhausted; try again tomorrow'}, 429);
   const id = random(16), poll = random(32), code = makeCode(), at = Math.floor(now / 1000);
   let base;
   try { base = await submissionBase(env, pkg.id, pkg.manifest); }
@@ -420,6 +426,19 @@ export async function sweep(env, now = Date.now()) {
       cursor = page.truncated ? page.cursor : undefined;
     } while (cursor);
   } catch { console.error('submission_package_sweep_failed'); }
+  // drafts from before the private bucket, under submissions/ in the published one: none is read any more, and each
+  // goes once it is a day old, as it would have
+  if (env.PACKAGES && env.PACKAGES !== env.SUBMISSIONS_BUCKET) {
+    try {
+      let cursor;
+      do {
+        const page = await env.PACKAGES.list({prefix: 'submissions/', cursor});
+        const old = page.objects.filter((o) => new Date(o.uploaded).getTime() < now - DAY * 1000).map((o) => o.key);
+        if (old.length) { await env.PACKAGES.delete(old); packages += old.length; }
+        cursor = page.truncated ? page.cursor : undefined;
+      } while (cursor);
+    } catch { console.error('submission_legacy_sweep_failed'); }
+  }
   try {
     // a share someone certified the DCO for stays (submitted, withdrawn, or stopped while GitHub was asked), as the
     // record of who certified what; its code goes

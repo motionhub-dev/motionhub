@@ -268,6 +268,18 @@ export function scaffold(slug, author) {
   ]);
 }
 
+/**
+ * A GitHub user by login, as GitHub gives it now, or null: asked with GITHUB_TOKEN or GH_TOKEN when one is set, and
+ * through gh when GitHub turns an unauthenticated ask away (60 an hour, shared by everyone behind one address).
+ */
+async function lookupUser(login) {
+  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+  const response = await fetch(`https://api.github.com/users/${login}`, {headers: {accept: 'application/vnd.github+json', 'user-agent': 'motionhub-cli', ...(token ? {authorization: `Bearer ${token}`} : {})}, signal: AbortSignal.timeout(20000)}).catch(() => undefined);
+  if (response?.ok) return response.json();
+  if (!token && (!response || response.status === 403 || response.status === 429)) return githubUser(login) ?? null;
+  return null;
+}
+
 /** Public account mappings make CLI rename checks consistent with the server; they never replace server authorization. */
 async function sharingAccounts(base, manifest, was) {
   const registry = await (await get(`${base}/api/accounts.json`)).json();
@@ -281,8 +293,7 @@ async function sharingAccounts(base, manifest, was) {
   for (const login of new Set([manifest.scope, ...(manifest.authors ?? []).map(a => a.github)].filter(l => typeof l === 'string').map(l => l.toLowerCase()))) {
     if (accounts.has(login)) continue;
     if (!/^[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,38}$/.test(login)) throw new Error('invalid GitHub author login');
-    const response = await fetch(`https://api.github.com/users/${login}`, {headers: {accept: 'application/vnd.github+json', 'user-agent': 'motionhub-cli'}, signal: AbortSignal.timeout(20000)});
-    const user = response.ok ? await response.json() : null;
+    const user = await lookupUser(login);
     if (!Number.isSafeInteger(user?.id) || user.id <= 0 || user.type !== 'User') throw new Error('the GitHub author could not be verified; try again later');
     accounts.set(login, user.id);
   }
@@ -307,7 +318,8 @@ export async function shareLink(dir, {wait = false, log = () => {}, ask = 5000, 
   if (issues.length) throw new Error(`${dir} does not pass the hub's checks:\n${issues.map((i) => `${i.at}  ${i.code}  ${i.message}`).join('\n')}`);
   const bytes = tgz(filesOf(dir).map((n) => [`${id}/${n}`, readFileSync(join(dir, n))]));
   if (bytes.length > 1024 * 1024) throw new Error(`${id} packs to ${bytes.length} bytes: a motion is at most 1 MB, its poster included`);
-  const res = await fetch(`${base}/api/submissions`, {method: 'POST', headers: {'content-type': 'application/gzip', 'user-agent': 'motionhub-cli'}, body: bytes});
+  // motionhub-share: the way of sharing this command line speaks (site/submissions.mjs PROTOCOL), header polling
+  const res = await fetch(`${base}/api/submissions`, {method: 'POST', headers: {'content-type': 'application/gzip', 'user-agent': 'motionhub-cli', 'motionhub-share': '2'}, body: bytes});
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(`motionhub.dev did not take it (${res.status}): ${body.error ?? res.statusText}`);
   const lines = [

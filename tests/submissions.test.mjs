@@ -140,14 +140,15 @@ beforeEach(() => {
 });
 afterEach(() => { globalThis.fetch = realFetch; });
 
-const call = (method, path, {cookie, origin, body, type, bearer} = {}) => worker.fetch(new Request(SITE + path, {method, headers: {...(cookie ? {cookie} : {}), ...(bearer ? {authorization: `Bearer ${bearer}`} : {}), ...(origin ? {origin} : {}), ...(type ? {'content-type': type} : {})}, body}), env, ctx);
+const call = (method, path, {cookie, origin, body, type, bearer, headers = {}} = {}) => worker.fetch(new Request(SITE + path, {method, headers: {...(cookie ? {cookie} : {}), ...(bearer ? {authorization: `Bearer ${bearer}`} : {}), ...(origin ? {origin} : {}), ...(type ? {'content-type': type} : {}), ...headers}, body}), env, ctx);
 async function session(id, login, name = login) {
   const token = `t-${id}-${login}`;
   env.DB.raw.prepare('INSERT OR REPLACE INTO people (id, login, name, avatar, created_at, seen_at) VALUES (?, ?, ?, NULL, 0, 0)').run(id, login, name);
   env.DB.raw.prepare('INSERT INTO sessions (token_hash, person, created_at, expires_at) VALUES (?, ?, 0, ?)').run(await sha256(token), id, Math.floor(Date.now() / 1000) + 3600);
   return `__Host-mh_session=${token}`;
 }
-const upload = async (bytes = pkg()) => call('POST', '/api/submissions', {body: bytes, type: 'application/gzip'});
+// as CLI 0.9.0 and later upload (tools/hub.mjs shareLink)
+const upload = async (bytes = pkg()) => call('POST', '/api/submissions', {body: bytes, type: 'application/gzip', headers: {'motionhub-share': '2'}});
 const submit = (id, cookie, body) => call('POST', `/api/submissions/${id}/submit`, {cookie, origin: SITE, type: 'application/json', body: JSON.stringify(body)});
 
 /** A gzipped tar with any entry type and path, for packages tools/pack.mjs would never write. */
@@ -537,10 +538,10 @@ test('an upload that is not a motion is refused, and nothing is taken before the
   assert.equal((await upload(pkg(manifest({scope: 'bo'})).subarray(0, 10))).status, 422);
   const mismatched = tgz([['@ana/ledger/motion.json', Buffer.from(JSON.stringify(manifest({slug: 'other'})))], ['@ana/ledger/MOTION.md', Buffer.from('#')]]);
   assert.equal((await upload(mismatched)).status, 422);
-  assert.equal((await call('POST', '/api/submissions', {body: Buffer.alloc(1024 * 1024 + 1), type: 'application/gzip'})).status, 413);
+  assert.equal((await call('POST', '/api/submissions', {body: Buffer.alloc(1024 * 1024 + 1), type: 'application/gzip', headers: {'motionhub-share': '2'}})).status, 413);
   // a body with no length is read no further than the limit
   const chunks = new ReadableStream({start(c) { for (let i = 0; i < 5; i++) c.enqueue(new Uint8Array(300 * 1024)); c.close(); }});
-  assert.equal((await worker.fetch(new Request(`${SITE}/api/submissions`, {method: 'POST', body: chunks, duplex: 'half'}), env, ctx)).status, 413);
+  assert.equal((await worker.fetch(new Request(`${SITE}/api/submissions`, {method: 'POST', headers: {'motionhub-share': '2'}, body: chunks, duplex: 'half'}), env, ctx)).status, 413);
   assert.equal((await upload(pkg(manifest({version: '1.0'})))).status, 422, 'not a semantic version');
   assert.equal((await upload(pkg(manifest({version: '1.0.0\nSigned-off-by: x'})))).status, 422);
   const many = Array.from({length: 41}, (_, i) => [`@ana/ledger/img${i}.png`, POSTER]);
@@ -568,7 +569,7 @@ test('the command line checks, packs and uploads, prints the link and the code, 
     const u = String(url);
     if (u === 'https://hub.test/api/accounts.json') return Response.json({iamsuosi: 264293696});
     if (u === 'https://hub.test/api/motions.json') return Response.json({spec: 'motion/0.1', motions: []});
-    if (u === 'https://hub.test/api/submissions') { uploaded = await untgz(new Uint8Array(init.body)); return Response.json({id: 'x'.repeat(22), url: 'https://hub.test/share/xxx', code: 'MAPLE-07', poll: 'p', expires: '2026-11-05T00:00:00Z'}, {status: 201}); }
+    if (u === 'https://hub.test/api/submissions') { assert.equal(init.headers['motionhub-share'], '2', 'it says which way of sharing it speaks'); uploaded = await untgz(new Uint8Array(init.body)); return Response.json({id: 'x'.repeat(22), url: 'https://hub.test/share/xxx', code: 'MAPLE-07', poll: 'p', expires: '2026-11-05T00:00:00Z'}, {status: 201}); }
     if (u.startsWith('https://hub.test/api/submissions/')) return Response.json(++polls < 2 ? {status: 'viewed'} : {status: 'submitted', prUrl: 'https://github.com/motionhub-dev/motions/pull/9'});
     throw new Error(`unexpected ${u}`);
   };
@@ -582,6 +583,73 @@ test('the command line checks, packs and uploads, prints the link and the code, 
   assert.match(lines[0], /MAPLE-07/);
   mkdirSync(join(dir, 'empty'));
   await assert.rejects(shareLink(join(dir, 'empty'), {}, 'https://hub.test'), /no motion\.json/);
+});
+
+test('the command line asks GitHub for an unrecorded author with the token it is given', async () => {
+  const {mkdtempSync, writeFileSync, cpSync} = await import('node:fs');
+  const {tmpdir} = await import('node:os');
+  const dir = mkdtempSync(join(tmpdir(), 'share-'));
+  cpSync(join(ROOT, 'motions/@iamsuosi/red-pencil'), join(dir, 'red-pencil'), {recursive: true});
+  const m = JSON.parse(readFileSync(join(dir, 'red-pencil/motion.json'), 'utf8'));
+  writeFileSync(join(dir, 'red-pencil/motion.json'), JSON.stringify({...m, version: '99.0.0'}, null, 2));
+  const asked = [];
+  globalThis.fetch = async (url, init = {}) => {
+    const u = String(url);
+    if (u === 'https://hub.test/api/accounts.json') return Response.json({});
+    if (u === 'https://hub.test/api/motions.json') return Response.json({spec: 'motion/0.1', motions: []});
+    if (u === 'https://api.github.com/users/iamsuosi') { asked.push(init.headers.authorization); return Response.json({id: 264293696, type: 'User'}); }
+    if (u === 'https://hub.test/api/submissions') return Response.json({id: 'x'.repeat(22), url: 'https://hub.test/share/xxx', code: 'MAPLE-07', poll: 'p', expires: '2026-11-05T00:00:00Z'}, {status: 201});
+    throw new Error(`unexpected ${u}`);
+  };
+  const before = process.env.GITHUB_TOKEN;
+  process.env.GITHUB_TOKEN = 'local-test-token';
+  try {
+    assert.match(await shareLink(join(dir, 'red-pencil'), {}, 'https://hub.test'), /MAPLE-07/);
+    assert.deepEqual(asked, ['Bearer local-test-token']);
+  } finally {
+    if (before === undefined) delete process.env.GITHUB_TOKEN; else process.env.GITHUB_TOKEN = before;
+  }
+});
+
+test('a command line from before header polling is told to upgrade, and a body that is not a motion spends no budget', async () => {
+  const old = await call('POST', '/api/submissions', {body: pkg(), type: 'application/gzip'});
+  assert.equal(old.status, 426);
+  assert.match((await old.json()).error, /0\.9\.0 or later/);
+  assert.equal(store.size, 0);
+  const junk = await call('POST', '/api/submissions', {body: Buffer.from('not a package'), type: 'application/gzip', headers: {'motionhub-share': '2'}});
+  assert.equal(junk.status, 422);
+  assert.equal(env.DB.raw.prepare('SELECT COUNT(*) AS n FROM submission_budgets').get().n, 0, 'nothing is counted against the day');
+  assert.equal((await upload()).status, 201);
+  assert.equal(env.DB.raw.prepare('SELECT attempts FROM submission_budgets').get().attempts, 1);
+});
+
+test('the sweep lets go of drafts left in the published bucket from before the private one', async () => {
+  const legacy = new Map([['submissions/old.tgz', 'a'], ['submissions/new.tgz', 'b'], ['m/@ana/ledger/1.0.0.tgz', 'c']]);
+  const at = new Map([['submissions/old.tgz', new Date(Date.now() - 2 * 86400e3)]]);
+  env.PACKAGES = {
+    list: async ({prefix}) => ({objects: [...legacy.keys()].filter((k) => k.startsWith(prefix)).map((key) => ({key, uploaded: at.get(key) ?? new Date()})), truncated: false}),
+    delete: async (keys) => { for (const k of [keys].flat()) legacy.delete(k); },
+  };
+  const {sweep} = await import('../site/submissions.mjs');
+  assert.equal((await sweep(env)).packages, 1);
+  assert.deepEqual([...legacy.keys()].sort(), ['m/@ana/ledger/1.0.0.tgz', 'submissions/new.tgz'], 'a day old and under submissions/ only');
+});
+
+test('a share submitted before the upgrade stays its submitter\'s', () => {
+  const db = new DatabaseSync(':memory:');
+  const dir = join(ROOT, 'site/migrations');
+  const files = readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
+  const at = files.indexOf('0007_submission_security.sql');
+  for (const f of files.slice(0, at)) db.exec(readFileSync(join(dir, f), 'utf8'));
+  const insert = db.prepare("INSERT INTO submissions (id, poll_hash, code, motion, version, sha256, bytes, status, person, created_at, expires_at) VALUES (?, 'h', 'c', '@ana/ledger', '1.0.0', 's', 1, ?, ?, 0, 1)");
+  insert.run('submitted', 'submitted', 42);
+  insert.run('withdrawn', 'withdrawn', 42);
+  insert.run('waiting', 'viewed', 42);
+  for (const f of files.slice(at)) db.exec(readFileSync(join(dir, f), 'utf8'));
+  const owner = (id) => db.prepare('SELECT owner_id, status FROM submissions WHERE id = ?').get(id);
+  assert.equal(owner('submitted').owner_id, 42);
+  assert.equal(owner('withdrawn').owner_id, 42);
+  assert.deepEqual({...owner('waiting')}, {owner_id: null, status: 'expired'}, 'a draft never submitted stays unowned, and expires');
 });
 
 test('a leaked link cannot disclose files or spend another author\'s confirmation attempts', async () => {
