@@ -1,6 +1,6 @@
 {
   "name": "@motionhub/runtime",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "What a motion's React components draw with (time, frame, tokens, seeded randomness, video, caption), in any engine that provides it.",
   "license": "MIT",
   "repository": {
