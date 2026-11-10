@@ -355,6 +355,13 @@ async function submit(request, env, id, now) {
     const previous = await env.DB.prepare("SELECT pr FROM submissions WHERE motion = ? AND owner_id = ? AND status = 'submitted' ORDER BY dco_at DESC LIMIT 1").bind(r.motion, me.id).first();
     done = await commitSubmission(env, {id: r.motion, manifest: pkg.manifest, published: Boolean(published), files: pkg.files, me, accounts, submission: id, sha256: r.sha256, baseSha: base.sha, initialBaseSha: r.base_sha, previousPull: previous?.pr});
   } catch (e) {
+    // a refusal that would come again gives the claim back at once, with its place in the day's count: held, it would
+    // keep every share of this motion waiting until the link expires
+    if (e?.final) {
+      console.error('submission_github_refused');
+      await env.DB.prepare("UPDATE submissions SET status = 'viewed', dco_at = NULL, claimed_at = NULL, claim_token = NULL WHERE id = ? AND claim_token = ?").bind(id, lease).run().catch(() => {});
+      return json({error: 'GitHub refused the submission: try again, or share the motion again if it is refused again'}, 502);
+    }
     // A timeout may have committed: retain the lease for reconciliation instead of blindly making another commit.
     console.error('submission_github_failed');
     return json({error: 'GitHub could not confirm the submission; try again in five minutes'}, 502);

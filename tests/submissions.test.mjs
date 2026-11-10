@@ -111,7 +111,13 @@ beforeEach(() => {
     if (u.startsWith(`${REPO}/git/commits/`) && method === 'GET') return reply({tree: {sha: 'tree0'}});
     if (u.startsWith(`${REPO}/commits/`) && method === 'GET') return reply(github.commits[u.split('/').at(-1)]);
     if (u === `${REPO}/git/trees/tree0?recursive=1`) return reply({truncated: false, tree: [{path: 'motions/@ana/ledger/old.txt', type: 'blob'}, {path: 'motions/@ana/ledgers/keep.txt', type: 'blob'}, {path: 'accounts/iamsuosi.json', type: 'blob'}]});
-    if (u === `${REPO}/git/refs` && method === 'POST') { github.refs[body.ref.slice(5)] = body.sha; return reply({}, 201); }
+    if (u === `${REPO}/git/refs` && method === 'POST') {
+      // as git does: no ref inside another ref's name, nor one with another inside its own
+      const ref = body.ref.slice(5);
+      if (Object.keys(github.refs).some((r) => r === ref || ref.startsWith(r + '/') || r.startsWith(ref + '/'))) return reply({message: 'Reference already exists'}, 422);
+      github.refs[ref] = body.sha; return reply({}, 201);
+    }
+    if (u === `${API}/graphql` && github.commitStatus) return reply({message: 'refused'}, github.commitStatus);
     if (u === `${API}/graphql`) {
       const input = body.variables.input, ref = `heads/${input.branch.branchName}`;
       if (github.refs[ref] !== input.expectedHeadOid) return reply({errors: [{message: 'head moved'}]});
@@ -273,15 +279,41 @@ test('a share: uploaded with no account, opened and submitted by its owner, the 
   assert.equal(Buffer.from(input.fileChanges.additions.at(-1).contents, 'base64').toString(), '{"login":"ana","id":42}\n');
   assert.match(input.message.body, /Signed-off-by: Ana Lee/);
   assert.match(input.message.body, /Motionhub-Submitted-By: 42 Ana/);
-  assert.deepEqual(github.calls.find(c => c.path === '/repos/motionhub-dev/motions/git/refs').body, {ref: `refs/heads/share/ana/ledger/42/${share.id}`, sha: 'main0'});
+  assert.deepEqual(github.calls.find(c => c.path === '/repos/motionhub-dev/motions/git/refs').body, {ref: `refs/heads/share/ana/ledger/42-${share.id}`, sha: 'main0'});
   const pr = github.calls.find((c) => c.method === 'POST' && c.path === '/repos/motionhub-dev/motions/pulls').body;
-  assert.deepEqual([pr.title, pr.head, pr.base], ['Add Ledger 1.0.0', `share/ana/ledger/42/${share.id}`, 'main']);
+  assert.deepEqual([pr.title, pr.head, pr.base], ['Add Ledger 1.0.0', `share/ana/ledger/42-${share.id}`, 'main']);
   assert.match(pr.body, /Submitted by @Ana through motionhub\.dev/);
   assert.ok(github.calls.some((c) => c.path === '/repos/motionhub-dev/motions/issues/77/labels'));
 
   assert.deepEqual(await poll(), {status: 'submitted', motion: '@ana/ledger', version: '1.0.0', pr: 77, prUrl: 'https://github.com/motionhub-dev/motions/pull/77'});
   const again = await submit(share.id, ana, {code: share.code, mine: true, dco: true});
   assert.equal(again.status, 409, 'a link opens one pull request');
+});
+
+test('a share made since submissions had their own branch sits beside a branch from before, not under it', async () => {
+  github.refs['heads/share/ana/ledger/42'] = 'legacy0';
+  const ana = await session(42, 'ana');
+  const share = await (await upload()).json();
+  const done = await submit(share.id, ana, {code: share.code, mine: true, dco: true});
+  assert.equal(done.status, 200, await done.clone().text());
+  assert.equal(github.refs['heads/share/ana/ledger/42'], 'legacy0', 'the earlier branch is left as it is');
+  assert.ok(github.refs[`heads/share/ana/ledger/42-${share.id}`]);
+});
+
+test('a refusal GitHub would repeat gives the claim back at once; a failure that may have committed keeps it', async () => {
+  const ana = await session(42, 'ana');
+  const share = await (await upload()).json();
+  const state = () => env.DB.raw.prepare('SELECT status, claim_token, dco_at FROM submissions WHERE id = ?').get(share.id);
+  github.commitStatus = 422;
+  assert.equal((await submit(share.id, ana, {code: share.code, mine: true, dco: true})).status, 502);
+  assert.deepEqual({...state()}, {status: 'viewed', claim_token: null, dco_at: null}, 'nothing holds the motion, nor a place in the day\'s count');
+  github.commitStatus = 502;
+  assert.equal((await submit(share.id, ana, {code: share.code, mine: true, dco: true})).status, 502);
+  assert.equal(state().status, 'submitting', 'GitHub may have taken it: the claim waits to be reconciled');
+  assert.equal((await submit(share.id, ana, {code: share.code, mine: true, dco: true})).status, 409);
+  github.commitStatus = undefined;
+  env.DB.raw.prepare('UPDATE submissions SET claimed_at = claimed_at - 600 WHERE id = ?').run(share.id);
+  assert.equal((await submit(share.id, ana, {code: share.code, mine: true, dco: true})).status, 200, 'taken again once the claim is stale, and reconciled');
 });
 
 test('a new version is added to the open pull request; wrong codes and too many shares stop', async () => {

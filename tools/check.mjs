@@ -92,7 +92,7 @@ const UNSAFE = [
 ];
 
 /** Check one motion directory; returns its issues, each `{code, at, message}` with `at` relative to the directory. */
-export function checkMotion(dir, {hub = true, author, authorId, was, accounts, shared = false} = {}) {
+export function checkMotion(dir, {hub = true, author, authorId, was, accounts, catalogue, shared = false} = {}) {
   const issues = [];
   const add = (code, at, message) => issues.push({code, at, message});
   // a link is refused before anything is read: it could name a file outside the motion (a runner's environment, a
@@ -101,7 +101,7 @@ export function checkMotion(dir, {hub = true, author, authorId, was, accounts, s
   if (linked.length) { for (const l of linked) add('format.symlink', l, 'a motion holds files, never links: replace it with the file it points to'); return issues; }
   if (existsSync(dir) && statSync(dir).isFile() && basename(dir) === 'MOTION.md') return checkOneFile(dir, hub, add), issues;
   if (!existsSync(dir) || !statSync(dir).isDirectory()) return add('format.dir', '.', 'not a directory'), issues;
-  if (!existsSync(join(dir, 'motion.json')) && existsSync(join(dir, 'MOTION.md')) && oneFileSpec(join(dir, 'MOTION.md'))) return checkPlace(dir, undefined, add, accounts), checkOneFile(join(dir, 'MOTION.md'), hub, add), issues;
+  if (!existsSync(join(dir, 'motion.json')) && existsSync(join(dir, 'MOTION.md')) && oneFileSpec(join(dir, 'MOTION.md'))) return checkPlace(dir, undefined, add, accounts, catalogue), checkOneFile(join(dir, 'MOTION.md'), hub, add), issues;
 
   const entries = readdirSync(dir, {withFileTypes: true});
   for (const file of FILES) if (!entries.some((e) => e.isFile() && e.name === file)) add('format.missing', file, `${file} is required`);
@@ -128,8 +128,8 @@ export function checkMotion(dir, {hub = true, author, authorId, was, accounts, s
   }
 
   const who = {author, authorId: authorId === undefined || authorId === null || authorId === '' ? undefined : Number(authorId), accounts};
-  checkPlace(dir, manifest, add, accounts);
-  if (hub) checkHub(dir, manifest, {...who, was}, add);
+  checkPlace(dir, manifest, add, accounts, catalogue);
+  if (hub) checkHub(dir, manifest, {...who, catalogue, was}, add);
   if (hub && was) checkUpdate(manifest, was, who, add);
   // shared through motionhub.dev (share without --pr), each file that is not text is a call of its own to GitHub
   if (shared) {
@@ -559,22 +559,23 @@ export function listMotions(root) {
  * Where a motion directory sits: under a `motions/` directory (`in`), as `at` (`<name>` or `@<scope>/<name>`), with `root`
  * that `motions/` directory, and whether that is the catalogue (`catalogue`): a `motions/` with `accounts/` beside it, as
  * in this repository, or any `motions/` when the accounts to judge by are given (a pull request's files, checked by main's
- * checker). Any other `motions/` is a project's (SPEC.md §13).
+ * checker). Any other `motions/` is a project's (SPEC.md §13). `catalogue` says it outright: a motion shared from a
+ * project is judged by the hub's accounts and still sits where the project keeps it.
  */
-export function place(dir, {accounts} = {}) {
+export function place(dir, {accounts, catalogue} = {}) {
   const path = resolve(dir), name = basename(path), parent = basename(dirname(path));
   const scoped = parent.startsWith('@') && basename(dirname(dirname(path))) === 'motions';
   const inMotions = scoped || parent === 'motions';
   const root = scoped ? dirname(dirname(path)) : dirname(path);
-  return {in: inMotions, at: scoped ? `${parent}/${name}` : name, root: inMotions ? root : undefined, catalogue: inMotions && (accounts !== undefined || existsSync(join(dirname(root), 'accounts')))};
+  return {in: inMotions, at: scoped ? `${parent}/${name}` : name, root: inMotions ? root : undefined, catalogue: inMotions && (catalogue ?? (accounts !== undefined || existsSync(join(dirname(root), 'accounts'))))};
 }
 
 /**
  * In a project (SPEC.md §13), a motion under motions/@<scope>/ is a copy taken from a hub and sits at its id; any other is
  * the project's own, at motions/<name>/ with a name of a-z, 0-9 and single hyphens.
  */
-function checkPlace(dir, manifest, add, accounts) {
-  const {in: inMotions, at, catalogue} = place(dir, {accounts});
+function checkPlace(dir, manifest, add, accounts, inCatalogue) {
+  const {in: inMotions, at, catalogue} = place(dir, {accounts, catalogue: inCatalogue});
   if (!inMotions || catalogue) return;
   if (!at.startsWith('@')) {
     if (!NAME.test(at)) add('format.place', '.', `motions/${at}/: a motion of the project's own is named with a-z, 0-9 and single hyphens`);
@@ -583,12 +584,12 @@ function checkPlace(dir, manifest, add, accounts) {
   if (typeof manifest?.slug === 'string' && motionId(manifest) !== at) add('format.place', 'motion.json', `motions/${at}/ holds the motion ${motionId(manifest)}: in a project, motions/@<scope>/ holds only copies taken from a hub, each at its id. Keep a motion of your own at motions/<name>/`);
 }
 
-function checkHub(dir, manifest, {author, authorId, accounts, was}, add) {
+function checkHub(dir, manifest, {author, authorId, accounts, catalogue, was}, add) {
   if (!singleAuthor(manifest)) add('hub.author', 'motion.json', 'a motion on motionhub has exactly one author; credit other contributions in CREDITS.md');
   const who = {author, authorId, accounts};
   // in the catalogue a motion is motions/<id>/: motions/<slug>/ or motions/@<scope>/<slug>/ (HUB.md). A project's own
   // motion may be named otherwise (motions/<name>/, SPEC.md §13); one under motions/@<scope>/ is checked by checkPlace
-  const {catalogue: inCatalogue, at, root} = place(dir, {accounts});
+  const {catalogue: inCatalogue, at, root} = place(dir, {accounts, catalogue});
   if (inCatalogue && typeof manifest?.slug === 'string' && motionId(manifest) !== at) add('hub.slug', 'motion.json', `the motion ${motionId(manifest)} sits at motions/${motionId(manifest)}/ in the catalogue, not motions/${at}/`);
   // a motion it is based on is one in the catalogue, so the site can link and credit it
   if (inCatalogue && Array.isArray(manifest?.basedOn)) {

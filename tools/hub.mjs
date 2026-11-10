@@ -29,7 +29,7 @@ import {cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeF
 import {tmpdir} from 'node:os';
 import {dirname, join, relative, resolve} from 'node:path';
 import {gunzipSync} from 'node:zlib';
-import {ID, SPEC, checkMotion, expandTokens, listMotions, motionId, parseFrontMatter} from './check.mjs';
+import {ID, SPEC, checkMotion, expandTokens, listMotions, motionId, parseFrontMatter, place} from './check.mjs';
 import {files as filesOf, tgz} from './pack.mjs';
 
 export const HUB = 'https://motionhub.dev';
@@ -302,7 +302,8 @@ export async function shareLink(dir, {wait = false, log = () => {}, ask = 5000, 
   const published = (await index(base)).find((m) => m.slug === id);
   const was = published ? await (await get(`${base}/m/${id}/motion.json`)).json() : undefined;
   const accounts = await sharingAccounts(base, manifest, was);
-  const issues = checkMotion(dir, {was, shared: true, accounts});
+  // judged by the hub's accounts, but in its own place: a project's motions/<name>/ is not the catalogue (SPEC.md §13)
+  const issues = checkMotion(dir, {was, shared: true, accounts, catalogue: place(dir).catalogue});
   if (issues.length) throw new Error(`${dir} does not pass the hub's checks:\n${issues.map((i) => `${i.at}  ${i.code}  ${i.message}`).join('\n')}`);
   const bytes = tgz(filesOf(dir).map((n) => [`${id}/${n}`, readFileSync(join(dir, n))]));
   if (bytes.length > 1024 * 1024) throw new Error(`${id} packs to ${bytes.length} bytes: a motion is at most 1 MB, its poster included`);
@@ -348,7 +349,7 @@ export async function share(dir, {pr = false, github} = {}, base = HUB) {
   const published = (await index(base)).find((m) => m.slug === id);
   const was = published ? await (await get(`${base}/m/${id}/motion.json`)).json() : undefined;
   const accounts = await sharingAccounts(base, manifest, was);
-  const issues = checkMotion(dir, {author: account.login, authorId: account.id, was, accounts});
+  const issues = checkMotion(dir, {author: account.login, authorId: account.id, was, accounts, catalogue: place(dir).catalogue});
   if (issues.length) throw new Error(`${dir} does not pass the hub's checks:\n${issues.map((i) => `${i.at}  ${i.code}  ${i.message}`).join('\n')}`);
   const what = `${published ? 'Update' : 'Add'} ${manifest.name.en} ${manifest.version}`;
   if (!pr) return `${id} ${manifest.version} passes the hub's checks as ${account.login}${published ? `, after ${published.version}` : ''}. Nothing is published yet: run again with --pr to open "${what}" on github.com/${REPO}.`;

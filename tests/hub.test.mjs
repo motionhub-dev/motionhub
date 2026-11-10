@@ -175,7 +175,8 @@ test('init starts a motion of the project\'s own in motions/<slug>/', async () =
 const jpeg = (w, h) => Buffer.concat([Buffer.from([0xff, 0xd8]), Buffer.from([0xff, 0xc0, 0x00, 0x11, 0x08, h >> 8, h & 255, w >> 8, w & 255, 0x03, 1, 0x22, 0, 2, 0x11, 1, 3, 0x11, 1]), Buffer.from([0xff, 0xd9])]);
 
 test('a new motion starts as every required file but the poster, and shares only as its own author and above what is published', async () => {
-  const dir = join(mkdtempSync(join(tmpdir(), 'init-')), 'plain-ink');
+  // where init puts it (motions/<slug>/ in a project): judged by the hub's accounts, but not as if it were the catalogue
+  const dir = join(mkdtempSync(join(tmpdir(), 'init-')), 'motions', 'plain-ink');
   for (const [path, data] of scaffold('plain-ink', {login: 'ana', name: 'Ana'})) { mkdirSync(join(dir, path, '..'), {recursive: true}); writeFileSync(join(dir, path), data); }
   writeFileSync(join(dir, 'poster.jpg'), jpeg(1920, 1080));
   let published;

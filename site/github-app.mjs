@@ -74,9 +74,14 @@ async function api(env, method, path, body, {missing = false} = {}) {
   const res = await fetch(`${API}${path}`, {method, redirect: 'error', signal: AbortSignal.timeout(30000), headers: {authorization: `Bearer ${token}`, accept: 'application/vnd.github+json', 'user-agent': 'motionhub.dev', 'x-github-api-version': '2022-11-28', ...(body ? {'content-type': 'application/json'} : {})}, body: body ? JSON.stringify(body) : undefined});
   if (missing && res.status === 404) return null;
   if (res.status === 401) forgetToken();
-  if (!res.ok) throw new Error(`GitHub answered ${res.status} to ${method} ${path.split('?')[0]}`);
+  // a refusal GitHub would give again (a missing or conflicting ref, a rejected change) is final for this attempt; an
+  // expired token, a rate limit or a server error may pass on a retry
+  if (!res.ok) throw refused(`GitHub answered ${res.status} to ${method} ${path.split('?')[0]}`, res.status >= 400 && res.status < 500 && ![401, 403, 408, 429].includes(res.status));
   return res.status === 204 ? null : res.json();
 }
+
+/** An error from a submission: `final` when trying the same submission again would fail the same way. */
+const refused = (message, final = true) => Object.assign(new Error(message), {final});
 
 /** Conservative shared-package binary limit, kept consistent with the CLI (hub.share). */
 export const BINARIES = 40;
@@ -145,11 +150,13 @@ function trustedCommit(commit, app) {
  */
 export async function commitSubmission(env, {id, manifest, published, files, me, accounts, submission, sha256, baseSha, initialBaseSha, previousPull}) {
   const {app, token} = await installation(env);
-  if (!app) throw new Error('GitHub did not identify the submission app');
+  if (!app) throw refused('GitHub did not identify the submission app', false);
   let open = previousPull ? await api(env, 'GET', `/repos/${REPO}/pulls/${previousPull}`, undefined, {missing: true}) : null;
-  if (open && (!sharedFor(open, me.id, app) || !open.head.ref.startsWith(`share/${id.slice(1)}/`))) throw new Error('the previous pull request is not this owner and motion');
+  if (open && (!sharedFor(open, me.id, app) || !open.head.ref.startsWith(`share/${id.slice(1)}/`))) throw refused('the previous pull request is not this owner and motion');
   if (open?.state !== 'open') open = null;
-  const branch = open?.head.ref ?? `share/${id.slice(1)}/${me.id}/${submission}`;
+  // beside, never under, a branch share/<scope>/<slug>/<id> from before submissions had their own: git keeps no ref
+  // inside another ref's name
+  const branch = open?.head.ref ?? `share/${id.slice(1)}/${me.id}-${submission}`;
   const ref = `heads/${branch}`;
   let existing = await api(env, 'GET', `/repos/${REPO}/git/ref/${ref}`, undefined, {missing: true});
   if (!existing) {
@@ -158,7 +165,7 @@ export async function commitSubmission(env, {id, manifest, published, files, me,
   }
   const parent = existing.object.sha;
   const head = (parent === baseSha || (!open && parent === initialBaseSha)) ? null : await api(env, 'GET', `/repos/${REPO}/commits/${parent}`);
-  if (head && !trustedCommit(head, app)) throw new Error('the submission branch contains an unverified app commit; close it and share again');
+  if (head && !trustedCommit(head, app)) throw refused('the submission branch contains an unverified app commit; close it and share again');
   const marker = `Motionhub-Submission: ${submission}`;
   const repeated = head?.commit.message.split('\n').includes(marker);
   const name = oneLine(me.name, 80) || me.login;
@@ -167,11 +174,11 @@ export async function commitSubmission(env, {id, manifest, published, files, me,
   const message = `Submitted through motionhub.dev (package SHA-256 ${sha256}).\n\nSigned-off-by: ${name} <${email}>\nMotionhub-Submitted-By: ${me.id} ${me.login}\n${marker}\n`;
   let commitSha = parent;
   if (repeated) {
-    if (!head.commit.message.includes(`package SHA-256 ${sha256}`)) throw new Error('a submission id was reused for different bytes');
+    if (!head.commit.message.includes(`package SHA-256 ${sha256}`)) throw refused('a submission id was reused for different bytes');
   } else {
     const baseTree = (await api(env, 'GET', `/repos/${REPO}/git/commits/${parent}`)).tree.sha;
     const tree = await api(env, 'GET', `/repos/${REPO}/git/trees/${baseTree}?recursive=1`);
-    if (tree.truncated) throw new Error('the repository tree is too large to read whole');
+    if (tree.truncated) throw refused('the repository tree is too large to read whole');
     const have = new Set(tree.tree.filter((e) => e.type === 'blob').map((e) => e.path));
     const additions = files.map((f) => ({path: `motions/${id}/${f.path}`, contents: base64(f.data)}));
     const now = new Set(additions.map((f) => f.path));
@@ -180,19 +187,22 @@ export async function commitSubmission(env, {id, manifest, published, files, me,
       const path = `accounts/${login}.json`;
       if (have.has(path)) continue;
       const id = recordedId(login, accounts);
-      if (!id) throw new Error('the author login was not verified');
+      if (!id) throw refused('the author login was not verified');
       additions.push({path, contents: base64(utf8(`${JSON.stringify({login, id})}\n`))});
     }
-    for (const f of [...additions, ...deletions]) if (!allowed(f.path, id)) throw new Error('a submission attempted to write outside its motion');
+    for (const f of [...additions, ...deletions]) if (!allowed(f.path, id)) throw refused('a submission attempted to write outside its motion');
     const result = await fetch(`${API}/graphql`, {method: 'POST', redirect: 'error', signal: AbortSignal.timeout(30000), headers: {authorization: `Bearer ${token}`, 'content-type': 'application/json', 'user-agent': 'motionhub.dev'}, body: JSON.stringify({
       query: 'mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid } } }',
       variables: {input: {branch: {repositoryNameWithOwner: REPO, branchName: branch}, expectedHeadOid: parent, message: {headline: what, body: message}, fileChanges: {additions, deletions}}},
     })});
+    if (!result.ok) throw refused(`GitHub answered ${result.status} to the commit`, result.status < 500 && ![401, 403, 408, 429].includes(result.status));
     const body = await result.json();
     commitSha = body.data?.createCommitOnBranch?.commit?.oid;
-    if (!result.ok || body.errors?.length || !commitSha) throw new Error('GitHub did not accept the expected branch head; retry to reconcile');
+    // the branch is not at the head it was read at (someone pushed to it, or a commit of this submission landed): a
+    // retry reads it again and either finds this submission's commit there or is refused the same way
+    if (body.errors?.length || !commitSha) throw refused('GitHub did not accept the expected branch head; retry to reconcile');
     const committed = await api(env, 'GET', `/repos/${REPO}/commits/${commitSha}`);
-    if (!trustedCommit(committed, app)) throw new Error('GitHub did not verify the app commit');
+    if (!trustedCommit(committed, app)) throw refused('GitHub did not verify the app commit');
   }
   if (!open) open = (await api(env, 'GET', `/repos/${REPO}/pulls?state=open&head=${encodeURIComponent(`${OWNER}:${branch}`)}`))[0];
   const added = !open;
@@ -204,8 +214,8 @@ export async function commitSubmission(env, {id, manifest, published, files, me,
   return {pr: open.number, url: open.html_url, branch, added, commitSha};
 }
 
-/** A branch the app keeps for one person: share/<scope>/<slug>/<their account id>. */
-const SHARE_BRANCH = /^share\/[a-z0-9-]+\/[a-z0-9-]+\/([1-9]\d*)(?:\/[A-Za-z0-9_-]{22})?$/;
+/** A branch the app keeps for one person: share/<scope>/<slug>/<their account id>, then -<submission> for one made since submissions had their own. */
+const SHARE_BRANCH = /^share\/[a-z0-9-]+\/[a-z0-9-]+\/([1-9]\d*)(?:-[A-Za-z0-9_-]{22})?$/;
 
 /**
  * Whether a pull request is one the app (its account `app`, <slug>[bot]) opened for the person with the account id
