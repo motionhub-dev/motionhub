@@ -116,6 +116,17 @@ test('a Film draws the scene whose span holds the time, on its own clock, holds 
   assert.throws(() => renderToStaticMarkup(h(MotionRuntimeProvider, {value: {useTime: () => 0, useCompositionTime: () => 0, fps: 30, width: 1, height: 1}}, h(Scene, {id: 'a', duration: 1}))), /only inside a <Film>/);
 });
 
+test('a Film gives all its scenes, once, to an engine that draws a run of spans itself, named, in seconds, on the engine\'s clock', () => {
+  const Clock = () => h('i', null, String(useTime()));
+  const Run = ({scenes}) => h('ol', null, scenes.map((s) => h('li', {key: s.name, 'data-span': `${s.name} ${s.from} ${s.duration}`}, s.children)));
+  const value = {useTime: () => 0.25, useCompositionTime: () => 9, fps: 30, width: 1920, height: 1080, Scenes: Run};
+  const html = renderToStaticMarkup(h(MotionRuntimeProvider, {value}, h(Film, null,
+    h(Layer, {id: 'ground'}), h(Scene, {id: 'a', duration: 2}, h(Clock)), h(Scene, {id: 'b', duration: 3}, h(Clock)), h(Layer, {id: 'logo'}))));
+  assert.match(html, /data-layer="ground".*<ol><li data-span="a 0 2">.*<i>0.25<\/i>.*<li data-span="b 2 3">.*<i>0.25<\/i>.*<\/ol>.*data-layer="logo"/,
+    'one run where the first scene is, every scene told its span, the engine keeping time, the film\'s own layers in their places');
+  assert.equal(html.match(/<ol>/g).length, 1);
+});
+
 test('a Film reports its structure to the engine while it is drawn, once for each structure', () => {
   const reports = [];
   const onFilm = (outline) => reports.push(outline.scenes.map((scene) => scene.id).join(' '));

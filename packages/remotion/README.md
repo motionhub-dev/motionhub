@@ -39,6 +39,28 @@ export const Film = () => {
 - A component that draws in 3D imports `three`: `npm i three`.
 - The components are imported with their `.tsx` extension; set `"allowImportingTsExtensions": true` and `"noEmit": true` in `tsconfig.json` if you type-check them, and `"resolveJsonModule": true` for `tokens.json`.
 
+## A film of scenes
+
+A film drawn as `@motionhub/runtime`'s `<Film>` of `<Scene>`s (0.6 or later; the Open Motion Studio's films are) plays in Remotion as it is:
+inside `<MotionProvider>`, its scenes are drawn as a Remotion `<Series>`, each a clip named by its id on the Studio's timeline, and
+`filmMetadata` gives the composition its length from them, so it follows them as they change:
+
+```tsx
+import {Composition} from 'remotion';
+import {MotionProvider, filmMetadata} from '@motionhub/remotion';
+import Main, {film} from '../film';
+
+const Film = () => <MotionProvider tokens={{}} root={false}><Main /></MotionProvider>;
+
+export const Root = () => (
+  <Composition id="film" component={Film} durationInFrames={1} fps={film.fps ?? 30} width={film.width ?? 1920} height={film.height ?? 1080}
+    calculateMetadata={() => filmMetadata(Main, film)} />
+);
+```
+
+A scene's seconds are put on whole frames that meet end to end. The film's own motions are its `<MotionScope>`s, so the provider's own
+tokens can be empty.
+
 ## Several motions in one film
 
 A film can change motion from scene to scene, or hold two in one frame ([a project's motions](../../SPEC.md#13-a-projects-motions)). Keep one `<MotionProvider>` outside every `<Sequence>`, and wrap each scene in `<MotionScope tokens>` from `@motionhub/runtime` (0.4 or later): the components under it read that motion's tokens and custom properties, and keep Remotion's frame and the film's time. Load every motion's faces before the first frame, each `<MotionFonts>` in its own scope with `root={false}`:

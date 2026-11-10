@@ -28,6 +28,8 @@ export type MotionRuntime = {
   Video?: FC<VideoProps>;
   /** called with a <Film>'s structure when it is drawn */
   onFilm?(outline: FilmOutline): void;
+  /** the engine's own run of spans, given a <Film>'s scenes end to end: shows each from `from` for `duration` seconds, its useTime() counting from its start */
+  Scenes?: FC<{scenes: {name: string; from: number; duration: number; children: ReactNode}[]}>;
 };
 export declare const MotionRuntimeProvider: FC<{value: MotionRuntime; children?: ReactNode}>;
 
