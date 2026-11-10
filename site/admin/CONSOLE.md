@@ -1,6 +1,6 @@
 # MotionHub admin console
 
-The console at `/admin` follows Awesome Builders' navigation, compact tables, review drawers, independent workspace scrolling, mobile navigation and separate light/dark/system theme preference. It uses MotionHub's existing brand tokens. Public GitHub sessions do not grant administrator access.
+The console at `/admin` has a sidebar navigation, compact tables, review drawers, independent workspace scrolling, mobile navigation and separate light/dark/system theme preference. It uses MotionHub's existing brand tokens. Public GitHub sessions do not grant administrator access.
 
 ## Included workflows
 
@@ -36,6 +36,7 @@ Migration `site/migrations/0006_admin.sql` adds roles, moderation/setting overla
 - Motion changes create a GitHub App PR using the existing submission mechanism. They require a strictly higher stable version, a mapped GitHub identity that is a published author, and explicit DCO certification. Name, description, tags and `MOTION.md` are editable; remaining package files are retained. The proposed gzip tar is retained at `admin/proposals/<job-id>.tgz` in the private package bucket, and its SHA-256 is recorded in the signed-off commit. No endpoint writes directly to main or merges a PR.
 - A submission's editorial approval/rejection is separate from GitHub checks, merge and deployment. Rejection prevents a retained upload from being submitted through the site; it does not close an already opened PR or override repository reviews. Use the linked GitHub PR for those actions.
 - Motion blocking denies detail/files, immutable package downloads, videos and reels at the Worker. It also filters the public catalogue, statistics, catalog membership, rendered links/cards and gallery search index. Previously downloaded files cannot be recalled. Existing brand/docs text is not rewritten into an alternative source of truth.
+- While no motion is hidden and no collection is published, public pages, indexes and catalogue JSON pass through unchanged, with their own caching and validators. Only a response that is actually rewritten is `private, no-store`. A browser copy kept from before a motion was hidden is not revalidated with a 304; it receives the filtered response. `/api/stats.json` is cached publicly for 5 minutes, so a newly hidden motion can stay in it that long. `llms.txt` and `sitemap.xml` drop a line only when it names the hidden id whole, so `@a/b` never hides `@a/b-pro`.
 - Artifact/account blocking is checked for public works, portfolios, shares, uploaded content and owner upload/preview paths. Restoring preserves the author's publication choices.
 - Collections are served through `/api/collections.json` and prepended to the home page. Hidden motions are omitted; empty collections are not shown. Global Git-owned `catalogs.json` still follows repository review; collections do not mutate it.
 - Upload quota settings can lower the existing hard maxima: 8 MiB, 20 artifacts/account and 20 versions/artifact. Existing data is retained. Archive decompression/file-count limits remain enforced by the uploader.

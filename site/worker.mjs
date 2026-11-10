@@ -219,16 +219,23 @@ export default {
     // the static files under @<scope>/, m/@<scope>/ and play/@<scope>/ (wrangler.jsonc runs the Worker first for all) are found
     // at the %40 spelling; asked for with @, the
     // assets would answer with a redirect to it, so the Worker asks for it directly and the address keeps its @
-    let response;
+    let asset = request;
     if (url.pathname.includes('@')) {
       const at = new URL(url);
       at.pathname = url.pathname.replaceAll('@', '%40');
-      response = await env.ASSETS.fetch(new Request(at, request));
-    } else response = await env.ASSETS.fetch(request);
+      asset = new Request(at, request);
+    }
+    const response = await env.ASSETS.fetch(asset);
     // a person opening a motion's page: a document navigation that found the page
     const page = PAGE.exec(pathname);
     if (page && request.method === 'GET' && response.status === 200 && request.headers.get('sec-fetch-dest') === 'document') count(env, request, 'view', page[1]);
-    return publicResponse(request, env, response);
+    // asked again without the browser's validators when its copy predates a motion being hidden (site/admin/public.mjs)
+    return publicResponse(request, env, response, () => {
+      const headers = new Headers(asset.headers);
+      headers.delete('if-none-match');
+      headers.delete('if-modified-since');
+      return env.ASSETS.fetch(new Request(asset.url, {method: asset.method, headers}));
+    });
   },
   async scheduled(controller, env, ctx) {
     ctx.waitUntil(rollup(env));

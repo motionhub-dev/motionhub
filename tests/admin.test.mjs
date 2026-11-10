@@ -314,6 +314,63 @@ test("motion blocking prevents every package, page and reel path, including enco
   );
   assert.equal((await r.json()).motions.length, 0);
 });
+test("with nothing hidden, public responses keep their own caching; hiding filters exact ids on every route", async () => {
+  const { env } = fixture();
+  const sitemap = [
+    "<urlset>",
+    "  <url><loc>https://motionhub.dev/@alice/demo/</loc></url>",
+    "  <url><loc>https://motionhub.dev/@alice/demo-pro/</loc></url>",
+    "  <url><loc>https://motionhub.dev/@alice/</loc></url>",
+    "</urlset>",
+  ].join("\n");
+  const seen = [];
+  const catalogue = env.ASSETS.fetch;
+  env.ASSETS = {
+    fetch: async (r) => {
+      if (new URL(r.url).pathname.startsWith("/api/")) return catalogue(r);
+      seen.push(r.headers.get("if-none-match"));
+      const path = new URL(r.url).pathname;
+      if (r.headers.get("if-none-match") === '"v1"')
+        return new Response(null, { status: 304, headers: { etag: '"v1"' } });
+      if (path === "/sitemap.xml")
+        return new Response(sitemap, {
+          headers: { "content-type": "application/xml", etag: '"v1"', "cache-control": "public, max-age=0, must-revalidate" },
+        });
+      return new Response('<main><a href="/@alice/demo/">Demo</a><a href="/@alice/demo-pro/">Pro</a></main>', {
+        headers: { "content-type": "text/html", etag: '"v1"', "cache-control": "public, max-age=0, must-revalidate" },
+      });
+    },
+  };
+  const get = (path, headers = {}) =>
+    worker.fetch(new Request("https://motionhub.dev" + path, { headers }), env, {});
+  for (const path of ["/sitemap.xml", "/motions/"]) {
+    const r = await get(path);
+    assert.equal(r.headers.get("cache-control"), "public, max-age=0, must-revalidate");
+    assert.equal(r.headers.get("etag"), '"v1"');
+  }
+  assert.equal((await get("/motions/", { "if-none-match": '"v1"' })).status, 304);
+  await action(env, "state", state("motion", "@alice/demo", "blocked"));
+  const map = await (await get("/sitemap.xml")).text();
+  assert.doesNotMatch(map, /@alice\/demo\//);
+  assert.match(map, /@alice\/demo-pro\//);
+  assert.match(map, /@alice\/<\/loc>/);
+  assert.equal((await get("/@alice/demo/")).status, 404);
+  assert.equal((await get("/%40alice/demo/")).status, 404);
+  seen.length = 0;
+  // a copy the browser kept from before the motion was hidden is not revalidated: it gets the filtered page. Node has
+  // no HTMLRewriter (the Workers runtime does), so here the page passes through it unchanged
+  globalThis.HTMLRewriter ??= class { on() { return this; } transform(response) { return response; } };
+  const r = await get("/motions/", { "if-none-match": '"v1"' });
+  assert.equal(r.status, 200);
+  assert.deepEqual(seen, ['"v1"', null]);
+  assert.equal(r.headers.get("cache-control"), "private, no-store");
+  assert.equal(r.headers.get("etag"), null);
+  seen.length = 0;
+  const index = await get("/sitemap.xml", { "if-none-match": '"v1"' });
+  assert.equal(index.status, 200);
+  assert.deepEqual(seen, ['"v1"', null]);
+  assert.doesNotMatch(await index.text(), /@alice\/demo\//);
+});
 test("artifact blocking covers public work, shared and published content, and persists despite author publication state", async () => {
   const { env, artifact, version } = fixture();
   const content =
