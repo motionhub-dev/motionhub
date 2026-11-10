@@ -20,6 +20,7 @@
   },
   "files": [
     "index.js",
+    "film.js",
     "index.d.ts",
     "README.md"
   ],
@@ -28,5 +29,13 @@
     "react-dom": ">=18",
     "react": ">=18",
     "remotion": ">=4"
+  },
+  "scripts": {
+    "test": "node --test test.mjs"
+  },
+  "devDependencies": {
+    "@motionhub/runtime": "file:../runtime",
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
   }
 }

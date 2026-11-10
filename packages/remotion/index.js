@@ -3,9 +3,10 @@
 // tokens into Remotion values (frames, Easing) for anything you draw yourself. For a film of scenes (@motionhub/runtime's <Film>),
 // sceneFrames() and filmMetadata() give each scene and the composition their length in frames, from the scenes.
 import {createElement, useEffect, useMemo, useState} from 'react';
-import {renderToStaticMarkup} from 'react-dom/server';
 import {Easing, OffthreadVideo, Sequence, continueRender, delayRender, interpolate, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {MotionRoot, MotionRuntimeProvider, resolveTokens, useTokens} from '@motionhub/runtime';
+
+export {filmMetadata, sceneFrames} from './film.js';
 
 const sequenceSeconds = () => useCurrentFrame() / useVideoConfig().fps;
 
@@ -16,39 +17,6 @@ const RemotionVideo = ({src, startAt = 0, trimBefore = 0, playbackRate = 1, obje
   return createElement(Sequence, {from: Math.round(startAt * fps), layout: 'none'},
     createElement(OffthreadVideo, {src: url, trimBefore: Math.round(trimBefore * fps), playbackRate, style: {width: '100%', height: '100%', objectFit, ...style}}));
 };
-
-/** The structure of the <Film> a component draws, learned by drawing it once, off the page, at its start */
-function outlineOf(Component, {fps = 30, width = 1920, height = 1080, props = {}}) {
-  let outline = null;
-  const value = {useTime: () => 0, useCompositionTime: () => 0, fps, width, height, tokens: {}, Video: () => null, onFilm: (o) => { outline = o; }};
-  renderToStaticMarkup(createElement(MotionRuntimeProvider, {value}, createElement(Component, props)));
-  if (!outline) throw new Error('the component draws no <Film> (@motionhub/runtime 0.5 or later)');
-  return outline;
-}
-
-/**
- * Each scene of the <Film> a component draws, by id, in whole frames at `fps` that meet end to end and add up to the film: the
- * `durationInFrames` of a Series.Sequence that holds `<FilmScene id>` around the film.
- */
-export function sceneFrames(Component, film = {}) {
-  const fps = film.fps ?? 30;
-  return Object.fromEntries(outlineOf(Component, film).scenes.map(({id, start, duration}) => [id, Math.round((start + duration) * fps) - Math.round(start * fps)]));
-}
-
-/**
- * A composition's metadata for a component that draws a <Film> (`calculateMetadata: () => filmMetadata(Main, film, ['intro', 'how'])`): its
- * length in frames from the film's scenes, so it follows them as they change. With `ids`, the scenes the composition places one by one,
- * the film's scenes must be those, in that order: a scene added, taken out or moved is named in the error.
- */
-export function filmMetadata(Component, film = {}, ids) {
-  const {fps = 30, width = 1920, height = 1080} = film;
-  const outline = outlineOf(Component, film);
-  const has = outline.scenes.map((scene) => scene.id);
-  if (ids && has.join('\n') !== ids.join('\n')) {
-    throw new Error(`the film's scenes are ${has.map((id) => `"${id}"`).join(', ')}, the composition places ${ids.map((id) => `"${id}"`).join(', ')}: give each scene its Series.Sequence, in order`);
-  }
-  return {durationInFrames: Math.max(1, Math.round(outline.seconds * fps)), fps, width, height};
-}
 
 /**
  * Wrap the composition in it once, outside every <Sequence>, with the motion's tokens.json: `import tokens from '../motion/tokens.json'`. Its components

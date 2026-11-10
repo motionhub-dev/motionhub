@@ -36,6 +36,10 @@ jobs:
         if: startsWith(github.ref_name, 'runtime-v')
         working-directory: packages/runtime
         run: npm install --no-package-lock --no-save && npm test
+      - name: The Remotion binding's tests
+        if: startsWith(github.ref_name, 'remotion-v')
+        working-directory: packages/remotion
+        run: npm install --no-package-lock --no-save --install-links && npm test
       - name: The tag names the version being published
         run: test "$(node -p "require('./${{ steps.what.outputs.dir }}/package.json').version")" = "${{ steps.what.outputs.version }}"
       - run: npm stage publish ${{ steps.what.outputs.dir }}
