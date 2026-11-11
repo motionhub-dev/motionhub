@@ -1,8 +1,8 @@
 {
-  "spec": "motion/0.4",
+  "spec": "motion/0.6",
   "scope": "iamsuosi",
   "slug": "pixel-quest",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "name": {
     "en": "Pixel Quest",
     "zh-CN": "像素关卡"

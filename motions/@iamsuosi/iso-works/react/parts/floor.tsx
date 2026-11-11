@@ -6,7 +6,7 @@ export const meta = {
   line: 'A pale floor of isometric tiles that runs off every edge of the frame; everything in the works stands on its grid.',
   fits: 'every scene, with the same origin and k as the parts standing on it',
   params: {
-    origin: {type: '[x, y]', default: '[960, 250]', doc: 'where world [0, 0] lands on the canvas; the same for every component of the scene'},
+    origin: {type: '[x, y]', default: [960, 250], doc: 'where world [0, 0] lands on the canvas; the same for every component of the scene'},
     k: {type: 'px', default: 46, doc: 'pixels per floor cell; larger is closer'},
     reveal: {type: 'progress', default: 1, doc: '0 to 1: the tiles are laid in a ring spreading from the middle of the frame, for an opening'},
   },

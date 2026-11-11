@@ -9,7 +9,7 @@ export const meta = {
   fits: 'the thing a film is about (a product, an organ, a fruit) drawn as a print',
   params: {
     shapes: {type: '{d?, circle?: [cx, cy, r], ink, tint?, evenodd?}[]', doc: 'the shapes in drawing order, in the picture\'s own units; tint is 0.15, 0.3, 0.5 or 0.7 (else solid); evenodd cuts holes'},
-    at: {type: '[x, y]', default: '[0, 0]', doc: 'where the picture\'s origin lands on the canvas'},
+    at: {type: '[x, y]', default: [0, 0], doc: 'where the picture\'s origin lands on the canvas'},
     scale: {type: 'number', default: 1, doc: 'the picture\'s size'},
     blue: {type: 'progress', default: 1, doc: 'the blue plate rolled on, 0 to 1'},
     pink: {type: 'progress', default: 1, doc: 'the pink plate rolled on, 0 to 1'},

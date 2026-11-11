@@ -8,7 +8,7 @@ export const meta = {
   params: {
     title: {type: 'text', doc: 'the title, lines split by \\n: two or three short lines'},
     kicker: {type: 'text', default: '', doc: 'a short line above the title, in pink capitals'},
-    at: {type: '[x, y]', default: '[150, 250]', doc: 'the baseline of the first title line, at its left'},
+    at: {type: '[x, y]', default: [150, 250], doc: 'the baseline of the first title line, at its left'},
     size: {type: 'px', default: 150, doc: 'the title\'s size; lines are 0.96 of it apart'},
     sun: {type: '[cx, cy, r]', default: '[1340, 420, 230]', doc: 'the pink disc; let it cover part of a line, so the overprint shows'},
     blue: {type: 'progress', default: 1, doc: 'the blue plate rolled on, 0 to 1'},

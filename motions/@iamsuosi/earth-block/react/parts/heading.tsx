@@ -8,7 +8,7 @@ export const meta = {
   params: {
     text: {type: 'string', doc: 'the question'},
     sub: {type: 'string', doc: 'one line under it'},
-    at: {type: '[x, y]', default: '[80, 56]', doc: 'its top left'},
+    at: {type: '[x, y]', default: [80, 56], doc: 'its top left'},
     size: {type: 'number', default: 76, doc: 'its size in px'},
     show: {type: 'progress', default: 1, doc: 'it arrives'},
   },

@@ -8,7 +8,7 @@ export const meta = {
   params: {
     text: {type: 'text', doc: 'two to four words'},
     at: {type: '[x, y]', doc: 'the middle of the tag\'s left edge (the notched end)'},
-    point: {type: '[x, y]', default: 'none', doc: 'what it names: a leader runs from the notch to a dot there'},
+    point: {type: '[x, y]', default: null, doc: 'what it names: a leader runs from the notch to a dot there; none without one'},
     ink: {type: "'blue' | 'pink'", default: "'blue'", doc: 'its plate: blue for a name, pink for what the sentence stresses'},
     size: {type: 'px', default: 40, doc: 'the words\' size; the tag fits them'},
     show: {type: 'progress', default: 1, doc: '0 to 1 over about 0.4 s: it is stamped down from a little larger, the leader drawn first'},

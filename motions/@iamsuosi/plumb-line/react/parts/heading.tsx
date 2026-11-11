@@ -7,7 +7,7 @@ export const meta = {
   fits: "stating what the descent will answer",
   params: {
     text: {type: 'string', doc: 'the question'},
-    at: {type: '[x, y]', default: '[80, 60]', doc: 'its top left'},
+    at: {type: '[x, y]', default: [80, 60], doc: 'its top left'},
     size: {type: 'number', default: 72, doc: 'its size in px'},
     color: {type: 'string', doc: 'its colour'},
     show: {type: 'progress', default: 1, doc: 'it arrives and leaves'},
