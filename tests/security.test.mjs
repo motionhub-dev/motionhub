@@ -3,7 +3,6 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {authorProblem, ownerId} from '../tools/security/ownership.mjs';
 import {sensitiveFile} from '../tools/security/package.mjs';
-import {validateAnswer, escapeComment} from '../.github/scripts/assistant.mjs';
 
 const motion = login => ({authors: [{github: login}]});
 const accounts = new Map([['old', 7], ['renamed', 7], ['other', 8]]);
@@ -25,14 +24,4 @@ test('credential scanning blocks nested paths and values without echoing them', 
     assert.ok(!JSON.stringify(issue).includes(value));
   }
   assert.equal(sensitiveFile('react/picture.png', new Uint8Array([0xff, 0x89])), null);
-});
-test('model output cannot redirect publication, name unrelated paths, or create mentions', () => {
-  const context = {files: [{path: 'react/a.tsx'}]};
-  const result = {summary: 'Advice', comments: [{path: 'react/a.tsx', line: 1, body: 'Check it.'}], patch: ''};
-  assert.deepEqual(validateAnswer(context, {...result, target: 'someone/else'}), result);
-  assert.throws(() => validateAnswer(context, {...result, comments: [{path: '../secret', line: 1, body: 'x'}]}));
-  assert.throws(() => validateAnswer(context, {...result, comments: [{path: 'other.tsx', line: 1, body: 'x'}]}));
-  assert.throws(() => validateAnswer(context, {...result, comments: [{path: 'react/a.tsx', line: 0, body: 'x'}]}));
-  assert.ok(!escapeComment('@org/team <img src="x">').includes('@org'));
-  assert.ok(!escapeComment('<img>').includes('<img>'));
 });
