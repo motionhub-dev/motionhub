@@ -1,0 +1,101 @@
+# No checkout of PR code; no model tools; inference and comment publication use separate runners and credentials.
+name: claude task
+on:
+  workflow_call:
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: true
+permissions: {}
+jobs:
+  context:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+    outputs:
+      artifact: ${{ steps.context.outputs.artifact-id }}
+      source: ${{ steps.source.outputs.sha }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+      - id: source
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Capture authorized public input
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/scripts/assistant.mjs prepare "$RUNNER_TEMP/context.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        id: context
+        with:
+          name: assistant-context
+          path: ${{ runner.temp }}/context.json
+          retention-days: 1
+  infer:
+    needs: context
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      artifact: ${{ steps.result.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ needs.context.outputs.source }}
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: ${{ needs.context.outputs.artifact }}
+          path: ${{ runner.temp }}/input
+          merge-multiple: true
+      - name: Tool-free inference
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+        run: node .github/scripts/assistant.mjs infer "$RUNNER_TEMP/input/context.json" "$RUNNER_TEMP/result.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        id: result
+        with:
+          name: assistant-result
+          path: ${{ runner.temp }}/result.json
+          retention-days: 1
+  comment:
+    needs: [context, infer]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ needs.context.outputs.source }}
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: ${{ needs.context.outputs.artifact }}
+          path: ${{ runner.temp }}/input
+          merge-multiple: true
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: ${{ needs.infer.outputs.artifact }}
+          path: ${{ runner.temp }}/answer
+          merge-multiple: true
+      - name: Validate and publish only to the original target
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/scripts/assistant.mjs publish "$RUNNER_TEMP/input/context.json" "$RUNNER_TEMP/answer/result.json"
