@@ -1,7 +1,7 @@
 // The gallery's search and filters (site/src/lib/query.mjs).
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {countWith, meetsPicks, meetsQuery, parseQuery} from '../site/src/lib/query.mjs';
+import {countWith, meetsPicks, meetsQuery, parseQuery} from '../src/lib/query.mjs';
 
 const clay = {text: 'clay world a small tabletop world iamsuosi', facets: {tag: ['clay', 'light'], by: ['iamsuosi'], colour: ['red'], type: ['sans']}};
 const ink = {text: 'ink scroll hand-drawn brush iamsuosi', facets: {tag: ['ink-wash', 'light'], by: ['iamsuosi'], colour: ['blue'], type: ['serif']}};

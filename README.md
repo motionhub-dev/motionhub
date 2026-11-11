@@ -171,10 +171,13 @@ node tools/build.mjs                      # the files motionhub.dev serves, into
 
 The protected management console, local development configuration and production activation are documented in [Admin console](site/admin/CONSOLE.md).
 
-For a change to the site, in `site/`:
+For a change to the site, the reels' players (`player/`, with its own dependencies) and then the site (`site/`):
 
 ```sh
-npm ci && npm run build
+npm ci --prefix player                    # React, three.js and esbuild, for the players
+cd site && npm ci && npm run build        # the hub's files, every reel's player and the pages, into dist/
+npm test                                  # the site's own tests, in site/
+cd ../player && npm run smoke             # every reel played in Chrome, after the build
 ```
 
 Every commit is signed off (`git commit -s`); the checks refuse a pull request without it.

@@ -65,7 +65,7 @@ Use the dedicated local configuration, with local D1/R2 and no production secret
 
 ```sh
 npx --yes wrangler@4.154.0 d1 migrations apply motionhub-admin-local --local --config wrangler.admin.local.jsonc
-npx --yes wrangler@4.154.0 d1 execute motionhub-admin-local --local --config wrangler.admin.local.jsonc --file tests/fixtures/admin.sql
+npx --yes wrangler@4.154.0 d1 execute motionhub-admin-local --local --config wrangler.admin.local.jsonc --file site/tests/fixtures/admin.sql
 npx --yes wrangler@4.154.0 dev --local --config wrangler.admin.local.jsonc --port 8787
 ```
 
@@ -93,7 +93,7 @@ From the repository root:
 ```sh
 npm test
 node tools/check.mjs
-node --test tests/admin.test.mjs
+node --test site/tests/admin.test.mjs
 ```
 
 The admin tests use in-memory SQLite, signed local RSA test JWTs and mocked GitHub responses. They verify permission/origin denial, transactional audits, stale edits, all content access paths, session revocation, quotas, proposals and duplicate workflow retry protection.

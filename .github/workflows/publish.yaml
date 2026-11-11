@@ -30,7 +30,7 @@ jobs:
         if: startsWith(github.ref_name, 'remotion-v')
         working-directory: packages/remotion
         run: npm install --no-package-lock --no-save --install-links && npm test
-      - run: node site/ci/npm-package.mjs "$RUNNER_TEMP/package"
+      - run: node tools/npm-package.mjs "$RUNNER_TEMP/package"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         id: artifact
         with:
@@ -59,7 +59,7 @@ jobs:
           artifact-ids: ${{ needs.package.outputs.artifact }}
           path: ${{ runner.temp }}/package
           merge-multiple: true
-      - run: node site/ci/release.mjs verify "$RUNNER_TEMP/package" npm
+      - run: node tools/release.mjs verify "$RUNNER_TEMP/package" npm
       - name: Stage a prepacked tarball without lifecycle scripts
         env:
           NPM_CONFIG_IGNORE_SCRIPTS: "true"

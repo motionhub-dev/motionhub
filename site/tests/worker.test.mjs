@@ -2,7 +2,7 @@
 // else, and adds finished days to the totals once.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import worker, {byteRange, count, rollup, stats} from '../site/worker.mjs';
+import worker, {byteRange, count, rollup, stats} from '../worker.mjs';
 
 const DAY = 86400000;
 const NOW = Date.parse('2026-11-03T12:00:00Z');
@@ -204,7 +204,7 @@ test('stats: the totals plus what came since, and the last 30 days', async () =>
 });
 
 test('avatars: only the accounts motionhub shows, from GitHub once a day, the last copy when GitHub fails', async () => {
-  const {size} = await import('../site/avatars.mjs');
+  const {size} = await import('../avatars.mjs');
   assert.deepEqual([1, 32, 33, 56, 160, 161, 999, 'x'].map(size), [32, 32, 56, 56, 160, 192, 320, 32]);
   // the edge cache, as Cloudflare's Cache API: a copy is kept for its max-age
   let now = 0;

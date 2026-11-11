@@ -1,4 +1,4 @@
-// The gallery's search and filters, with no dependencies, so the page's script and tests/query.test.mjs share them.
+// The gallery's search and filters, with no dependencies, so the page's script and site/tests/query.test.mjs share them.
 //
 // A search is words a motion must all contain, with "an exact phrase", -a word it must not contain, and field:value to
 // look in one field only (catalog:tutorials, tag:dark, by:iamsuosi, engine:remotion, colour:blue, type:serif). A motion is

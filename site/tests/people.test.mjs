@@ -6,10 +6,10 @@ import {readFileSync, readdirSync} from 'node:fs';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {DatabaseSync} from 'node:sqlite';
-import worker from '../site/worker.mjs';
-import {safeNext, sha256} from '../site/people.mjs';
+import worker from '../worker.mjs';
+import {safeNext, sha256} from '../people.mjs';
 
-const ROOT = resolve(fileURLToPath(import.meta.url), '../..');
+const ROOT = resolve(fileURLToPath(import.meta.url), '../../..');
 const SITE = 'https://motionhub.dev';
 
 /** The part of D1's API the Worker uses, over node:sqlite. */
@@ -196,7 +196,7 @@ test('your pull requests: only yours by account id, with their checks, review an
 });
 
 test('your pull requests are found past GitHub\'s first page', async () => {
-  const {pulls, motionsIn} = await import('../site/pulls.mjs');
+  const {pulls, motionsIn} = await import('../pulls.mjs');
   assert.deepEqual(motionsIn([{filename: 'motions/red-pencil/a'}, {filename: 'motions/@ana/x/b'}, {filename: 'motions/@ana/'}, {filename: 'tools/check.mjs'}]), ['@ana/x', 'red-pencil']);
   const API = 'https://api.github.com/repos/motionhub-dev/motions';
   const others = Array.from({length: 100}, (_, i) => ({number: 1000 + i, user: {id: 1}, head: {sha: 'x'}}));

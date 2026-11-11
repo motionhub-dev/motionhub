@@ -7,11 +7,10 @@
 //   node player/missing.mjs [base]             prints the ids as a JSON array; base is https://motionhub.dev
 //   node player/missing.mjs --has <url>          exits 0 when the site has the file at url, 1 when not, 2 when it cannot tell
 import {existsSync, readFileSync, realpathSync} from 'node:fs';
-import {join, resolve} from 'node:path';
+import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {listMotions} from '../../tools/check.mjs';
-
-const ROOT = resolve(fileURLToPath(import.meta.url), '../../..');
+import {listMotions} from '../tools/check.mjs';
+import {ROOT} from './paths.mjs';
 
 /** Every motion with a reel, as [id, version]; only a scoped motion is served, so only one has a video */
 export function reelVersions(root = ROOT) {

@@ -1,4 +1,8 @@
-// Packing runs without OIDC permission. The staging runner only reads the resulting tarball.
+// Packs the npm package a release tag names (v<version>: @motionhub/cli; <package>-v<version>: packages/<package>) into a
+// directory with its manifest (tools/release.mjs), for .github/workflows/publish.yaml. Packing runs without OIDC
+// permission. The staging runner only reads the resulting tarball.
+//
+//   node tools/npm-package.mjs <dir>   from the repository's root, with GITHUB_REF_NAME, GITHUB_SHA and GITHUB_RUN_ID
 import {execFileSync} from 'node:child_process';
 import {readFileSync, mkdirSync} from 'node:fs';
 import {resolve} from 'node:path';

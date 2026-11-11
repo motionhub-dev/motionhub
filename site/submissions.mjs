@@ -21,8 +21,7 @@ import {state as adminState, featureOff} from './admin/policy.mjs';
 // submitted, and the branches of the app's pull requests that are closed.
 
 import {person, sameOrigin, sha256} from './people.mjs';
-import {authorProblem, ownerId, singleAuthor, accountId} from '../tools/security/ownership.mjs';
-import {sensitiveFile} from '../tools/security/package.mjs';
+import {authorProblem, ownerId, singleAuthor, accountId, sensitiveFile} from './upstream.mjs';
 import {LIMITS, PackageError, untgz} from './tar.mjs';
 import {BINARIES, closedPulls, commitSubmission, isText, pullState, submissionBase, sweepBranches, withdrawPull} from './github-app.mjs';
 

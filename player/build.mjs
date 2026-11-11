@@ -5,20 +5,18 @@
 // three.js, each named by its content; a reel's page loads the core, three.js if it draws in 3D, then its own script. A motion's page shows it in a sandboxed frame; _headers gives /play/* a policy that loads nothing
 // from anywhere else (HUB.md, "Reels").
 //
-//   node player/build.mjs [id …]   from site/, after tools/build.mjs (npm run build does both); ids build only those
+//   node player/build.mjs [id …]   after tools/build.mjs (site/'s npm run build does both); ids build only those
 import {createHash} from 'node:crypto';
 import {existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, copyFileSync} from 'node:fs';
-import {join, resolve} from 'node:path';
-import {fileURLToPath} from 'node:url';
+import {join} from 'node:path';
 import {build} from 'esbuild';
-import {resolveTokens, tokenVariables} from '../../packages/runtime/tokens.js';
-import {listMotions} from '../../tools/check.mjs';
+import {resolveTokens, tokenVariables} from '../packages/runtime/tokens.js';
+import {listMotions} from '../tools/check.mjs';
+import {CACHE as KEPT, DIST, HERE, ROOT} from './paths.mjs';
 
-const HERE = resolve(fileURLToPath(import.meta.url), '..');
-const ROOT = resolve(HERE, '../..'), SITE = resolve(HERE, '..');
-const OUT = join(ROOT, 'dist/play');
+const OUT = join(DIST, 'play');
 // fonts are fetched once per face and kept here between builds
-const CACHE = join(SITE, '.cache/fonts');
+const CACHE = join(KEPT, 'fonts');
 const RUNTIME = join(ROOT, 'packages/runtime/index.js');
 
 const GENERIC = /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|math|emoji|ui-[a-z-]+)$/;
@@ -126,14 +124,14 @@ ${scripts.map((src) => `<script src="${src}"></script>`).join('\n')}
 </html>
 `;
 
-/** esbuild's options for a script of the player: React, three.js and the runtime are site/'s, one copy of each */
+/** esbuild's options for a script of the player: React and three.js are player/'s, the runtime this repository's, one copy of each */
 const common = (plugins) => ({
   bundle: true, format: 'iife', minify: true, write: false, jsx: 'automatic', target: 'es2020', logLevel: 'error', metafile: true,
-  nodePaths: [join(SITE, 'node_modules')], define: {'process.env.NODE_ENV': '"production"'}, alias: {'@motionhub/runtime': RUNTIME},
-  plugins: [{name: 'site', setup(b) {
-    // one React and one three.js, site/'s, whoever imports them: a second copy (packages/runtime's own, once its tests have
+  nodePaths: [join(HERE, 'node_modules')], define: {'process.env.NODE_ENV': '"production"'}, alias: {'@motionhub/runtime': RUNTIME},
+  plugins: [{name: 'player', setup(b) {
+    // one React and one three.js, player/'s, whoever imports them: a second copy (packages/runtime's own, once its tests have
     // installed it) would give the reel hooks from a React that is not rendering it
-    b.onResolve({filter: /^(react|react-dom|three)(\/.*)?$/}, (args) => (args.pluginData === 'site' ? undefined : b.resolve(args.path, {kind: args.kind, resolveDir: SITE, pluginData: 'site'})));
+    b.onResolve({filter: /^(react|react-dom|three)(\/.*)?$/}, (args) => (args.pluginData === 'player' ? undefined : b.resolve(args.path, {kind: args.kind, resolveDir: HERE, pluginData: 'player'})));
   }}, ...plugins],
 });
 
@@ -153,7 +151,7 @@ async function shared() {
   // added to, never emptied: a reel built before, by another run over fewer ids, keeps the files it names
   const dir = join(OUT, '_shared');
   const core = await build({...common([]), entryPoints: [join(HERE, 'player.jsx')]});
-  const three = await build({...common([]), stdin: {contents: "import * as THREE from 'three';\nglobalThis.__motionhubPlayer = {...globalThis.__motionhubPlayer, three: THREE};", resolveDir: SITE, loader: 'js'}});
+  const three = await build({...common([]), stdin: {contents: "import * as THREE from 'three';\nglobalThis.__motionhubPlayer = {...globalThis.__motionhubPlayer, three: THREE};", resolveDir: HERE, loader: 'js'}});
   return {core: `/play/_shared/${hashed(dir, 'core-v1', core.outputFiles[0].contents)}`, three: `/play/_shared/${hashed(dir, 'three', three.outputFiles[0].contents)}`};
 }
 

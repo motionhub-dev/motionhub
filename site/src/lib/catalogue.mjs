@@ -1,15 +1,18 @@
 // The catalogue as the pages see it: the index tools/build.mjs wrote to ../dist (.cache/dev-public in development),
-// and each motion's own files in ../motions. Read once per build.
+// and each motion's own files in the public catalogue repository's motions/ (site/paths.mjs, set by astro.config.mjs).
+// Read once per build.
 import {existsSync, readFileSync, readdirSync} from 'node:fs';
 import {join, resolve} from 'node:path';
-import {SPEC, readAccounts} from '../../../tools/check.mjs';
-import {REPO, SITE, colours, creatorKeys, en, faces, markdown, other} from '../../../tools/site.mjs';
+import {SPEC, readAccounts} from '@upstream/tools/check.mjs';
+import {REPO, SITE, colours, creatorKeys, en, faces, markdown, other} from '@upstream/tools/site.mjs';
 
 export {REPO, SITE, SPEC, colours, en, faces, markdown, other};
 
-/** The repository's root: the build runs in site/. */
-export const ROOT = resolve(process.cwd(), '..');
-const index = join(ROOT, process.env.MOTIONHUB_DEV ? 'site/.cache/dev-public' : 'dist', 'api/motions.json');
+/** The public catalogue repository's root, and the directory the hub's files were built into: both set by astro.config.mjs. */
+const {MOTIONHUB_UPSTREAM, MOTIONHUB_DIST} = process.env;
+if (!MOTIONHUB_UPSTREAM || !MOTIONHUB_DIST) throw new Error('the pages are built by astro (npm run build or npm run dev in site/), whose config says where the catalogue is');
+export const ROOT = resolve(MOTIONHUB_UPSTREAM);
+const index = join(MOTIONHUB_DIST, 'api/motions.json');
 if (!existsSync(index)) throw new Error(`no ${index}: npm run dev or npm run build in site/ writes it`);
 
 /** The index's rows, ordered by id. */

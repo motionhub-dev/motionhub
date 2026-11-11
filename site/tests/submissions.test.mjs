@@ -10,16 +10,16 @@ import {readFileSync, readdirSync} from 'node:fs';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {DatabaseSync} from 'node:sqlite';
-import worker from '../site/worker.mjs';
-import {sha256} from '../site/people.mjs';
-import {untgz, PackageError, SEGMENT as SITE_SEGMENT} from '../site/tar.mjs';
-import {appJwt, allowed, forgetToken, forgetClosed, pkcs8, oneLine, plain, BINARIES, isText} from '../site/github-app.mjs';
-import {compareVersions as siteCompare, eligibility} from '../site/submissions.mjs';
-import {compareVersions, SEGMENT, SHARED_BINARIES, isText as checkerText} from '../tools/check.mjs';
-import {tgz} from '../tools/pack.mjs';
-import {shareLink} from '../tools/hub.mjs';
+import worker from '../worker.mjs';
+import {sha256} from '../people.mjs';
+import {untgz, PackageError, SEGMENT as SITE_SEGMENT} from '../tar.mjs';
+import {appJwt, allowed, forgetToken, forgetClosed, pkcs8, oneLine, plain, BINARIES, isText} from '../github-app.mjs';
+import {compareVersions as siteCompare, eligibility} from '../submissions.mjs';
+import {compareVersions, SEGMENT, SHARED_BINARIES, isText as checkerText} from '../../tools/check.mjs';
+import {tgz} from '../../tools/pack.mjs';
+import {shareLink} from '../../tools/hub.mjs';
 
-const ROOT = resolve(fileURLToPath(import.meta.url), '../..');
+const ROOT = resolve(fileURLToPath(import.meta.url), '../../..');
 const SITE = 'https://motionhub.dev';
 const API = 'https://api.github.com';
 const REPO = `${API}/repos/motionhub-dev/motions`;
@@ -426,7 +426,7 @@ test('the daily sweep lets go of old packages, shares never submitted, and close
   ];
   // stopped while GitHub was asked: its DCO stays on record
   env.DB.raw.prepare("INSERT INTO submissions (id, poll_hash, code, motion, version, sha256, bytes, status, person, dco_at, created_at, expires_at) VALUES ('stuck', '', 'X-00', '@ana/ledger', '1.0.0', '', 0, 'submitting', 42, 1, 0, 1)").run();
-  const {sweep} = await import('../site/submissions.mjs');
+  const {sweep} = await import('../submissions.mjs');
   github.calls = [];
   assert.deepEqual(await sweep(env), {packages: 2, shares: 1, branches: ['share/ana/ledger/42']}, 'a branch moved on, gone already, or not the app\'s stays');
   assert.deepEqual([...store.keys()], [`submissions/${fresh.id}.tgz`]);
@@ -630,7 +630,7 @@ test('the sweep lets go of drafts left in the published bucket from before the p
     list: async ({prefix}) => ({objects: [...legacy.keys()].filter((k) => k.startsWith(prefix)).map((key) => ({key, uploaded: at.get(key) ?? new Date()})), truncated: false}),
     delete: async (keys) => { for (const k of [keys].flat()) legacy.delete(k); },
   };
-  const {sweep} = await import('../site/submissions.mjs');
+  const {sweep} = await import('../submissions.mjs');
   assert.equal((await sweep(env)).packages, 1);
   assert.deepEqual([...legacy.keys()].sort(), ['m/@ana/ledger/1.0.0.tgz', 'submissions/new.tgz'], 'a day old and under submissions/ only');
 });

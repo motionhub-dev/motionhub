@@ -1,4 +1,4 @@
-# After each deploy of main and by hand on main: render the video of every motion whose version has none yet (site/player/missing.mjs),
+# After each deploy of main and by hand on main: render the video of every motion whose version has none yet (player/missing.mjs),
 # one job per motion, and put it in R2 at m/<id>/<version>.mp4, where the Worker serves it. Only a version whose package
 # is published is rendered. A version's video is made
 # once: one already published is never replaced, and a change to the runtime or the player does not render again. A
@@ -38,7 +38,7 @@ jobs:
           node-version: 22
       - id: missing
         run: |
-          ids=$(node site/player/missing.mjs https://motionhub.dev)
+          ids=$(node player/missing.mjs https://motionhub.dev)
           echo "ids=$ids" >> "$GITHUB_OUTPUT"
           echo "to render: $ids"
 
@@ -65,17 +65,15 @@ jobs:
           node-version: 22
       - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
-          path: site/.cache/fonts
+          path: player/.cache/fonts
           key: fonts-${{ hashFiles('motions/**/tokens.json') }}
           restore-keys: fonts-
       - name: ffmpeg
         run: command -v ffmpeg || (sudo apt-get update -q && sudo apt-get install -y -q ffmpeg)
       # the hub's files (for the policy /play/* is served with) and this motion's player, not the whole site
       - name: Build the player
-        working-directory: site
-        run: npm ci --no-audit --no-fund && node ../tools/build.mjs ../dist && node player/build.mjs "$ID"
+        run: npm ci --prefix player --no-audit --no-fund && node tools/build.mjs && node player/build.mjs "$ID"
       - name: Render
-        working-directory: site
         run: node player/render.mjs "$ID" --out "$RUNNER_TEMP/render"
       - name: Record the rendered artifact
         env:

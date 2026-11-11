@@ -4,7 +4,7 @@
 // fails when its page throws or logs an error, a request fails or is refused, a moment draws nothing, or all four draw the same
 // picture. It is what tells, when the runtime, the player or a motion changes, which reels it broke (HUB.md, "Reels").
 //
-//   node player/smoke.mjs [id …]   from site/, after npm run build; ids test only those. CHROME names the browser, else
+//   node player/smoke.mjs [id …]   after player/build.mjs; ids test only those. CHROME names the browser, else
 //                                  the system's Chrome
 import {blank, differ, launch, look, reels, serve, watch} from './chrome.mjs';
 

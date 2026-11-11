@@ -171,10 +171,13 @@ node tools/check.mjs motions/@<scope>/<slug>   # 或只检查一个
 node tools/build.mjs                      # 生成 motionhub.dev 要发布的文件，放在 dist/
 ```
 
-如果改了站点，在 `site/` 里运行：
+如果改了站点，先装 reel 播放器（`player/`，有自己的依赖），再构建站点（`site/`）：
 
 ```sh
-npm ci && npm run build
+npm ci --prefix player                    # 播放器用的 React、three.js 和 esbuild
+cd site && npm ci && npm run build        # hub 的文件、每个 reel 的播放器和页面，输出到 dist/
+npm test                                  # 站点自己的测试，在 site/ 里
+cd ../player && npm run smoke             # 构建之后，在 Chrome 里逐个播放 reel
 ```
 
 每个 commit 都要 sign-off（`git commit -s`），否则 pull request 过不了检查。
