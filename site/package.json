@@ -7,7 +7,7 @@
     "build": "node ../tools/build.mjs ../dist && node thumbs.mjs && node player/build.mjs && astro build && node merge.mjs",
     "dev": "node ../tools/build.mjs .cache/dev-public && node thumbs.mjs .cache/dev-public && MOTIONHUB_DEV=1 astro dev",
     "preview": "npm run build && npx --yes wrangler@4.154.0 dev",
-    "smoke": "node player/smoke.mjs",
+    "smoke": "node player/smoke.mjs && node player/security.mjs",
     "test:admin-browser": "node admin/browser-test.mjs"
   },
   "dependencies": {

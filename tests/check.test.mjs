@@ -265,7 +265,7 @@ test('the hub\'s rules: licences, author, size, media and unsafe code', () => {
 
 test('a change to a published motion comes from one of its authors, with a higher version', () => {
   const was = {...MANIFEST, version: '1.2.0', authors: [{name: 'Tester', github: 'tester'}]};
-  const update = (version, author) => codes(motion({manifest: {...MANIFEST, version, authors: [{name: 'Tester', github: 'tester'}, {name: 'New', github: 'newcomer'}]}}), {author, was});
+  const update = (version, author) => codes(motion({manifest: {...MANIFEST, version, authors: [{name: 'Tester', github: 'tester'}]}}), {author, was});
   assert.deepEqual(update('1.2.1', 'Tester'), []);
   assert.ok(update('1.2.1', 'newcomer').includes('hub.owner'), 'adding yourself to the authors does not make the motion yours');
   assert.ok(update('1.2.0', 'tester').includes('hub.version'));
@@ -290,11 +290,11 @@ test('who owns a scope and a motion is decided by the GitHub account\'s id, not 
 
 test('in this repository every login a motion names is recorded', () => {
   const unrecorded = checkMotion(motion(), {author: 'tester', authorId: 7, accounts: new Map()});
-  assert.deepEqual(unrecorded.map((i) => i.code), ['hub.account']);
-  assert.match(unrecorded[0].message, /accounts\/tester\.json with \{"login": "tester", "id": 7\}/, 'it says what to add, with the opener\'s own id');
+  assert.deepEqual(unrecorded.map((i) => i.code), ['hub.author', 'hub.scope', 'hub.account']);
+  assert.match(unrecorded.find(i => i.code === 'hub.account').message, /accounts\/tester\.json with \{"login": "tester", "id": 7\}/, 'it says what to add, with the opener\'s own id');
   const coauthor = {...MANIFEST, authors: [...MANIFEST.authors, {name: 'Bo', github: 'Bo'}]};
-  assert.deepEqual(codes(motion({manifest: coauthor}), {author: 'tester', authorId: 7, accounts: new Map([['tester', 7]])}), ['hub.account'], 'a co-author too, in lowercase');
-  assert.deepEqual(codes(motion({manifest: coauthor}), {author: 'tester', authorId: 7, accounts: new Map([['tester', 7], ['bo', 8]])}), []);
+  assert.deepEqual(codes(motion({manifest: coauthor}), {author: 'tester', authorId: 7, accounts: new Map([['tester', 7]])}), ['hub.author', 'hub.account'], 'multiple authors are refused even before account validation');
+  assert.deepEqual(codes(motion({manifest: coauthor}), {author: 'tester', authorId: 7, accounts: new Map([['tester', 7], ['bo', 8]])}), ['hub.author']);
 });
 
 test('an account is recorded once and never changes, and an added one is what GitHub says', async () => {
@@ -601,18 +601,19 @@ test('main\'s checker on a pull request: its new accounts, links refused, motion
     const wasFile = join(dir, 'motion.json');
     writeFileSync(wasFile, JSON.stringify(published));
     assert.equal(await main(['--removed', '--was', wasFile, '--author', 'bo', '--author-id', '8']), 1);
-    assert.equal(await main(['--removed', '--was', wasFile, '--author', 'tester', '--author-id', '7']), 0);
+    assert.equal(await main(['--removed', '--was', wasFile, '--author', 'tester', '--author-id', '7', '--accounts', now]), 0);
   } finally { console.log = log; }
 });
 
 test('a pull request motionhub opened for someone is theirs: every commit that names a submitter names the same one', async () => {
   const {submitter} = await import('../tools/check.mjs');
-  const c = (message) => ({commit: {message}});
+  const c = (message) => ({committer: {login: 'motionhub[bot]'}, commit: {message, verification: {verified: true, reason: 'valid'}}});
+  const trusted = (commits) => submitter(commits, 'motionhub[bot]');
   const by = 'Add X 1.0.0\n\nSigned-off-by: Ana <7+ana@users.noreply.github.com>\nMotionhub-Submitted-By: 7 ana\nMotionhub-Submission: abc\n';
-  assert.deepEqual(submitter([c(by), c('Fix a typo\n\nSigned-off-by: Maintainer <m@example.com>'), c(by.replace('Add X 1.0.0', 'Update X 1.0.1'))]), {id: 7, login: 'ana'}, 'a maintainer\'s commit names no one and changes nothing');
-  assert.ok(submitter([c('x')]).error, 'no line');
-  assert.ok(submitter([c(by), c(by.replace('7 ana', '8 bo'))]).error, 'two submitters');
-  assert.ok(submitter([c(by.replace('7 ana', '7 ana\nAUTHOR=evil'))]).id === 7, 'a line ends where it ends');
-  assert.ok(submitter([c(by.replace('7 ana', '0x7 ana'))]).error, 'an id is digits');
-  assert.ok(submitter([c(by.replace('7 ana', '7 an$a'))]).error, 'a login is a GitHub login');
+  assert.deepEqual(trusted([c(by), c(by.replace('Add X 1.0.0', 'Update X 1.0.1'))]), {id: 7, login: 'ana'}, 'a maintainer\'s commit names no one and changes nothing');
+  assert.ok(trusted([c('x')]).error, 'no line');
+  assert.ok(trusted([c(by), c(by.replace('7 ana', '8 bo'))]).error, 'two submitters');
+  assert.ok(trusted([c(by.replace('7 ana', '7 ana\nAUTHOR=evil'))]).id === 7, 'a line ends where it ends');
+  assert.ok(trusted([c(by.replace('7 ana', '0x7 ana'))]).error, 'an id is digits');
+  assert.ok(trusted([c(by.replace('7 ana', '7 an$a'))]).error, 'a login is a GitHub login');
 });

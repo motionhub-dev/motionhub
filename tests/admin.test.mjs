@@ -552,36 +552,75 @@ test("a person is blocked by one spelling of their id; a restricted artifact's o
   assert.equal(new URL(down.headers.get("location")).pathname, "/artifacts");
   assert.equal(db.prepare("SELECT public_version AS v FROM artifacts WHERE id = ?").get(artifact).v, null);
 });
+/** The GitHub App's credentials, with a key made for the test: proposals ask GitHub as the App. */
+async function withApp(env) {
+  const key = await crypto.subtle.generateKey(
+    { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
+    true,
+    ["sign", "verify"],
+  );
+  const pem = Buffer.from(await crypto.subtle.exportKey("pkcs8", key.privateKey)).toString("base64");
+  env.GITHUB_APP_ID = "123";
+  env.GITHUB_APP_PRIVATE_KEY = ["-----BEGIN", "PRIVATE KEY-----\n"].join(" ") + pem + ["\n-----END", "PRIVATE KEY-----"].join(" ");
+}
+/** GitHub as the App sees it, for a proposal: main's files (`files`, path → JSON), and every call made. */
+function mockGitHub(files, calls = []) {
+  const commits = new Map();
+  return async (url, init = {}) => {
+    const u = new URL(url), method = init.method ?? "GET", body = init.body ? JSON.parse(init.body) : null;
+    calls.push({ path: u.pathname, method, body });
+    const content = /\/contents\/(.+)$/.exec(u.pathname)?.[1];
+    if (content) return files[content] ? Response.json({ type: "file", encoding: "base64", content: Buffer.from(JSON.stringify(files[content])).toString("base64") }) : new Response("", { status: 404 });
+    if (u.pathname === "/users/alice") return Response.json({ id: 1, type: "User" });
+    if (u.pathname.endsWith("/installation")) return Response.json({ id: 7, app_slug: "motionhub" });
+    if (u.pathname.endsWith("/access_tokens")) return Response.json({ token: "local-fake-installation", expires_at: new Date(Date.now() + 3600000).toISOString() });
+    if (u.pathname.endsWith("/git/ref/heads/main")) return Response.json({ object: { sha: "main" } });
+    if (u.pathname.includes("/git/ref/heads/share/")) return new Response("", { status: 404 });
+    if (u.pathname.endsWith("/git/refs") && method === "POST") return Response.json({ ref: body.ref }, { status: 201 });
+    if (u.pathname.endsWith("/git/commits/main")) return Response.json({ tree: { sha: "base" } });
+    if (u.pathname.endsWith("/git/trees/base"))
+      return Response.json({ truncated: false, tree: [{ type: "blob", path: "accounts/alice.json" }, { type: "blob", path: "motions/@alice/demo/MOTION.md" }] });
+    if (u.pathname === "/graphql") {
+      const input = body.variables.input;
+      commits.set("new-commit", { committer: { login: "motionhub[bot]" }, commit: { message: input.message.headline + "\n\n" + input.message.body, verification: { verified: true, reason: "valid" } } });
+      return Response.json({ data: { createCommitOnBranch: { commit: { oid: "new-commit" } } } });
+    }
+    const commit = /\/commits\/([^/]+)$/.exec(u.pathname)?.[1];
+    if (commit && commits.has(commit)) return Response.json(commits.get(commit));
+    if (u.pathname.endsWith("/pulls") && method === "GET") return Response.json([]);
+    if (u.pathname.endsWith("/pulls")) return Response.json({ number: 42, html_url: "https://github.com/motionhub-dev/motions/pull/42" });
+    if (u.pathname.endsWith("/labels")) return Response.json([]);
+    throw Error("Unexpected mocked GitHub call: " + method + " " + u.pathname);
+  };
+}
 test("a version proposal is refused when the published author's login is now another account's", async () => {
   const { env } = fixture();
   const { tgz } = await import("../tools/pack.mjs");
+  const { forgetToken } = await import("../site/github-app.mjs");
+  forgetToken();
   const manifest = { scope: "alice", slug: "demo", version: "1.0.0", name: { en: "Demo" }, line: { en: "Demo" }, authors: [{ github: "alice" }] };
-  const catalogue = env.ASSETS.fetch;
-  // accounts/alice.json records the account alice was published by: 99, not the account that holds the login now
-  env.ASSETS = {
-    fetch: async (r) =>
-      new URL(r.url).pathname === "/api/accounts.json" ? Response.json({ alice: 99 }) : catalogue(r),
-  };
   env.PACKAGES = {
     get: async (key) =>
       key === "m/@alice/demo/1.0.0.tgz"
         ? { arrayBuffer: async () => tgz([["@alice/demo/motion.json", Buffer.from(JSON.stringify(manifest))], ["@alice/demo/MOTION.md", Buffer.from("Look.")]]) }
         : null,
   };
-  env.GITHUB_APP_ID = "123";
-  env.GITHUB_APP_PRIVATE_KEY = "unused: the proposal is refused before the App is asked";
+  await withApp(env);
   env.ADMIN_GITHUB_IDENTITIES = JSON.stringify({ [actor.email]: { id: 1, login: "alice", name: "Alice" } });
-  const original = globalThis.fetch;
-  globalThis.fetch = async (url) =>
-    new URL(url).pathname === "/users/alice" ? Response.json({ id: 1 }) : new Response("", { status: 500 });
+  const original = globalThis.fetch, calls = [];
+  // main's accounts/alice.json records the account alice was published by: 99, not account 1, which holds the login now
+  globalThis.fetch = mockGitHub({ "motions/@alice/demo/motion.json": manifest, "accounts/alice.json": { login: "alice", id: 99 } }, calls);
   try {
     const r = await action(env, "proposal", {
       id: "@alice/demo", new_version: "1.0.1", name: "Demo", line: "Demo", document: "Look.", dco: true, reason: "Update",
     });
     assert.equal(r.status, 403);
     assert.match((await r.json()).error, /published author/);
+    assert.ok(calls.some((c) => c.path.endsWith("/contents/accounts/alice.json")), "judged by main's own record");
+    assert.ok(!calls.some((c) => c.method === "POST" && !c.path.endsWith("/access_tokens")), "nothing is written");
   } finally {
     globalThis.fetch = original;
+    forgetToken();
   }
 });
 test("collections validate items, prevent stale edits, publish ordered visible selections and preserve drafts", async () => {
@@ -851,69 +890,13 @@ test("a version proposal opens an author-attributed PR, retains its digest archi
       objects.has(key) ? { arrayBuffer: async () => objects.get(key) } : null,
     put: async (key, bytes) => objects.set(key, bytes),
   };
-  const key = await crypto.subtle.generateKey(
-    {
-      name: "RSASSA-PKCS1-v1_5",
-      modulusLength: 2048,
-      publicExponent: new Uint8Array([1, 0, 1]),
-      hash: "SHA-256",
-    },
-    true,
-    ["sign", "verify"],
-  );
-  env.GITHUB_APP_ID = "123";
-  env.GITHUB_APP_PRIVATE_KEY =
-    "-----BEGIN PRIVATE KEY-----\n" +
-    Buffer.from(
-      await crypto.subtle.exportKey("pkcs8", key.privateKey),
-    ).toString("base64") +
-    "\n-----END PRIVATE KEY-----";
+  await withApp(env);
   env.ADMIN_GITHUB_IDENTITIES = JSON.stringify({
     [actor.email]: { id: 1, login: "alice", name: "Alice" },
   });
   const original = globalThis.fetch,
     calls = [];
-  globalThis.fetch = async (url, init = {}) => {
-    const u = new URL(url),
-      method = init.method ?? "GET",
-      body = init.body ? JSON.parse(init.body) : null;
-    calls.push({ path: u.pathname, method, body });
-    if (u.pathname === "/users/alice") return Response.json({ id: 1 });
-    if (u.pathname.endsWith("/installation"))
-      return Response.json({ id: 7, app_slug: "motionhub" });
-    if (u.pathname.endsWith("/access_tokens"))
-      return Response.json({
-        token: "local-fake-installation",
-        expires_at: new Date(Date.now() + 3600000).toISOString(),
-      });
-    if (u.pathname.endsWith("/git/ref/heads/main"))
-      return Response.json({ object: { sha: "main" } });
-    if (u.pathname.includes("/git/ref/heads/share/"))
-      return new Response("", { status: 404 });
-    if (u.pathname.endsWith("/git/commits/main"))
-      return Response.json({ tree: { sha: "base" } });
-    if (u.pathname.endsWith("/git/trees/base"))
-      return Response.json({
-        truncated: false,
-        tree: [
-          { type: "blob", path: "accounts/alice.json" },
-          { type: "blob", path: "motions/@alice/demo/MOTION.md" },
-        ],
-      });
-    if (u.pathname.endsWith("/git/trees"))
-      return Response.json({ sha: "new-tree" });
-    if (u.pathname.endsWith("/git/commits"))
-      return Response.json({ sha: "new-commit" });
-    if (u.pathname.endsWith("/git/refs"))
-      return Response.json({ ref: body.ref });
-    if (u.pathname.endsWith("/pulls"))
-      return Response.json({
-        number: 42,
-        html_url: "https://github.com/motionhub-dev/motions/pull/42",
-      });
-    if (u.pathname.endsWith("/labels")) return Response.json([]);
-    throw Error("Unexpected mocked GitHub call: " + u.pathname);
-  };
+  globalThis.fetch = mockGitHub({ "motions/@alice/demo/motion.json": manifest, "accounts/alice.json": { login: "alice", id: 1 } }, calls);
   try {
     const data = {
       id: "@alice/demo",
@@ -949,12 +932,12 @@ test("a version proposal opens an author-attributed PR, retains its digest archi
     );
     assert.equal(proposed.version, "2.0.0");
     assert.deepEqual(proposed.tags, data.tags);
-    const commit = calls.find(
-      (c) => c.path.endsWith("/git/commits") && c.method === "POST",
-    );
-    assert.match(commit.body.message, /Signed-off-by: Alice/);
-    assert.match(commit.body.message, /Motionhub-Submitted-By: 1 alice/);
-    assert.ok(commit.body.message.includes(result.sha256));
+    const input = calls.find((c) => c.path === "/graphql").body.variables.input;
+    assert.match(input.message.body, /Signed-off-by: Alice/);
+    assert.match(input.message.body, /Motionhub-Submitted-By: 1 alice/);
+    assert.ok(input.message.body.includes(result.sha256));
+    assert.equal(input.expectedHeadOid, "main", "committed onto main as the App read it, through a share branch");
+    assert.match(input.branch.branchName, /^share\/alice\/demo\/1-[A-Za-z0-9_-]{22}$/);
     assert.ok(
       !calls.some((c) => c.method !== "GET" && c.path.includes("/heads/main")),
     );

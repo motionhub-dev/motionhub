@@ -3,8 +3,8 @@ import { can, bootstrapEmails } from "./auth.mjs";
 import { limitedBytes } from "../artifact-files.mjs";
 import { state, hiddenMotions, quotas, quotaDefaults } from "./policy.mjs";
 import { sameOrigin } from "../people.mjs";
-import { loadPackage, eligibility, recorded } from "../submissions.mjs";
-import { commitSubmission } from "../github-app.mjs";
+import { loadPackage, eligibility } from "../submissions.mjs";
+import { commitSubmission, submissionBase } from "../github-app.mjs";
 import { REPO } from "../repo.mjs";
 
 export const json = (data, status = 200) =>
@@ -618,11 +618,9 @@ async function proposal(request, env, actor, data) {
   });
   if (!check.ok || (await check.json()).id !== me.id)
     fail("GitHub identity mapping could not be verified.", 403);
-  // the published authors are judged by the account ids recorded for their logins (accounts/), never by login alone
-  const accounts = await recorded(request, env);
-  return proposalPackage(env, actor, data, row, me, reason, accounts);
+  return proposalPackage(env, actor, data, row, me, reason);
 }
-async function proposalPackage(env, actor, data, row, me, reason, accounts) {
+async function proposalPackage(env, actor, data, row, me, reason) {
   const obj = await env.PACKAGES.get(`m/${data.id}/${row.version}.tgz`);
   if (!obj) fail("Published package is unavailable.", 503);
   const bytes = new Uint8Array(await obj.arrayBuffer());
@@ -635,12 +633,20 @@ async function proposalPackage(env, actor, data, row, me, reason, accounts) {
     compareVersions(data.new_version, row.version) <= 0
   )
     fail("Choose a stable version higher than the published version.");
+  // who may propose is judged as a share is: against main at one revision, by the account ids its accounts/ records
+  // (github-app.mjs submissionBase), so a login that has passed to another account is refused
+  let base;
+  try {
+    base = await submissionBase(env, data.id, { ...pkg.manifest, version: data.new_version });
+  } catch {
+    fail("Only the published author may propose a new version: its account could not be confirmed on main.", 403);
+  }
   if (
     !eligibility(
       me,
       { ...pkg.manifest, version: data.new_version },
-      pkg.manifest,
-      accounts,
+      base.published ?? pkg.manifest,
+      base.accounts,
     ).may
   )
     fail("Only a published author may propose a new version.", 403);
@@ -680,6 +686,10 @@ async function proposalPackage(env, actor, data, row, me, reason, accounts) {
   if (archive.length > 1024 * 1024)
     fail("Proposal package exceeds the submission size limit.");
   const jobId = `proposal-${digest}`;
+  // the submission id a share branch and its commit marker carry (22 characters, github-app.mjs), from the digest, so a
+  // retried proposal finds its own commit
+  const submission = btoa(String.fromCharCode(...digest.match(/../g).slice(0, 16).map((h) => parseInt(h, 16))))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   return recordedJob(
     env,
     actor,
@@ -694,9 +704,11 @@ async function proposalPackage(env, actor, data, row, me, reason, accounts) {
         published: true,
         files,
         me,
-        accounts,
-        submission: jobId,
+        accounts: base.accounts,
+        submission,
         sha256: digest,
+        baseSha: base.sha,
+        initialBaseSha: base.sha,
       });
       return {
         pr: result.pr,

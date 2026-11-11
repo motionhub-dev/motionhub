@@ -4,3 +4,9 @@ node_modules/
 site/dist/
 site/.astro/
 site/.cache/
+
+# Local recovery exports must never enter Git or artifacts.
+.security-backups/
+.dev.vars*
+.env*
+dist-player/

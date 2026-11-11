@@ -6,6 +6,7 @@
 // ("BEGIN RSA PRIVATE KEY") or PKCS#8. No dependencies: WebCrypto signs the app's JWT.
 
 import {REPO} from './repo.mjs';
+import {accountId as recordedId, ownerId, singleAuthor} from '../tools/security/ownership.mjs';
 
 const API = 'https://api.github.com';
 const [OWNER] = REPO.split('/');
@@ -47,10 +48,10 @@ async function installation(env, now = Date.now()) {
   if (cached.token && cached.until > now) return {token: cached.token, app: cached.app};
   const jwt = await appJwt(env, now);
   const headers = {authorization: `Bearer ${jwt}`, accept: 'application/vnd.github+json', 'user-agent': 'motionhub.dev', 'x-github-api-version': '2022-11-28'};
-  const inst = await fetch(`${API}/repos/${REPO}/installation`, {headers});
+  const inst = await fetch(`${API}/repos/${REPO}/installation`, {headers, redirect: 'error', signal: AbortSignal.timeout(30000)});
   if (!inst.ok) throw new Error(`the GitHub App is not installed on ${REPO} (${inst.status})`);
   const {id, app_slug: slug} = await inst.json();
-  const res = await fetch(`${API}/app/installations/${id}/access_tokens`, {method: 'POST', headers, body: JSON.stringify({repositories: [REPO.split('/')[1]], permissions: {contents: 'write', pull_requests: 'write'}})});
+  const res = await fetch(`${API}/app/installations/${id}/access_tokens`, {method: 'POST', headers, redirect: 'error', signal: AbortSignal.timeout(30000), body: JSON.stringify({repositories: [REPO.split('/')[1]], permissions: {contents: 'write', pull_requests: 'write'}})});
   if (!res.ok) throw new Error(`GitHub gave no installation token (${res.status})`);
   const body = await res.json();
   cached = {token: body.token, until: Date.parse(body.expires_at) - 10 * 60 * 1000, app: slug ? `${slug}[bot]` : ''};
@@ -70,14 +71,19 @@ export const forgetToken = () => { cached = {token: '', until: 0, app: ''}; };
 /** A call to GitHub's REST API as the app's installation: the JSON answer, or null for a 404 when `missing` is allowed. */
 async function api(env, method, path, body, {missing = false} = {}) {
   const {token} = await installation(env);
-  const res = await fetch(`${API}${path}`, {method, headers: {authorization: `Bearer ${token}`, accept: 'application/vnd.github+json', 'user-agent': 'motionhub.dev', 'x-github-api-version': '2022-11-28', ...(body ? {'content-type': 'application/json'} : {})}, body: body ? JSON.stringify(body) : undefined});
+  const res = await fetch(`${API}${path}`, {method, redirect: 'error', signal: AbortSignal.timeout(30000), headers: {authorization: `Bearer ${token}`, accept: 'application/vnd.github+json', 'user-agent': 'motionhub.dev', 'x-github-api-version': '2022-11-28', ...(body ? {'content-type': 'application/json'} : {})}, body: body ? JSON.stringify(body) : undefined});
   if (missing && res.status === 404) return null;
   if (res.status === 401) forgetToken();
-  if (!res.ok) throw new Error(`GitHub answered ${res.status} to ${method} ${path.split('?')[0]}`);
+  // a refusal GitHub would give again (a missing or conflicting ref, a rejected change) is final for this attempt; an
+  // expired token, a rate limit or a server error may pass on a retry
+  if (!res.ok) throw refused(`GitHub answered ${res.status} to ${method} ${path.split('?')[0]}`, res.status >= 400 && res.status < 500 && ![401, 403, 408, 429].includes(res.status));
   return res.status === 204 ? null : res.json();
 }
 
-/** Files a submission may hold that are not text: each is a call to GitHub of its own, and a Worker makes only so many (tools/check.mjs SHARED_BINARIES, hub.share). */
+/** An error from a submission: `final` when trying the same submission again would fail the same way. */
+const refused = (message, final = true) => Object.assign(new Error(message), {final});
+
+/** Conservative shared-package binary limit, kept consistent with the CLI (hub.share). */
 export const BINARIES = 40;
 
 /** Whether bytes read as UTF-8 text with no NUL: such a file goes into the tree as text, anything else as a blob. */
@@ -99,75 +105,117 @@ export function allowed(path, id) {
   return inMotion || /^accounts\/[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,38}\.json$/.test(path);
 }
 
-/** A login's GitHub account id, as GitHub gives it now, or undefined. */
-async function accountId(env, login) {
-  const user = await api(env, 'GET', `/users/${encodeURIComponent(login)}`, undefined, {missing: true});
-  return Number.isSafeInteger(user?.id) && ['User', 'Organization'].includes(user?.type) ? user.id : undefined;
+/** A JSON file from one immutable GitHub revision. Only an explicit 404 is absence. */
+async function jsonAt(env, path, sha) {
+  const file = await api(env, 'GET', `/repos/${REPO}/contents/${path}?ref=${sha}`, undefined, {missing: true});
+  if (!file) return null;
+  if (file.type !== 'file' || file.encoding !== 'base64') throw new Error('GitHub returned no regular JSON file');
+  return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(file.content.replace(/\s/g, '')), (c) => c.charCodeAt(0))));
+}
+
+/** The current main revision and the identities it records, supplemented only by verified new GitHub logins. */
+export async function submissionBase(env, id, manifest) {
+  if (!singleAuthor(manifest)) throw new Error('a motion has exactly one author');
+  const main = await api(env, 'GET', `/repos/${REPO}/git/ref/heads/main`);
+  const sha = main.object.sha;
+  const published = await jsonAt(env, `motions/${id}/motion.json`, sha);
+  if (published && !singleAuthor(published)) throw new Error('the published author needs a maintainer to resolve ownership');
+  const accounts = new Map();
+  const logins = new Set([manifest.scope, manifest.authors[0].github, ...(published?.authors ?? []).map((a) => a.github)].map((l) => l.toLowerCase()));
+  for (const login of logins) {
+    if (!/^[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,38}$/.test(login)) throw new Error('invalid GitHub login');
+    const record = await jsonAt(env, `accounts/${login}.json`, sha);
+    if (record) {
+      if (record.login !== login || !Number.isSafeInteger(record.id) || record.id <= 0) throw new Error('invalid recorded account');
+      accounts.set(login, record.id);
+    } else {
+      const user = await api(env, 'GET', `/users/${encodeURIComponent(login)}`);
+      if (!Number.isSafeInteger(user?.id) || user.id <= 0 || user.type !== 'User') throw new Error('the author must be a GitHub user account');
+      accounts.set(login, user.id);
+    }
+  }
+  const owner = ownerId(published ?? manifest, accounts);
+  if (!owner || ownerId(manifest, accounts) !== owner || (!published && recordedId(manifest.scope, accounts) !== owner)) throw new Error('the author account cannot change and must own a new scope');
+  return {sha, published, accounts, owner};
+}
+
+/** Commit verification from GitHub's API, not the forgeable author/committer text inside a git object. */
+function trustedCommit(commit, app) {
+  return commit?.committer?.login === app && commit.commit?.verification?.verified === true && commit.commit.verification.reason === 'valid';
 }
 
 /**
- * Commits a submission and opens its pull request, or adds to the one already open for the same person and motion.
- * `files` are [{path, data}] relative to the motion's directory; `me` is {id, login, name}; `accounts` the recorded
- * ones (login → id); `published` whether a version is published already. Returns {pr, url, branch, added}.
+ * A unique branch for a first submission; subsequent shares use the owner's open PR recorded in D1.
+ * The expected head makes concurrent writes fail rather than replace someone else's changes. A retry reuses its commit.
  */
-export async function commitSubmission(env, {id, manifest, published, files, me, accounts, submission, sha256}) {
-  const branch = `share/${id.slice(1)}/${me.id}`;
+export async function commitSubmission(env, {id, manifest, published, files, me, accounts, submission, sha256, baseSha, initialBaseSha, previousPull}) {
+  const {app, token} = await installation(env);
+  if (!app) throw refused('GitHub did not identify the submission app', false);
+  let open = previousPull ? await api(env, 'GET', `/repos/${REPO}/pulls/${previousPull}`, undefined, {missing: true}) : null;
+  if (open && (!sharedFor(open, me.id, app) || !open.head.ref.startsWith(`share/${id.slice(1)}/`))) throw refused('the previous pull request is not this owner and motion');
+  if (open?.state !== 'open') open = null;
+  // beside, never under, a branch share/<scope>/<slug>/<id> from before submissions had their own: git keeps no ref
+  // inside another ref's name
+  const branch = open?.head.ref ?? `share/${id.slice(1)}/${me.id}-${submission}`;
   const ref = `heads/${branch}`;
-  const main = await api(env, 'GET', '/repos/' + REPO + '/git/ref/heads/main');
-  // a branch name is made of the motion's id and an account id: letters, digits, hyphens and slashes only
-  const existing = await api(env, 'GET', `/repos/${REPO}/git/ref/${ref}`, undefined, {missing: true});
-  const open = existing ? (await api(env, 'GET', `/repos/${REPO}/pulls?state=open&head=${encodeURIComponent(`${OWNER}:${branch}`)}`))[0] : undefined;
-  // on an open pull request the new commit goes on top, so its history shows each round; else it starts from main
-  const parent = open ? existing.object.sha : main.object.sha;
-  const baseTree = (await api(env, 'GET', `/repos/${REPO}/git/commits/${parent}`)).tree.sha;
-  const tree = await api(env, 'GET', `/repos/${REPO}/git/trees/${baseTree}?recursive=1`);
-  if (tree.truncated) throw new Error('the repository tree is too large to read whole');
-  const have = new Set(tree.tree.filter((e) => e.type === 'blob').map((e) => e.path));
-
-  const entries = [];
-  const now = new Set(files.map((f) => `motions/${id}/${f.path}`));
-  // the motion is the files submitted: what the previous version had and this one has not goes
-  for (const path of have) if (path.startsWith(`motions/${id}/`) && !now.has(path)) entries.push({path, mode: '100644', type: 'blob', sha: null});
-  for (const f of files) {
-    const path = `motions/${id}/${f.path}`;
-    if (isText(f.data)) entries.push({path, mode: '100644', type: 'blob', content: new TextDecoder('utf-8', {ignoreBOM: true}).decode(f.data)});
-    else entries.push({path, mode: '100644', type: 'blob', sha: (await api(env, 'POST', `/repos/${REPO}/git/blobs`, {content: base64(f.data), encoding: 'base64'})).sha});
+  let existing = await api(env, 'GET', `/repos/${REPO}/git/ref/${ref}`, undefined, {missing: true});
+  if (!existing) {
+    await api(env, 'POST', `/repos/${REPO}/git/refs`, {ref: `refs/${ref}`, sha: baseSha});
+    existing = {object: {sha: baseSha}};
   }
-  // every login the motion names, recorded once with its account's id (accounts/, CONTRIBUTING.md)
-  const logins = new Set([manifest.scope, ...(manifest.authors ?? []).map((a) => a?.github)].filter((l) => typeof l === 'string').map((l) => l.toLowerCase()));
-  for (const login of logins) {
-    const path = `accounts/${login}.json`;
-    if (accounts.has(login) || have.has(path)) continue;
-    const found = login === me.login.toLowerCase() ? me.id : await accountId(env, login);
-    if (!found) throw new Error(`GitHub has no account ${login}: check the scope and authors in motion.json`);
-    entries.push({path, mode: '100644', type: 'blob', content: `${JSON.stringify({login, id: found})}\n`});
-  }
-  for (const e of entries) if (!allowed(e.path, id)) throw new Error(`a submission may not write ${e.path}`);
-
-  const newTree = await api(env, 'POST', `/repos/${REPO}/git/trees`, {base_tree: baseTree, tree: entries});
+  const parent = existing.object.sha;
+  const head = (parent === baseSha || (!open && parent === initialBaseSha)) ? null : await api(env, 'GET', `/repos/${REPO}/commits/${parent}`);
+  if (head && !trustedCommit(head, app)) throw refused('the submission branch contains an unverified app commit; close it and share again');
+  const marker = `Motionhub-Submission: ${submission}`;
+  const repeated = head?.commit.message.split('\n').includes(marker);
   const name = oneLine(me.name, 80) || me.login;
   const email = `${me.id}+${me.login}@users.noreply.github.com`;
-  const added = !open;
   const what = `${published ? 'Update' : 'Add'} ${oneLine(manifest.name?.en) || id} ${oneLine(manifest.version, 40)}`;
-  const message = `${what}\n\nSubmitted through motionhub.dev (package SHA-256 ${sha256}).\n\nSigned-off-by: ${name} <${email}>\nMotionhub-Submitted-By: ${me.id} ${me.login}\nMotionhub-Submission: ${submission}\n`;
-  const commit = await api(env, 'POST', `/repos/${REPO}/git/commits`, {message, tree: newTree.sha, parents: [parent], author: {name, email, date: new Date().toISOString()}});
-  if (existing) await api(env, 'PATCH', `/repos/${REPO}/git/refs/${ref}`, {sha: commit.sha, force: !open});
-  else await api(env, 'POST', `/repos/${REPO}/git/refs`, {ref: `refs/${ref}`, sha: commit.sha});
-
-  const body = [manifest.line?.en ? `> ${plain(manifest.line.en)}` : '', '', `Submitted by @${me.login} through motionhub.dev. They certified the [Developer Certificate of Origin](https://developercertificate.org) for this package (SHA-256 \`${sha256}\`).`, '', `To change it, @${me.login} shares it again: the new version is added to this pull request.`].join('\n');
-  if (open) {
-    if (open.title !== what) await api(env, 'PATCH', `/repos/${REPO}/pulls/${open.number}`, {title: what});
-    await api(env, 'POST', `/repos/${REPO}/issues/${open.number}/comments`, {body: `@${me.login} shared it again: ${oneLine(manifest.version, 40)}, package SHA-256 \`${sha256}\`.`});
-    return {pr: open.number, url: open.html_url, branch, added};
+  const message = `Submitted through motionhub.dev (package SHA-256 ${sha256}).\n\nSigned-off-by: ${name} <${email}>\nMotionhub-Submitted-By: ${me.id} ${me.login}\n${marker}\n`;
+  let commitSha = parent;
+  if (repeated) {
+    if (!head.commit.message.includes(`package SHA-256 ${sha256}`)) throw refused('a submission id was reused for different bytes');
+  } else {
+    const baseTree = (await api(env, 'GET', `/repos/${REPO}/git/commits/${parent}`)).tree.sha;
+    const tree = await api(env, 'GET', `/repos/${REPO}/git/trees/${baseTree}?recursive=1`);
+    if (tree.truncated) throw refused('the repository tree is too large to read whole');
+    const have = new Set(tree.tree.filter((e) => e.type === 'blob').map((e) => e.path));
+    const additions = files.map((f) => ({path: `motions/${id}/${f.path}`, contents: base64(f.data)}));
+    const now = new Set(additions.map((f) => f.path));
+    const deletions = [...have].filter((p) => p.startsWith(`motions/${id}/`) && !now.has(p)).map((path) => ({path}));
+    for (const login of new Set([manifest.scope, manifest.authors[0].github].map((l) => l.toLowerCase()))) {
+      const path = `accounts/${login}.json`;
+      if (have.has(path)) continue;
+      const id = recordedId(login, accounts);
+      if (!id) throw refused('the author login was not verified');
+      additions.push({path, contents: base64(utf8(`${JSON.stringify({login, id})}\n`))});
+    }
+    for (const f of [...additions, ...deletions]) if (!allowed(f.path, id)) throw refused('a submission attempted to write outside its motion');
+    const result = await fetch(`${API}/graphql`, {method: 'POST', redirect: 'error', signal: AbortSignal.timeout(30000), headers: {authorization: `Bearer ${token}`, 'content-type': 'application/json', 'user-agent': 'motionhub.dev'}, body: JSON.stringify({
+      query: 'mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid } } }',
+      variables: {input: {branch: {repositoryNameWithOwner: REPO, branchName: branch}, expectedHeadOid: parent, message: {headline: what, body: message}, fileChanges: {additions, deletions}}},
+    })});
+    if (!result.ok) throw refused(`GitHub answered ${result.status} to the commit`, result.status < 500 && ![401, 403, 408, 429].includes(result.status));
+    const body = await result.json();
+    commitSha = body.data?.createCommitOnBranch?.commit?.oid;
+    // the branch is not at the head it was read at (someone pushed to it, or a commit of this submission landed): a
+    // retry reads it again and either finds this submission's commit there or is refused the same way
+    if (body.errors?.length || !commitSha) throw refused('GitHub did not accept the expected branch head; retry to reconcile');
+    const committed = await api(env, 'GET', `/repos/${REPO}/commits/${commitSha}`);
+    if (!trustedCommit(committed, app)) throw refused('GitHub did not verify the app commit');
   }
-  const pr = await api(env, 'POST', `/repos/${REPO}/pulls`, {title: what, head: branch, base: 'main', body});
-  // a label helps the maintainers find it; the pull request is open without one
-  await api(env, 'POST', `/repos/${REPO}/issues/${pr.number}/labels`, {labels: ['submission']}).catch(() => {});
-  return {pr: pr.number, url: pr.html_url, branch, added};
+  if (!open) open = (await api(env, 'GET', `/repos/${REPO}/pulls?state=open&head=${encodeURIComponent(`${OWNER}:${branch}`)}`))[0];
+  const added = !open;
+  if (!open) {
+    const body = [manifest.line?.en ? `> ${plain(manifest.line.en)}` : '', '', `Submitted by @${me.login} through motionhub.dev. They certified the [Developer Certificate of Origin](https://developercertificate.org) for package SHA-256 \`${sha256}\`.`, '', 'To update it, its author shares it again.'].join('\n');
+    open = await api(env, 'POST', `/repos/${REPO}/pulls`, {title: what, head: branch, base: 'main', body});
+    await api(env, 'POST', `/repos/${REPO}/issues/${open.number}/labels`, {labels: ['submission']}).catch(() => {});
+  } else if (open.title !== what) await api(env, 'PATCH', `/repos/${REPO}/pulls/${open.number}`, {title: what});
+  return {pr: open.number, url: open.html_url, branch, added, commitSha};
 }
 
-/** A branch the app keeps for one person: share/<scope>/<slug>/<their account id>. */
-const SHARE_BRANCH = /^share\/[a-z0-9-]+\/[a-z0-9-]+\/([1-9]\d*)$/;
+/** A branch the app keeps for one person: share/<scope>/<slug>/<their account id>, then -<submission> for one made since submissions had their own. */
+const SHARE_BRANCH = /^share\/[a-z0-9-]+\/[a-z0-9-]+\/([1-9]\d*)(?:-[A-Za-z0-9_-]{22})?$/;
 
 /**
  * Whether a pull request is one the app (its account `app`, <slug>[bot]) opened for the person with the account id

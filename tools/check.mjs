@@ -14,7 +14,7 @@
 // `--format-only` skips the hub's rules (a tool checking a motion it did not get from this repository wants only the
 // format). `--author` also requires that login among the motion's authors (the pull request's checks pass the opener's
 // login, and `--author-id` their GitHub account's numeric id). `--was` names the motion.json already published for
-// this slug: a change must then come from one of its authors and carry a higher version (SPEC.md §9).
+// this slug: a change must then come from its sole author and carry a higher version (SPEC.md §9).
 //
 // Accounts: a GitHub login can change, and the old one can then be taken by someone else, so in this repository each
 // login a motion names (its scope and its authors) is recorded once with its account's numeric id, which never
@@ -23,12 +23,14 @@
 // must name the id GitHub gives that login now. `--accounts` names the accounts to judge by when they are not ./accounts/:
 // main's checker reading a pull request's files (.github/workflows/ownership.yml). `--signoff` names a pull request's
 // commits as GitHub lists them, each of which must be signed off. `--removed` judges a published motion a pull request
-// takes out or moves away: only one of its authors may. `--submitter` prints the account a pull request motionhub's
+// takes out or moves away: only its sole author may. `--submitter` prints the account a pull request motionhub's
 // GitHub App opened was submitted by (its commits' Motionhub-Submitted-By line). Exit status 1 when any issue is found.
 
 import {readFileSync, readdirSync, statSync, lstatSync, existsSync} from 'node:fs';
 import {join, basename, dirname, resolve, relative, extname} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {authorProblem, singleAuthor} from './security/ownership.mjs';
+import {sensitiveFile} from './security/package.mjs';
 
 /** The newest version of the format; every version before it is still read (SPEC.md §9). */
 export const SPEC = 'motion/0.6';
@@ -90,7 +92,7 @@ const UNSAFE = [
 ];
 
 /** Check one motion directory; returns its issues, each `{code, at, message}` with `at` relative to the directory. */
-export function checkMotion(dir, {hub = true, author, authorId, was, accounts, shared = false} = {}) {
+export function checkMotion(dir, {hub = true, author, authorId, was, accounts, catalogue, shared = false} = {}) {
   const issues = [];
   const add = (code, at, message) => issues.push({code, at, message});
   // a link is refused before anything is read: it could name a file outside the motion (a runner's environment, a
@@ -99,7 +101,7 @@ export function checkMotion(dir, {hub = true, author, authorId, was, accounts, s
   if (linked.length) { for (const l of linked) add('format.symlink', l, 'a motion holds files, never links: replace it with the file it points to'); return issues; }
   if (existsSync(dir) && statSync(dir).isFile() && basename(dir) === 'MOTION.md') return checkOneFile(dir, hub, add), issues;
   if (!existsSync(dir) || !statSync(dir).isDirectory()) return add('format.dir', '.', 'not a directory'), issues;
-  if (!existsSync(join(dir, 'motion.json')) && existsSync(join(dir, 'MOTION.md')) && oneFileSpec(join(dir, 'MOTION.md'))) return checkPlace(dir, undefined, add, accounts), checkOneFile(join(dir, 'MOTION.md'), hub, add), issues;
+  if (!existsSync(join(dir, 'motion.json')) && existsSync(join(dir, 'MOTION.md')) && oneFileSpec(join(dir, 'MOTION.md'))) return checkPlace(dir, undefined, add, accounts, catalogue), checkOneFile(join(dir, 'MOTION.md'), hub, add), issues;
 
   const entries = readdirSync(dir, {withFileTypes: true});
   for (const file of FILES) if (!entries.some((e) => e.isFile() && e.name === file)) add('format.missing', file, `${file} is required`);
@@ -126,8 +128,8 @@ export function checkMotion(dir, {hub = true, author, authorId, was, accounts, s
   }
 
   const who = {author, authorId: authorId === undefined || authorId === null || authorId === '' ? undefined : Number(authorId), accounts};
-  checkPlace(dir, manifest, add, accounts);
-  if (hub) checkHub(dir, manifest, {...who, was}, add);
+  checkPlace(dir, manifest, add, accounts, catalogue);
+  if (hub) checkHub(dir, manifest, {...who, catalogue, was}, add);
   if (hub && was) checkUpdate(manifest, was, who, add);
   // shared through motionhub.dev (share without --pr), each file that is not text is a call of its own to GitHub
   if (shared) {
@@ -633,23 +635,25 @@ export function compareVersions(a, b) {
 function isAccount(login, {author, authorId, accounts}) {
   if (typeof login !== 'string' || !author) return false;
   const id = accounts?.get(login.toLowerCase());
-  if (id !== undefined && authorId !== undefined) return id === authorId;
+  if (accounts && authorId !== undefined) return id !== undefined && id === authorId;
   return login.toLowerCase() === author.toLowerCase();
 }
 
-/** A published motion taken out of the catalogue (or moved to another id): only one of its authors does it. */
+/** A published motion taken out of the catalogue (or moved to another id): only its sole author does it. */
 export function checkRemoval(was, {author, authorId, accounts} = {}) {
   const issues = [];
   const who = {author, authorId: authorId === undefined || authorId === null || authorId === '' ? undefined : Number(authorId), accounts};
   const authors = Array.isArray(was?.authors) ? was.authors : [];
-  if (!author || !authors.some((a) => isAccount(a?.github, who))) {
+  if (!singleAuthor(was) || !author || !authors.some((a) => isAccount(a?.github, who))) {
     issues.push({code: 'hub.owner', at: 'motion.json', message: `this motion is published by ${authors.map((a) => String(a?.github ?? '').toLowerCase()).join(', ') || 'nobody'}; only one of them may take it out or move it`});
   }
   return issues;
 }
 
-/** A change to a published motion: only one of its authors makes it, and it is a new, higher version. */
+/** A change to a published motion: only its sole author makes it, and it is a new, higher version. */
 function checkUpdate(manifest, was, who, add) {
+  const problem = authorProblem(manifest, was, who.accounts);
+  if (problem) add('hub.author', 'motion.json', problem);
   const {author} = who;
   const github = (list) => (Array.isArray(list) ? list : []).map((a) => String(a?.github ?? '').toLowerCase());
   if (author && !(Array.isArray(was.authors) ? was.authors : []).some((a) => isAccount(a?.github, who))) {
@@ -674,22 +678,23 @@ export function listMotions(root) {
  * Where a motion directory sits: under a `motions/` directory (`in`), as `at` (`<name>` or `@<scope>/<name>`), with `root`
  * that `motions/` directory, and whether that is the catalogue (`catalogue`): a `motions/` with `accounts/` beside it, as
  * in this repository, or any `motions/` when the accounts to judge by are given (a pull request's files, checked by main's
- * checker). Any other `motions/` is a project's (SPEC.md §13).
+ * checker). Any other `motions/` is a project's (SPEC.md §13). `catalogue` says it outright: a motion shared from a
+ * project is judged by the hub's accounts and still sits where the project keeps it.
  */
-export function place(dir, {accounts} = {}) {
+export function place(dir, {accounts, catalogue} = {}) {
   const path = resolve(dir), name = basename(path), parent = basename(dirname(path));
   const scoped = parent.startsWith('@') && basename(dirname(dirname(path))) === 'motions';
   const inMotions = scoped || parent === 'motions';
   const root = scoped ? dirname(dirname(path)) : dirname(path);
-  return {in: inMotions, at: scoped ? `${parent}/${name}` : name, root: inMotions ? root : undefined, catalogue: inMotions && (accounts !== undefined || existsSync(join(dirname(root), 'accounts')))};
+  return {in: inMotions, at: scoped ? `${parent}/${name}` : name, root: inMotions ? root : undefined, catalogue: inMotions && (catalogue ?? (accounts !== undefined || existsSync(join(dirname(root), 'accounts'))))};
 }
 
 /**
  * In a project (SPEC.md §13), a motion under motions/@<scope>/ is a copy taken from a hub and sits at its id; any other is
  * the project's own, at motions/<name>/ with a name of a-z, 0-9 and single hyphens.
  */
-function checkPlace(dir, manifest, add, accounts) {
-  const {in: inMotions, at, catalogue} = place(dir, {accounts});
+function checkPlace(dir, manifest, add, accounts, inCatalogue) {
+  const {in: inMotions, at, catalogue} = place(dir, {accounts, catalogue: inCatalogue});
   if (!inMotions || catalogue) return;
   if (!at.startsWith('@')) {
     if (!NAME.test(at)) add('format.place', '.', `motions/${at}/: a motion of the project's own is named with a-z, 0-9 and single hyphens`);
@@ -698,11 +703,12 @@ function checkPlace(dir, manifest, add, accounts) {
   if (typeof manifest?.slug === 'string' && motionId(manifest) !== at) add('format.place', 'motion.json', `motions/${at}/ holds the motion ${motionId(manifest)}: in a project, motions/@<scope>/ holds only copies taken from a hub, each at its id. Keep a motion of your own at motions/<name>/`);
 }
 
-function checkHub(dir, manifest, {author, authorId, accounts, was}, add) {
+function checkHub(dir, manifest, {author, authorId, accounts, catalogue, was}, add) {
+  if (!singleAuthor(manifest)) add('hub.author', 'motion.json', 'a motion on motionhub has exactly one author; credit other contributions in CREDITS.md');
   const who = {author, authorId, accounts};
   // in the catalogue a motion is motions/<id>/: motions/<slug>/ or motions/@<scope>/<slug>/ (HUB.md). A project's own
   // motion may be named otherwise (motions/<name>/, SPEC.md §13); one under motions/@<scope>/ is checked by checkPlace
-  const {catalogue: inCatalogue, at, root} = place(dir, {accounts});
+  const {catalogue: inCatalogue, at, root} = place(dir, {accounts, catalogue});
   if (inCatalogue && typeof manifest?.slug === 'string' && motionId(manifest) !== at) add('hub.slug', 'motion.json', `the motion ${motionId(manifest)} sits at motions/${motionId(manifest)}/ in the catalogue, not motions/${at}/`);
   // a motion it is based on is one in the catalogue, so the site can link and credit it
   if (inCatalogue && Array.isArray(manifest?.basedOn)) {
@@ -713,7 +719,7 @@ function checkHub(dir, manifest, {author, authorId, accounts, was}, add) {
     if (spdx(manifest.license.code) && !spdxIds(manifest.license.code).every((id) => CODE_LICENSES.has(id))) add('hub.license', 'motion.json', `license.code must be one of ${[...CODE_LICENSES].join(', ')}`);
   }
   if (author && Array.isArray(manifest?.authors) && !manifest.authors.some((a) => isAccount(a?.github, who))) {
-    add('hub.author', 'motion.json', `the pull request's author "${author}" must be among the authors`);
+    add('hub.author', 'motion.json', `the pull request's author "${author}" must be the sole author`);
   }
   // every motion on motionhub is published under its author's GitHub name: an id is @<scope>/<slug>, and a new one
   // only by the scope's owner; a change is checkUpdate's
@@ -745,6 +751,8 @@ function checkHub(dir, manifest, {author, authorId, accounts, was}, add) {
       if (FORBIDDEN_DIRS.has(name)) add('hub.build', rel, 'no build output, dependencies or repositories in a motion');
       continue;
     }
+    const secret = sensitiveFile(rel, readFileSync(join(dir, rel)));
+    if (secret) add(secret.code, secret.at, secret.message);
     const size = statSync(join(dir, rel)).size;
     total += size;
     count++;
@@ -921,7 +929,12 @@ export function unsigned(commits) {
  * and at least one does; else {error}. ownership.yml asks only for the app's own pull requests from this repository,
  * whose branches no one but the app and the maintainers can push to.
  */
-export function submitter(commits) {
+export function submitter(commits, app) {
+  if (!Array.isArray(commits) || !commits.length || !app || commits.some((c) =>
+    c?.committer?.login !== app || c.commit?.verification?.verified !== true || c.commit.verification.reason !== 'valid'
+    || !/^Motionhub-Submitted-By: \S+ \S+\s*$/m.test(c.commit?.message ?? ''))) {
+    return {error: 'every submission commit must be verified by GitHub, committed by the expected app, and name its submitter'};
+  }
   const named = [];
   for (const c of Array.isArray(commits) ? commits : []) {
     for (const m of String(c?.commit?.message ?? '').matchAll(/^Motionhub-Submitted-By: (\S+) (\S+)\s*$/gm)) named.push([m[1], m[2]]);
@@ -939,7 +952,7 @@ export async function main(args) {
   const value = (flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : undefined; };
   const author = value('--author'), authorId = value('--author-id'), wasPath = value('--was'), accountsWas = value('--accounts-was');
   if (value('--submitter') !== undefined) {
-    const who = submitter(JSON.parse(readFileSync(value('--submitter'), 'utf8')));
+    const who = submitter(JSON.parse(readFileSync(value('--submitter'), 'utf8')), process.env.MOTIONHUB_BOT);
     if (who.error) { console.error(who.error); return 1; }
     console.log(`${who.id} ${who.login}`);
     return 0;

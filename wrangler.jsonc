@@ -14,10 +14,10 @@
     // site's pages; on the site it falls back to these assets for any path no route of its own claims (site/worker.mjs)
     "run_worker_first": true
   },
-  // ARTIFACTS holds uploaded Artifact files (site/artifacts.mjs). Keep the bucket private: no public endpoint; content
-  // is served only through the Worker on ARTIFACT_CONTENT_ORIGIN (site/artifacts-setup.md).
+  // Private draft and Artifact buckets have no public endpoint.
   "r2_buckets": [
     {"binding": "PACKAGES", "bucket_name": "motionhub"},
+    {"binding": "SUBMISSIONS_BUCKET", "bucket_name": "motionhub-submissions"},
     {"binding": "ARTIFACTS", "bucket_name": "motionhub-artifacts"}
   ],
   "analytics_engine_datasets": [{"binding": "EVENTS", "dataset": "motionhub_events"}],
@@ -27,14 +27,14 @@
   "d1_databases": [{"binding": "DB", "database_name": "motionhub", "database_id": "b3cb4780-83d2-4424-9b6a-66edeec440c7", "migrations_dir": "site/migrations"}],
   // sharing without gh (site/submissions.mjs, site/github-app.mjs): GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY are
   // secrets on the Worker; until both are set, or with SUBMISSIONS "off", an upload is refused and the command line says
-  // to use --pr. A package waits in PACKAGES under submissions/ for a day; the daily cron's sweep deletes it after.
-  // Artifacts are served from their own origin, never the site's; without ARTIFACTS and ARTIFACT_CONTENT_ORIGIN they stay off.
+  // to use --pr. A package waits in SUBMISSIONS_BUCKET under submissions/ for a day; the daily cron's sweep deletes it after.
   "vars": {
     // Enable only after applying 0006_admin.sql and configuring Access + bootstrap identities.
     "ENVIRONMENT": "production",
     "ADMIN_ENABLED": "off",
     "GITHUB_CLIENT_ID": "Ov23liASjeKx0TOW1gNl",
-    "SUBMISSIONS": "on",
+    "SUBMISSIONS": "off",
+    "UPLOADS_PER_DAY": "1000",
     "ARTIFACT_CONTENT_ORIGIN": "https://artifacts.motionhub.dev",
     "ARTIFACT_SITE_ORIGIN": "https://motionhub.dev"
   },
@@ -44,5 +44,7 @@
     {"pattern": "motionhub.dev", "custom_domain": true},
     {"pattern": "artifacts.motionhub.dev", "custom_domain": true}
   ],
-  "observability": {"enabled": true}
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": {"enabled": true, "redact_query_string": true}
 }

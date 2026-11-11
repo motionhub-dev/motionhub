@@ -239,8 +239,8 @@ export default {
   },
   async scheduled(controller, env, ctx) {
     ctx.waitUntil(rollup(env));
-    ctx.waitUntil(sweep(env).catch(() => {}));
     ctx.waitUntil(sweepArtifacts(env));
+    ctx.waitUntil(sweep(env).then((result) => console.log(JSON.stringify({event: 'submission_sweep', ...result}))).catch(() => console.error('submission_sweep_failed')));
     ctx.waitUntil(sweepAdmin(env));
   },
 };

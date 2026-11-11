@@ -18,6 +18,8 @@
   ],
   "r2_buckets": [
     { "binding": "PACKAGES", "bucket_name": "motionhub-admin-local" },
+    // private drafts, as in wrangler.jsonc: the console reads a submission's package from here
+    { "binding": "SUBMISSIONS_BUCKET", "bucket_name": "motionhub-admin-submissions-local" },
     {
       "binding": "ARTIFACTS",
       "bucket_name": "motionhub-admin-artifacts-local",

@@ -3,9 +3,10 @@
 The open motion format and the public catalogue behind motionhub.dev. Read [README.md](README.md), then [SPEC.md](SPEC.md).
 
 - **SPEC.md only grows.** A change never alters the meaning of what a published version says; it adds, under a new `spec` version. What only one tool needs stays in that tool's directory and `x-<tool>` members (SPEC.md §7) until several tools share it.
-- **The rules live in one place as code:** `tools/check.mjs` (format and hub rules, no dependencies) with its tests in `tests/`. A rule written in SPEC.md or CONTRIBUTING.md and not in the checker is a bug, and the other way round.
+- **The rules live in one place as code:** `tools/check.mjs` and its portable `tools/security/` modules (format and hub rules, no dependencies) with its tests in `tests/`. A rule written in SPEC.md or CONTRIBUTING.md and not in the checker is a bug, and the other way round.
 - **English** for everything a developer reads: code, comments, documents, commit messages. A motion's own `MOTION.md`, translations and descriptions are in whatever language its author chooses (SPEC.md §8).
 - **A published motion never changes under its version** (SPEC.md §9): any change to a file in a motion, a component included, comes with a higher `version` in its `motion.json`, or deploy refuses to replace the published package.
+- **One author per hub motion.** `authors` has exactly one entry. Updates keep the same numeric account id; no implicit transfers or co-author permissions. Credit help in `CREDITS.md`.
 - **Accounts, not logins, own motions.** `accounts/<login>.json` records each login a motion names with its GitHub account's numeric id, once; ownership and scope are checked by that id (CONTRIBUTING.md, "Accounts"). A record is never changed or removed.
 - **Every commit is signed off** (`git commit -s`); the checks refuse a pull request without it.
 - **Who may change what is judged by main**: `.github/workflows/ownership.yml` runs on `pull_request_target` (always main's copy) with main's checker over the pull request's files as data. Keep it that way: never run the pull request's code there, never give it a secret beyond the read-only `GITHUB_TOKEN`, nor a write permission.

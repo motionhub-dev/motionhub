@@ -21,7 +21,7 @@ function cookies(request) {
   for (const part of (request.headers.get('cookie') ?? '').split(';')) {
     const at = part.indexOf('=');
     if (at > 0) {
-      try { out[part.slice(0, at).trim()] = decodeURIComponent(part.slice(at + 1).trim()); } catch {}
+      try { out[part.slice(0, at).trim()] = decodeURIComponent(part.slice(at + 1).trim()); } catch { /* malformed cookie, not a session */ }
     }
   }
   return out;
@@ -121,7 +121,18 @@ async function logout(request, env) {
 async function forget(request, env) {
   const me = await person(request, env);
   // their shares too (site/submissions.mjs): the pull requests already opened are GitHub's, public, and stay
-  if (me) await env.DB.batch(['likes', 'sessions', 'submissions'].map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE person = ?`).bind(me.id)).concat(env.DB.prepare('DELETE FROM people WHERE id = ?').bind(me.id)));
+  if (me) {
+    const {results} = await env.DB.prepare('SELECT id FROM submissions WHERE person = ?1 OR owner_id = ?1').bind(me.id).all();
+    if (results.length && !env.SUBMISSIONS_BUCKET) return json({error: 'private files could not be removed; try again later'}, 503);
+    try {
+      for (let at = 0; at < results.length; at += 500) await env.SUBMISSIONS_BUCKET.delete(results.slice(at, at + 500).map(r => `submissions/${r.id}.tgz`));
+    } catch { return json({error: 'private files could not be removed; try again later'}, 503); }
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM submissions WHERE person = ?1 OR owner_id = ?1').bind(me.id),
+      ...['likes', 'sessions'].map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE person = ?`).bind(me.id)),
+      env.DB.prepare('DELETE FROM people WHERE id = ?').bind(me.id),
+    ]);
+  }
   return signedOut({ok: true, forgotten: Boolean(me)});
 }
 
