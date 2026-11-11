@@ -1,8 +1,0 @@
----
-// The prompt to paste into an agent, with the topic left for the visitor to fill in and marked so it stands out.
-// What is copied is the plain text, placeholder and all.
-import {SITE, TOPIC} from '../lib/catalogue.mjs';
-interface Props { id: string; slug: string; class?: string; copy?: boolean }
-const {id, slug, class: cls = 'prompt', copy = false} = Astro.props;
----
-<pre class={cls} id={id} data-copy={copy ? '' : undefined} tabindex={copy ? 0 : undefined}>Read {SITE}/llms.txt, then make a film about <span class="nb">"<span class="slot">{TOPIC}</span>"</span> in the motion <span class="target">{slug}</span></pre>

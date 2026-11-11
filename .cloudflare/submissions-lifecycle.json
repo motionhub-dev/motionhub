@@ -1,8 +1,0 @@
-{
-  "rules": [{
-    "id": "expire-submission-packages",
-    "enabled": true,
-    "conditions": {"prefix": "submissions/"},
-    "deleteObjectsTransition": {"condition": {"type": "Age", "maxAge": 86400}}
-  }]
-}
