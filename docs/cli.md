@@ -1,6 +1,6 @@
 # Command line
 
-`@motionhub/cli` finds, fetches and checks motions, and uploads Artifacts. It needs Node.js 20 or later and has no dependencies; run it with `npx` or install it with `npm i -g @motionhub/cli` for the `motionhub` command.
+`@motionhub/cli` finds, fetches and checks motions, keeps your own private ones, and uploads Artifacts. It needs Node.js 20 or later and has no dependencies; run it with `npx` or install it with `npm i -g @motionhub/cli` for the `motionhub` command.
 
 ```sh
 npx @motionhub/cli <command> [options]
@@ -17,11 +17,13 @@ The motions on motionhub.dev that have every word, in their id, names, line or t
 ## get
 
 ```sh
-npx @motionhub/cli get <id> [--out <dir>]
+npx @motionhub/cli get <id> [--out <dir>] [--private]
 npx @motionhub/cli get
 ```
 
 The newest version of a motion, by its id (`@iamsuosi/lab-notebook`), into `./motions/<id>/`, checked against the SHA-256 in the index and recorded in `./motions.lock.json`. A project holds as many motions as its film uses, each at its id, beside its own motions in `./motions/<name>/` ([a project's motions](../SPEC.md#13-a-projects-motions)). A motion already there is kept: to take a newer version, remove its directory and get it again. With `--out` it goes into that directory instead, and is not recorded.
+
+With `--private`, the newest version of one of your own [private motions](#private), downloaded signed in, checked against its SHA-256 and recorded in the lock as private.
 
 With no id, `get` takes every motion the lock records, at the version it records, as `npm install` does from a lockfile: so a project's motions come back on another computer or in a cloud session. A motion already there is packed the way the hub packs it and compared with the recorded SHA-256; one that was changed is named, and the exit status is 1.
 
@@ -39,7 +41,7 @@ What a project took from motionhub, so the same film is made in the same motions
 }
 ```
 
-`sha256` is the SHA-256 of the motion's package at `https://motionhub.dev/m/<id>/<version>.tgz`, which never changes once published.
+`sha256` is the SHA-256 of the motion's package at `https://motionhub.dev/m/<id>/<version>.tgz`, which never changes once published. A private motion of your own is recorded with `"private": true`: `get` takes it back from your private motions, signed in as you (a project that holds one needs its owner's `motionhub login` to restore it).
 
 ## init
 
@@ -75,6 +77,20 @@ npx @motionhub/cli share <dir> --pr [--github <login>]
 A motion through the checks its pull request will run, against what is published, then uploaded to motionhub.dev. It prints a link and a code. Open the link and sign in with GitHub; motionhub asks for no permissions. Check the motion and type the code: motionhub's GitHub App opens the pull request on your behalf, with your account and DCO sign-off recorded in an App-signed commit. The motion must have one author. Only that account can read its private draft. CLI 0.9.0 polls using a request header, never a token in the URL; motionhub.dev takes shares only from 0.9.0 and later. No git, `gh` or GitHub token is needed, so it works from a cloud agent too. `--wait` waits for the pull request, up to 30 minutes, and prints its address. A link works for a day. Shared again while your pull request is open, the new version is added to it.
 
 With `--pr` it opens the pull request itself, from your fork, with git and `gh`, signed off, as the account `gh` is signed in as. `--github <login>` alone runs the checks as that account and opens nothing. [Share a motion](../CONTRIBUTING.md) explains what happens next.
+
+## private
+
+```sh
+npx @motionhub/cli private push <dir>
+npx @motionhub/cli private list
+npx @motionhub/cli private delete <id>[@<version>]
+```
+
+A motion of your own, kept on motionhub.dev for you alone: not in git, not in the index, on no page, and only your account can list, download or delete it. It is a motion in this format like any other: `push` checks it against the format (not the hub's rules, since it is published nowhere), packs it as `share` does and keeps that version; motionhub.dev checks the package as it checks a share. Its scope and its one author are your own GitHub login. A version, once kept, never changes: to keep a change, raise `version` in `motion.json`. You keep at most 20 private motions and 20 versions of each, each at most 1 MB packed.
+
+`list` prints each private motion, its newest version first. `delete` removes one version (`@iamsuosi/ledger@1.0.0`) or every version of a motion; copies already taken into a project stay there. Take one into a project with `get <id> --private`. To publish one, `share` it: it then goes through the pull request every motion does.
+
+When the command line is not signed in, `private` and `get --private` sign in first, as `login` does.
 
 ## login, whoami, logout
 

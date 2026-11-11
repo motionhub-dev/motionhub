@@ -27,6 +27,32 @@ async function api(path, method, token, body, headers = {}) {
   return data;
 }
 
+/**
+ * `send(token)` as the signed-in command line: with the token kept from `motionhub login`, else after signing in (a
+ * link to open, as login does), and once more after signing in again when the kept token is refused (expired, or
+ * logged out elsewhere). Private motions (tools/private-cli.mjs) ask this way.
+ */
+export async function asSignedIn(send) {
+  const token = await readToken();
+  return send(token || await login()).catch(async (error) => {
+    if (error.status !== 401 || !token) throw error;
+    return send(await login());
+  });
+}
+
+/** The bytes at `path` on motionhub.dev, asked with `token`: an error with the status when it answers anything but 200. */
+export async function bytesAt(path, token) {
+  credentialPath();
+  const response = await fetch(base + path, {headers: {authorization: 'Bearer ' + token}, redirect: 'error', signal: AbortSignal.timeout(30000)});
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw Object.assign(new Error(data.error ?? `MotionHub returned HTTP ${response.status}.`), {status: response.status});
+  }
+  return Buffer.from(await response.arrayBuffer());
+}
+
+export {api, base as origin};
+
 async function login() {
   const device = await api('/api/cli/device', 'POST');
   console.log('Open this link in your browser, signed in to motionhub.dev, and confirm it is you:\n' + device.url);
@@ -141,10 +167,6 @@ export async function artifactCli(command, args) {
   const endpoint = '/api/artifacts' + (id ? '/' + id : '');
   const headers = {'content-type': type};
   if (title !== undefined) headers['x-artifact-title'] = encodeURIComponent(title);
-  const upload = (credential) => api(endpoint, 'POST', credential, body, {...headers});
-  const result = await upload(token || await login()).catch(async (error) => {
-    if (error.status !== 401 || !token) throw error;
-    return upload(await login());
-  });
+  const result = await asSignedIn((credential) => api(endpoint, 'POST', credential, body, {...headers}));
   console.log(`Preview: ${new URL(result.preview, base)}`);
 }

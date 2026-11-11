@@ -31,6 +31,7 @@ import {dirname, join, relative, resolve} from 'node:path';
 import {gunzipSync} from 'node:zlib';
 import {ID, SPEC, checkMotion, expandTokens, listMotions, motionId, parseFrontMatter, place} from './check.mjs';
 import {files as filesOf, tgz} from './pack.mjs';
+import {privateIndex, privatePackage} from './private-cli.mjs';
 
 export const HUB = 'https://motionhub.dev';
 
@@ -42,7 +43,11 @@ const LOCK_VERSION = 1;
 /** Where a motion taken from a hub sits in a project: motions/<id>/, so motions/@<scope>/<slug>/. */
 export const motionPath = (id, root = '.') => join(root, MOTIONS, ...id.split('/'));
 
-/** The project's lock: `{lockfileVersion, motions: {<id>: {version, sha256}}}`, with no motions when there is none. */
+/**
+ * The project's lock: `{lockfileVersion, motions: {<id>: {version, sha256, private?}}}`, with no motions when there is
+ * none. `private: true` marks a motion of your own kept on motionhub.dev for you alone (tools/private-cli.mjs): it is
+ * taken back signed in, from your private motions, not from the public index.
+ */
 export function readLock(root = '.') {
   const file = join(root, LOCK);
   if (!existsSync(file)) return {lockfileVersion: LOCK_VERSION, motions: {}};
@@ -51,14 +56,14 @@ export function readLock(root = '.') {
   if (lock?.lockfileVersion !== LOCK_VERSION || !lock.motions || typeof lock.motions !== 'object') throw new Error(`${file} is in a format this version does not know: update with npx @motionhub/cli@latest`);
   // an entry names where a motion is written, so it must be an id, and its package a SHA-256
   for (const [id, m] of Object.entries(lock.motions)) {
-    if (!ID.test(id) || !id.startsWith('@') || typeof m?.version !== 'string' || !/^[0-9A-Za-z.+-]+$/.test(m.version) || !/^[0-9a-f]{64}$/.test(m?.sha256 ?? '')) throw new Error(`${file}: "${id}" is not a motion this file can record ({"version", "sha256"} under an id @<scope>/<slug>)`);
+    if (!ID.test(id) || !id.startsWith('@') || typeof m?.version !== 'string' || !/^[0-9A-Za-z.+-]+$/.test(m.version) || !/^[0-9a-f]{64}$/.test(m?.sha256 ?? '') || (m.private !== undefined && m.private !== true)) throw new Error(`${file}: "${id}" is not a motion this file can record ({"version", "sha256"} under an id @<scope>/<slug>, and "private": true for one of your own)`);
   }
   return lock;
 }
 
 /** Write the project's lock, its motions in the order of their ids, so the file only changes where a motion does. */
 export function writeLock(lock, root = '.') {
-  const motions = Object.fromEntries(Object.keys(lock.motions).sort().map((id) => [id, {version: lock.motions[id].version, sha256: lock.motions[id].sha256}]));
+  const motions = Object.fromEntries(Object.keys(lock.motions).sort().map((id) => [id, {version: lock.motions[id].version, sha256: lock.motions[id].sha256, ...(lock.motions[id].private ? {private: true} : {})}]));
   writeFileSync(join(root, LOCK), `${JSON.stringify({lockfileVersion: LOCK_VERSION, motions}, null, 2)}\n`);
 }
 
@@ -126,10 +131,14 @@ export function unpack(row, gz) {
   return files;
 }
 
-/** Write the package `row` names (its `slug` the motion's id, `package.url` and `package.sha256`) into `out`, which must not exist yet. */
+/**
+ * Write the package `row` names (its `slug` the motion's id, `package.url` and `package.sha256`) into `out`, which must
+ * not exist yet. A `private` row's package is downloaded signed in (tools/private-cli.mjs); either is checked against its SHA-256.
+ */
 async function take(row, out, base) {
   if (existsSync(out)) throw new Error(`${out} already exists: a project keeps the copy it took, so remove it first or choose --out`);
-  const files = unpack(row, Buffer.from(await (await get(new URL(row.package.url, base).href)).arrayBuffer()));
+  const gz = row.private ? await privatePackage(row) : Buffer.from(await (await get(new URL(row.package.url, base).href)).arrayBuffer());
+  const files = unpack(row, gz);
   for (const [path, data] of files) { mkdirSync(dirname(join(out, path)), {recursive: true}); writeFileSync(join(out, path), data); }
 }
 
@@ -149,10 +158,10 @@ export async function getMotion(id, out, base = HUB, rows) {
 export async function restore(root = '.', base = HUB) {
   const lock = readLock(root), lines = [];
   let changed = 0;
-  for (const [id, {version, sha256}] of Object.entries(lock.motions)) {
+  for (const [id, {version, sha256, private: own}] of Object.entries(lock.motions)) {
     const out = motionPath(id, root), at = relative(root, out);
     if (!existsSync(out)) {
-      await take({slug: id, version, package: {url: `/m/${id}/${version}.tgz`, sha256}}, out, base);
+      await take({slug: id, version, private: own, package: {url: `${own ? '/api/private' : ''}/m/${id}/${version}.tgz`, sha256}}, out, base);
       lines.push(`${id} ${version}  taken into ${at}`);
     } else if (packedSha256(out, id) === sha256) lines.push(`${id} ${version}  ok`);
     else {
@@ -212,9 +221,11 @@ export async function main(command, args, base = HUB) {
     for (const line of lines) console.log(line);
     return changed ? 1 : 0;
   }
-  const custom = value('--out');
+  const custom = value('--out'), own = args.includes('--private');
   const out = resolve(custom ?? motionPath(slug)), at = relative(process.cwd(), out);
-  const rows = await index(base);
+  // --private: one of your own motions, kept on motionhub.dev for you alone (tools/private-cli.mjs), signed in
+  const rows = own ? await privateIndex() : await index(base);
+  if (own && !rows.some((m) => m.slug === slug)) throw new Error(`you keep no ${slug} privately: motionhub private list`);
   const lock = readLock();
   // a copy already in the project stays: it is the version the film was made in
   if (!custom && existsSync(out)) {
@@ -223,7 +234,8 @@ export async function main(command, args, base = HUB) {
     throw new Error(`${at} already exists${held ? ` at ${held.version}` : ''}${newest ? `; the newest is ${newest.version}: remove ${at} and get it again to take that one` : ''}`);
   }
   const row = await getMotion(slug, out, base, rows);
-  if (!custom) { lock.motions[row.slug] = {version: row.version, sha256: row.package.sha256}; writeLock(lock); }
+  if (!custom) { lock.motions[row.slug] = {version: row.version, sha256: row.package.sha256, ...(own ? {private: true} : {})}; writeLock(lock); }
+  if (own) { console.log(`${row.slug} ${row.version}, your private motion, in ${at}${custom ? '' : `, recorded in ${LOCK} as private: motionhub get takes it back when you are signed in`}`); return 0; }
   console.log(`${row.slug} ${row.version} in ${at}${custom ? '' : `, recorded in ${LOCK}`}: read its MOTION.md and tokens.json before drawing. Credit: ${row.name.en} by ${row.authors.map((a) => a.name).join(', ')}, ${base}/${row.slug}/, ${row.license.text}`);
   return 0;
 }
