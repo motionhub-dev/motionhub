@@ -31,7 +31,6 @@ A motion's `MOTION.md` is written to be followed by agents, so a pull request ma
 
 ## How to report
 
-- A comment on a line for each specific problem, saying what is wrong and what would fix it.
-- One summary comment: what the pull request does, what must change before it is merged, and what is only a suggestion. If nothing needs to change, say so in a line.
-- Write in the language of the pull request's description, and in English when unsure.
-- Be kind and concrete. Many contributors are sharing their first motion.
+The GitHub reviewer runs without tools and receives a bounded snapshot, not a working checkout. Return JSON with `summary`, `comments` (`path`, `line`, `body`) and an optional `patch` string. Only reference paths present in the snapshot; explicitly say when binary images or full context need a human's inspection. Never claim to have run tests.
+
+A fixed program validates the output and the original PR head, then publishes advice as a comment. It never approves, requests changes or merges. Suggested patches are unexecuted data in the workflow artifact. Be kind and concrete; use the language of the request, or English when unsure.
