@@ -52,7 +52,7 @@ export function pack(dir) {
     slug, ...(manifest.scope ? {scope: manifest.scope} : {}), spec: manifest.spec, version, name: manifest.name, line: manifest.line, lang: manifest.lang ?? 'en', tags: manifest.tags ?? [],
     authors: manifest.authors, ...(manifest.basedOn ? {basedOn: manifest.basedOn} : {}), ...(manifest.fit ? {fit: manifest.fit} : {}), license: manifest.license, poster: `/m/${slug}/poster.jpg`, tools,
     package: {url: `/m/${slug}/${version}.tgz`, sha256: createHash('sha256').update(archive).digest('hex'), bytes: archive.length},
-    // the player of its reel (react/reel.tsx), which site/player/build.mjs writes
+    // the player of its reel (react/reel.tsx), which player/build.mjs writes
     ...(existsSync(join(dir, 'react/reel.tsx')) ? {reel: `/play/${slug}/`} : {}),
   };
   return {row, archive, served: names.filter((n) => SERVED.test(n))};

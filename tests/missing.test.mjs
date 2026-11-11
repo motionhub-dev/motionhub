@@ -2,7 +2,7 @@
 // cannot tell is missing.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {missing, reelVersions} from '../site/player/missing.mjs';
+import {missing, reelVersions} from '../player/missing.mjs';
 
 test('every scoped motion with a reel, at its version', () => {
   const rows = reelVersions();

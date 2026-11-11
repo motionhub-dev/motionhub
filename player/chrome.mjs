@@ -4,14 +4,12 @@
 import {createServer} from 'node:http';
 import {existsSync, readFileSync, readdirSync, statSync} from 'node:fs';
 import {extname, join, resolve} from 'node:path';
-import {fileURLToPath} from 'node:url';
 import {homedir} from 'node:os';
 import {chromium} from 'playwright-core';
 import sharp from 'sharp';
+import {DIST} from './paths.mjs';
 
-const HERE = resolve(fileURLToPath(import.meta.url), '..');
-export const ROOT = resolve(HERE, '../..');
-export const DIST = join(ROOT, 'dist');
+export {DIST};
 export const PLAY = join(DIST, 'play');
 const TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.woff2': 'font/woff2', '.woff': 'font/woff',
   '.ttf': 'font/ttf', '.jpg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.mp3': 'audio/mpeg', '.glb': 'model/gltf-binary'};

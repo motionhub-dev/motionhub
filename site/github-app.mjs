@@ -6,7 +6,7 @@
 // ("BEGIN RSA PRIVATE KEY") or PKCS#8. No dependencies: WebCrypto signs the app's JWT.
 
 import {REPO} from './repo.mjs';
-import {accountId as recordedId, ownerId, singleAuthor} from '../tools/security/ownership.mjs';
+import {accountId as recordedId, ownerId, singleAuthor} from './upstream.mjs';
 
 const API = 'https://api.github.com';
 const [OWNER] = REPO.split('/');

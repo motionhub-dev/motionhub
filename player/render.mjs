@@ -5,19 +5,19 @@
 // photographed; the sound is react/sound.json on the reel's cues, synthesised here by the same renderSound the player uses.
 // Nothing runs on a clock: the picture at a time is the reel's at that time (HUB.md, "Reels").
 //
-//   node player/render.mjs [id …] [--out dir] [--force]   from site/, after npm run build. Writes <out>/m/<id>/<version>.mp4
-//                                                         (out is .cache/render), the path the site serves it at, for the
+//   node player/render.mjs [id …] [--out dir] [--force]   after player/build.mjs. Writes <out>/m/<id>/<version>.mp4
+//                                                         (out is player/.cache/render), the path the site serves it at, for the
 //                                                         version the player was built from; a video already there is kept
 //                                                         unless --force. CHROME names the browser
 import {spawn} from 'node:child_process';
 import {existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync} from 'node:fs';
 import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {renderSound} from '../../packages/runtime/sound.js';
+import {renderSound} from '../packages/runtime/sound.js';
+import {CACHE} from './paths.mjs';
 import {PLAY, blank, differ, launch, look, reels, serve, watch} from './chrome.mjs';
 
 const FPS = 30, RATE = 48000;
-const SITE_CACHE = resolve(fileURLToPath(import.meta.url), '../../.cache');
 /** How long one frame may take to draw before the render is given up as stuck */
 const FRAME_MS = 120_000;
 /** Frames the finished video is checked at, as fractions of its length: none blank, not all the same */
@@ -127,7 +127,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === realpathSync(process.a
   const o = argv.indexOf('--out');
   if (o >= 0 && !argv[o + 1]) { console.error('--out names a directory'); process.exit(2); }
   // outside dist/, which the site deploys as it is: a video there would be served whole, at the wrong address
-  const out = resolve(o >= 0 ? argv[o + 1] : join(SITE_CACHE, 'render'));
+  const out = resolve(o >= 0 ? argv[o + 1] : join(CACHE, 'render'));
   const force = argv.includes('--force');
   const asked = argv.filter((a, i) => !a.startsWith('--') && (o < 0 || i !== o + 1));
   const ids = asked.length ? asked : reels();

@@ -2,22 +2,22 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync, readdirSync } from "node:fs";
-import worker from "../site/worker.mjs";
-import { api } from "../site/admin/api.mjs";
-import { verifyAccess, localAdmin } from "../site/admin/auth.mjs";
-import { person, sha256 } from "../site/people.mjs";
-import { cliPerson } from "../site/cli-auth.mjs";
-import { proposalArchive } from "../site/admin/package.mjs";
-import { untgz } from "../site/tar.mjs";
+import worker from "../worker.mjs";
+import { api } from "../admin/api.mjs";
+import { verifyAccess, localAdmin } from "../admin/auth.mjs";
+import { person, sha256 } from "../people.mjs";
+import { cliPerson } from "../cli-auth.mjs";
+import { proposalArchive } from "../admin/package.mjs";
+import { untgz } from "../tar.mjs";
 const actor = { email: "owner@example.test", role: "superadmin" };
 function fixture() {
   const db = new DatabaseSync(":memory:");
   db.exec("PRAGMA foreign_keys=ON");
   for (const f of readdirSync(
-    new URL("../site/migrations/", import.meta.url),
+    new URL("../migrations/", import.meta.url),
   ).sort())
     db.exec(
-      readFileSync(new URL("../site/migrations/" + f, import.meta.url), "utf8"),
+      readFileSync(new URL("../migrations/" + f, import.meta.url), "utf8"),
     );
   const statement = (sql, args = []) => ({
     bind: (...p) => statement(sql, p),
@@ -237,11 +237,11 @@ test("Access checks signature, issuer, audience, expiry, algorithm and required 
 test("the local administrator bypass is only ever configured locally", () => {
   const vars = (file) =>
     JSON.parse(
-      readFileSync(new URL("../" + file, import.meta.url), "utf8").replace(/^\s*\/\/.*$/gm, ""),
+      readFileSync(new URL("../../" + file, import.meta.url), "utf8").replace(/^\s*\/\/.*$/gm, ""),
     ).vars ?? {};
   // the deployed Worker's config, and every other Wrangler config but the local console's own
   assert.equal(vars("wrangler.jsonc").ENVIRONMENT, "production");
-  for (const file of readdirSync(new URL("../", import.meta.url)).filter((f) => /^wrangler\..*jsonc$/.test(f)))
+  for (const file of readdirSync(new URL("../../", import.meta.url)).filter((f) => /^wrangler\..*jsonc$/.test(f)))
     if (file !== "wrangler.admin.local.jsonc") assert.notEqual(vars(file).ENVIRONMENT, "local", file);
   // a production Worker never answers as local admin, whatever host it is asked for
   const production = { ENVIRONMENT: "production" };
@@ -595,8 +595,8 @@ function mockGitHub(files, calls = []) {
 }
 test("a version proposal is refused when the published author's login is now another account's", async () => {
   const { env } = fixture();
-  const { tgz } = await import("../tools/pack.mjs");
-  const { forgetToken } = await import("../site/github-app.mjs");
+  const { tgz } = await import("../../tools/pack.mjs");
+  const { forgetToken } = await import("../github-app.mjs");
   forgetToken();
   const manifest = { scope: "alice", slug: "demo", version: "1.0.0", name: { en: "Demo" }, line: { en: "Demo" }, authors: [{ github: "alice" }] };
   env.PACKAGES = {
@@ -864,8 +864,8 @@ test("workflow retries reserve each attempt, audit it and refuse duplicate dispa
 });
 test("a version proposal opens an author-attributed PR, retains its digest archive, and never writes main", async () => {
   const { env, db } = fixture();
-  const { tgz } = await import("../tools/pack.mjs");
-  const { forgetToken } = await import("../site/github-app.mjs");
+  const { tgz } = await import("../../tools/pack.mjs");
+  const { forgetToken } = await import("../github-app.mjs");
   forgetToken();
   const manifest = {
     scope: "alice",

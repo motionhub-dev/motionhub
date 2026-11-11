@@ -15,7 +15,7 @@ import {avatar} from './avatars.mjs';
 import {submissions, sweep} from './submissions.mjs';
 
 const PACKAGE = /^\/m\/((?:@[a-z0-9-]+\/)?[a-z0-9-]+)\/([0-9A-Za-z.+-]+)\.tgz$/;
-// the video of a motion at a version (site/player/render.mjs), beside its package: the default player on its page
+// the video of a motion at a version (player/render.mjs), beside its package: the default player on its page
 const VIDEO = /^\/m\/@[a-z0-9-]+\/[a-z0-9-]+\/[0-9A-Za-z.+-]+\.mp4$/;
 // a motion's page is at its id, /@<scope>/<slug>/; its files stay under /m/<id>/ (HUB.md)
 const PAGE = /^\/(@[a-z0-9-]+\/[a-z0-9-]+)\/$/;

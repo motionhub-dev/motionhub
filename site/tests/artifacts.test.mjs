@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
 import {deflateRawSync} from 'node:zlib';
-import worker from '../site/worker.mjs';
-import {sweepArtifacts} from '../site/artifacts.mjs';
-import {artifactFiles} from '../site/artifact-files.mjs';
-import {sha256} from '../site/people.mjs';
+import worker from '../worker.mjs';
+import {sweepArtifacts} from '../artifacts.mjs';
+import {artifactFiles} from '../artifact-files.mjs';
+import {sha256} from '../people.mjs';
 
 function zip(entries) {
   const locals = [], directory = [];
@@ -39,7 +39,7 @@ function zip(entries) {
 }
 
 test('the Worker runs first for every request, so the content origin never serves the site\'s pages', () => {
-  const config = readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8');
+  const config = readFileSync(new URL('../../wrangler.jsonc', import.meta.url), 'utf8');
   const {assets, vars} = JSON.parse(config.replace(/^\s*\/\/.*$/gm, ''));
   if (vars.ARTIFACT_CONTENT_ORIGIN) assert.equal(assets.run_worker_first, true);
 });
@@ -58,7 +58,7 @@ test('owner can upload HTML and ZIP, update the fixed draft, and keep it after a
   const db = new DatabaseSync(':memory:');
   db.exec('PRAGMA foreign_keys = ON;');
   for (const migration of ['0001_people_and_likes', '0003_artifacts', '0004_cli_devices', '0005_artifact_publication', '0002_submissions']) {
-    db.exec(readFileSync(new URL(`../site/migrations/${migration}.sql`, import.meta.url), 'utf8'));
+    db.exec(readFileSync(new URL(`../migrations/${migration}.sql`, import.meta.url), 'utf8'));
   }
   const site = 'https://motionhub.dev', origin = 'https://artifacts.motionhub.dev';
   for (const [id, login] of [[1, 'alice'], [2, 'bob']]) {

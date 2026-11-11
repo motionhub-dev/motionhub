@@ -1,7 +1,7 @@
 // The docs' pages as HTML: each document rendered with marked, its links resolved the way its Markdown twin's are
 // (tools/docs.mjs), and its headings given GitHub's anchors so a link to SPEC.md#7-extensions lands the same here.
 import {Marked} from 'marked';
-import {DOCS, PAGES, pagePath, readDoc, resolveLink, twinPath} from '../../../tools/docs.mjs';
+import {DOCS, PAGES, pagePath, readDoc, resolveLink, twinPath} from '@upstream/tools/docs.mjs';
 import {ROOT} from './catalogue.mjs';
 
 export {DOCS, PAGES, pagePath, twinPath};

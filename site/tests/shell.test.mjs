@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {existsSync, readFileSync} from 'node:fs';
-import {shellPage} from '../site/shell.mjs';
+import {shellPage} from '../shell.mjs';
 
 const layout = `<!doctype html><html><head><script>document.documentElement.classList.remove('no-js');</script>
 <title>%%MH_TITLE%%</title><meta name="description" content="%%MH_DESCRIPTION%%"><link rel="canonical" href="https://motionhub.dev/%%MH_PATH%%"><!--mh:head--></head>
@@ -44,13 +44,13 @@ test('without the built layout a page still renders, plainly', async () => {
   assert.match(html, /<main><p>b<\/p><\/main>/);
 });
 
-test('the built layout has every placeholder', {skip: !existsSync(new URL('../dist/app-shell/index.html', import.meta.url))}, () => {
-  const html = readFileSync(new URL('../dist/app-shell/index.html', import.meta.url), 'utf8');
+test('the built layout has every placeholder', {skip: !existsSync(new URL('../../dist/app-shell/index.html', import.meta.url))}, () => {
+  const html = readFileSync(new URL('../../dist/app-shell/index.html', import.meta.url), 'utf8');
   for (const mark of ['%%MH_TITLE%%', '%%MH_DESCRIPTION%%', '/%%MH_PATH%%', '<!--mh:head-->', '<!--mh:body-->']) assert.ok(html.includes(mark), mark);
 });
 
 test('the layout is not a page of its own', async () => {
-  const {default: worker} = await import('../site/worker.mjs');
+  const {default: worker} = await import('../worker.mjs');
   const env = {ASSETS: {fetch: async (r) => new URL(r.url).pathname === '/404.html' ? new Response('missing', {status: 404}) : new Response(layout)}};
   for (const path of ['/app-shell/', '/app-shell', '/app-shell/index.html']) assert.equal((await worker.fetch(new Request('https://motionhub.dev' + path), env, {})).status, 404, path);
 });

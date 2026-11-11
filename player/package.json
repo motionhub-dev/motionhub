@@ -1,0 +1,19 @@
+{
+  "name": "motionhub-player",
+  "private": true,
+  "type": "module",
+  "description": "The reel player: one page per motion with a reel, built over the files tools/build.mjs writes, its smoke test and its renderer.",
+  "scripts": {
+    "build": "node build.mjs",
+    "smoke": "node smoke.mjs && node security.mjs",
+    "render": "node render.mjs"
+  },
+  "dependencies": {
+    "esbuild": "0.25.12",
+    "playwright-core": "1.64.1",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "sharp": "0.35.5",
+    "three": "0.187.0"
+  }
+}

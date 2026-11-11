@@ -1,6 +1,6 @@
 // The reel player: a motion's react/reel.tsx drawn live by @motionhub/runtime at the time this clock is at, scaled to
 // the frame, with play and pause, a scrubber that keeps playing, the motion's sound (react/sound.json) on the reel's
-// cues, full screen and keys. It runs in a sandboxed frame (site/player/build.mjs, _headers). A motion's page loads it
+// cues, full screen and keys. It runs in a sandboxed frame (player/build.mjs, _headers). A motion's page loads it
 // when the viewer presses play, with ?autoplay=1&sound=1: it then starts at once with the sound on, and tells the page
 // when its first frame is drawn (a "motionhub:ready" message), so the page can take its poster away. With ?render=1 it is
 // a still for player/render.mjs instead: the frame at full size, no controls and no clock, moved by window.__motionhub.seek.
@@ -14,7 +14,7 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import * as runtime from '@motionhub/runtime';
 import {MotionRoot, MotionRuntimeProvider} from '@motionhub/runtime';
-import {renderSound} from '../../packages/runtime/sound.js';
+import {renderSound} from '../packages/runtime/sound.js';
 
 // a reel plays no footage (the catalogue holds no video): a component's <Video> is a quiet stand-in of its size
 const Footage = ({style}) => <div style={{width: '100%', height: '100%', background: 'radial-gradient(120% 90% at 50% 35%, #5b6068, #2a2d33 60%, #17191d)', ...style}} />;
