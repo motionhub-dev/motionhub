@@ -169,16 +169,15 @@ node tools/check.mjs motions/@<scope>/<slug>   # or one
 node tools/build.mjs                      # the files motionhub.dev serves, into dist/
 ```
 
-The protected management console, local development configuration and production activation are documented in [Admin console](site/admin/CONSOLE.md).
-
-For a change to the site, the reels' players (`player/`, with its own dependencies) and then the site (`site/`):
+For a change to the runtime, the reel player or a reel, after `node tools/build.mjs`:
 
 ```sh
-npm ci --prefix player                    # React, three.js and esbuild, for the players
-cd site && npm ci && npm run build        # the hub's files, every reel's player and the pages, into dist/
-npm test                                  # the site's own tests, in site/
-cd ../player && npm run smoke             # every reel played in Chrome, after the build
+cd player && npm ci                       # React, three.js and esbuild, for the players
+npm run build                             # every reel's player, into dist/play/
+npm run smoke                             # every reel played in Chrome
 ```
+
+motionhub.dev's pages and Worker are built over this repository from a private one (see [HUB.md](HUB.md)).
 
 Every commit is signed off (`git commit -s`); the checks refuse a pull request without it.
 

@@ -25,7 +25,7 @@ A motion's `MOTION.md` is written to be followed by agents, so a pull request ma
 - **SPEC.md only grows.** A change never alters the meaning of what a published version says; it adds, under a new `spec` version, and §10 records it.
 - **Rules live in one place as code.** A rule written in SPEC.md or CONTRIBUTING.md and not in `tools/check.mjs` (with a test in `tests/`) is a bug, and the other way round.
 - **The brand** is decided in `brand/brand.tokens.json` and nowhere else; the site stays quiet so the motions can be loud.
-- **Dependencies.** The repository's root is the zero-dependency `@motionhub/cli`; the site's dependencies stay in `site/`.
+- **Dependencies.** The repository's root is the zero-dependency `@motionhub/cli`; the reel players' dependencies stay in `player/`.
 - **English** for code, comments, documents and commit messages.
 - Correctness first: bugs, broken edge cases, a missing test for a new rule. Not style a formatter would settle.
 

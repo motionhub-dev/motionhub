@@ -1,6 +1,6 @@
 # Every pull request and every push to main: the tools' own tests, every motion against SPEC.md and CONTRIBUTING.md, the
-# hub's, the players' and the site's builds, the site's own tests, every reel played. It runs the pull request's own
-# code, so it has no secrets and can only read. Who may change what (accounts, authors, sign-off) is judged apart, by
+# hub's and the players' builds, every reel played. It runs the pull request's own code, so it has no secrets and can
+# only read. motionhub.dev's site is built over this repository elsewhere (HUB.md, "Where things are"). Who may change what (accounts, authors, sign-off) is judged apart, by
 # main's own workflow: ownership.yml.
 name: check
 
@@ -43,16 +43,9 @@ jobs:
           path: player/.cache/fonts
           key: fonts-${{ hashFiles('motions/**/tokens.json') }}
           restore-keys: fonts-
-      - name: The players' dependencies
+      - name: The players build
         working-directory: player
-        run: npm ci --no-audit --no-fund
-      # the hub's files, every reel's player (player/build.mjs) and the pages over them
-      - name: The site builds
-        working-directory: site
         run: npm ci --no-audit --no-fund && npm run build
-      - name: The site's tests
-        working-directory: site
-        run: npm test
       # every reel opened in Chrome under the policy the site serves it with: a change to the runtime, the player or a
       # motion that breaks a reel stops here (player/smoke.mjs)
       - name: Every reel plays

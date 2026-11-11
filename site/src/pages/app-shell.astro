@@ -1,9 +1,0 @@
----
-// The site's layout for the pages the Worker writes itself (site/shell.mjs): Artifacts and signing the command line in.
-// Built like every page, never served at its own address; the Worker fills its placeholders on each request.
-import Base from '../layouts/Base.astro';
----
-<Base title="%%MH_TITLE%%" description="%%MH_DESCRIPTION%%" path="/%%MH_PATH%%">
-  <Fragment slot="head" set:html="<!--mh:head-->" />
-  <Fragment set:html="<!--mh:body-->" />
-</Base>

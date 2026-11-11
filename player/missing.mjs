@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The motions whose video is not made yet: every motion with a reel, at the version in its motion.json, whose package the
 // site has published and whose /m/<id>/<version>.mp4 it does not have (HUB.md, "Reels"). A version not published (a branch,
-// a deploy that refused it) is never rendered, since its video could not be replaced once its package is. .github/workflows/render.yml renders these, and only
+// a deploy that refused it) is never rendered, since its video could not be replaced once its package is. The site's render workflow renders these, and only
 // these: a version's video is made once and never replaced.
 //
 //   node player/missing.mjs [base]             prints the ids as a JSON array; base is https://motionhub.dev
