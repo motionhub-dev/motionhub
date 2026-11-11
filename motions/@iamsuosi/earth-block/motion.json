@@ -1,8 +1,8 @@
 {
-  "spec": "motion/0.4",
+  "spec": "motion/0.6",
   "scope": "iamsuosi",
   "slug": "earth-block",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "name": {
     "en": "Earth Block",
     "zh-CN": "大地块"

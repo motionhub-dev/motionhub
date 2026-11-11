@@ -1,8 +1,8 @@
 {
-  "spec": "motion/0.4",
+  "spec": "motion/0.6",
   "scope": "iamsuosi",
   "slug": "evidence-board",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "name": {
     "en": "Evidence Board",
     "zh-CN": "证据墙"

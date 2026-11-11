@@ -1,8 +1,8 @@
 {
-  "spec": "motion/0.4",
+  "spec": "motion/0.6",
   "scope": "iamsuosi",
   "slug": "ink-scroll",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "name": {
     "en": "Ink Scroll",
     "zh-CN": "墨卷"
