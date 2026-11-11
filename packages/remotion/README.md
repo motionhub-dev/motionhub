@@ -75,6 +75,31 @@ made in a loop, they would show as one row. A scene's seconds are put on whole f
 the film follows by itself; a scene added, taken out or moved is an error until the `Series` places it. The film's own motions are its
 `<MotionScope>`s, so the provider's tokens can be empty.
 
+## A component's parameters in Remotion Studio
+
+`paramsSchema(meta, z)` turns a component's `meta.params` into a composition's schema, so Remotion Studio's props editor edits
+them; `paramDefaults(meta)` gives its `defaultProps`. Pass your project's `zod` (Remotion wants its own version):
+
+```tsx
+import {z} from 'zod';
+import {Composition} from 'remotion';
+import {MotionProvider, paramDefaults, paramsSchema} from '@motionhub/remotion';
+import tokens from '../motions/@iamsuosi/lab-notebook/tokens.json';
+import {CurveArrow, meta} from '../motions/@iamsuosi/lab-notebook/react/parts/arrow.tsx';
+
+const Arrow = (props) => <MotionProvider tokens={tokens}><CurveArrow {...props} /></MotionProvider>;
+
+// paramDefaults gives what the meta has defaults for; a param with none (here from and to) is yours to give
+<Composition id="arrow" component={Arrow} schema={paramsSchema(meta, z)} defaultProps={{...paramDefaults(meta), from: [400, 700], to: [1500, 380]}}
+  durationInFrames={90} fps={30} width={1920} height={1080} />
+```
+
+A param whose `type` is in the vocabulary of SPEC.md §12 (`text`, `string`, `color`, `number`, `px`, `degrees`, `progress`, `boolean`,
+`[x, y]`, `text[]`, or choices written `a | b | c`) is a field described by its `doc`: `progress` from 0 to 1, choices as a list.
+One with no default is optional, one whose default is `null` is nullable. A param of any other type is not in the schema and passes
+through untouched, for code to give. Remotion Studio edits the props live either way; to save them back into the source it needs
+`defaultProps` written as an object literal, so write out what `paramDefaults(meta)` gives once you have it.
+
 ## Several motions in one film
 
 A film can change motion from scene to scene, or hold two in one frame ([a project's motions](../../SPEC.md#13-a-projects-motions)). Keep one `<MotionProvider>` outside every `<Sequence>`, and wrap each scene in `<MotionScope tokens>` from `@motionhub/runtime` (0.4 or later): the components under it read that motion's tokens and custom properties, and keep Remotion's frame and the film's time. Load every motion's faces before the first frame, each `<MotionFonts>` in its own scope with `root={false}`:

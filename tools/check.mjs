@@ -31,8 +31,8 @@ import {join, basename, dirname, resolve, relative, extname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 /** The newest version of the format; every version before it is still read (SPEC.md §9). */
-export const SPEC = 'motion/0.5';
-export const SPECS = ['motion/0.1', 'motion/0.2', 'motion/0.3', 'motion/0.4', 'motion/0.5'];
+export const SPEC = 'motion/0.6';
+export const SPECS = ['motion/0.1', 'motion/0.2', 'motion/0.3', 'motion/0.4', 'motion/0.5', 'motion/0.6'];
 const SCOPE = /^[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,38}$/;
 const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const LANG = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{1,8})*$/;
@@ -117,7 +117,7 @@ export function checkMotion(dir, {hub = true, author, authorId, was, accounts, s
   const parts = held ? componentFiles(dir) : [];
   for (const e of entries) if (e.isFile() && /^MOTION(\.[A-Za-z0-9-]+)?\.md$/.test(e.name)) checkDoc(join(dir, e.name), e.name, add, {components: parts.length > 0});
   if (held) checkDocFrontMatter(join(dir, 'MOTION.md'), add);
-  if (parts.length) checkComponents(dir, parts, add);
+  if (parts.length) checkComponents(dir, parts, add, manifest?.spec);
   if (entries.some((e) => e.name === 'poster.jpg' && e.isFile())) checkPoster(join(dir, 'poster.jpg'), add);
   if (entries.some((e) => e.name === 'CREDITS.md' && e.isFile()) && !readFileSync(join(dir, 'CREDITS.md'), 'utf8').trim()) add('format.credits', 'CREDITS.md', 'CREDITS.md is empty: name every asset, or say there is none');
   if (manifest?.license && typeof manifest.license === 'object' && !manifest.license.code) {
@@ -423,8 +423,115 @@ function topLevel(literal) {
   return out;
 }
 
+// ---- a component's params (SPEC.md §12, Parameters): their types, read as data from the meta literal, never run ----
+
+/** A literal the reader could not take as data: a name, a call, an operator. */
+const UNKNOWN = Symbol('unknown');
+
+/**
+ * A JavaScript literal read as data: strings (a template without \${}), numbers, true, false, null, arrays, and objects with plain or
+ * quoted keys. Anything else is UNKNOWN, and skipped to the next comma or closing bracket, so the rest is still read.
+ */
+function readLiteral(text) {
+  let i = 0;
+  const space = () => {
+    for (;;) {
+      while (i < text.length && /\s/.test(text[i])) i++;
+      if (text.startsWith('//', i)) { while (i < text.length && text[i] !== '\n') i++; continue; }
+      if (text.startsWith('/*', i)) { const end = text.indexOf('*/', i + 2); i = end < 0 ? text.length : end + 2; continue; }
+      return;
+    }
+  };
+  const string = () => {
+    const quote = text[i++];
+    let out = '';
+    while (i < text.length && text[i] !== quote) {
+      if (text[i] === '\\') { const c = text[i + 1]; out += {n: '\n', t: '\t', r: '\r'}[c] ?? c; i += 2; continue; }
+      if (quote === '`' && text.startsWith('${', i)) throw UNKNOWN;
+      out += text[i++];
+    }
+    i++;
+    return out;
+  };
+  // An expression the reader does not know: skipped to the next comma or closing bracket at its depth.
+  const skip = () => {
+    let depth = 0;
+    while (i < text.length) {
+      const c = text[i];
+      if (c === '"' || c === "'" || c === '`') { try { string(); } catch { while (i < text.length && text[i] !== '`') i++; i++; } continue; }
+      if ('([{'.includes(c)) depth++;
+      else if (')]}'.includes(c)) { if (depth === 0) return; depth--; }
+      else if (c === ',' && depth === 0) return;
+      i++;
+    }
+  };
+  const value = () => {
+    space();
+    const c = text[i];
+    const start = i;
+    try {
+      if (c === '"' || c === "'" || c === '`') return string();
+      if (c === '[') {
+        i++; const out = [];
+        for (;;) { space(); if (text[i] === ']') { i++; return out; } out.push(value()); space(); if (text[i] === ',') i++; }
+      }
+      if (c === '{') {
+        i++; const out = {};
+        for (;;) {
+          space();
+          if (text[i] === '}') { i++; return out; }
+          let key;
+          if (text[i] === '"' || text[i] === "'") key = string();
+          else { const m = /^[A-Za-z_$][\w$]*/.exec(text.slice(i)); if (!m) throw UNKNOWN; key = m[0]; i += key.length; }
+          space();
+          if (text[i] !== ':') throw UNKNOWN;
+          i++;
+          out[key] = value();
+          space();
+          if (text[i] === ',') i++;
+        }
+      }
+      const word = /^(-?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?|true|false|null)(?![\w$.(])/i.exec(text.slice(i));
+      if (word) { i += word[0].length; space(); if (!/[,\]}]/.test(text[i] ?? '')) throw UNKNOWN; return JSON.parse(word[0].toLowerCase()); }
+      throw UNKNOWN;
+    } catch (error) {
+      if (error !== UNKNOWN) throw error;
+      i = start; skip(); return UNKNOWN;
+    }
+  };
+  return value();
+}
+
+const finite = (v) => typeof v === 'number' && Number.isFinite(v);
+/** The vocabulary of a parameter's `type` (SPEC.md §12, Parameters), each with what a value of it is. */
+export const PARAM_TYPES = {
+  text: (v) => typeof v === 'string',
+  string: (v) => typeof v === 'string',
+  color: (v) => typeof v === 'string',
+  number: finite,
+  px: finite,
+  degrees: finite,
+  progress: (v) => finite(v) && v >= 0 && v <= 1,
+  boolean: (v) => typeof v === 'boolean',
+  '[x, y]': (v) => Array.isArray(v) && v.length === 2 && v.every(finite),
+  'text[]': (v) => Array.isArray(v) && v.every((s) => typeof s === 'string'),
+};
+/** The choices of a type written `a | b | c` (words or numbers, none of them a type of the vocabulary or null); null for any other type */
+export function paramChoices(type) {
+  const words = type.split(' | ');
+  if (words.length < 2 || !words.every((w) => /^(-?\d+(\.\d+)?|[a-z0-9-]+)$/.test(w))) return null;
+  return words.some((w) => w in PARAM_TYPES || w === 'null') ? null : words;
+}
+/** Whether `value` is one of `type`: null is "none" for every type, and a type outside the vocabulary takes anything */
+export function paramFits(type, value) {
+  if (value === null || value === UNKNOWN) return true;
+  if (PARAM_TYPES[type]) return PARAM_TYPES[type](value);
+  const choices = paramChoices(type);
+  return choices ? choices.includes(String(value)) && (typeof value === 'string' || finite(value)) : true;
+}
+
 /** The components of a motion held to SPEC.md §12: what each imports, and the `meta` beside it. */
-function checkComponents(dir, parts, add) {
+function checkComponents(dir, parts, add, spec) {
   for (const n of parts) {
     const at = `react/parts/${n}`;
     const src = readFileSync(join(dir, at), 'utf8');
@@ -440,6 +547,18 @@ function checkComponents(dir, parts, add) {
     for (const key of ['name', 'purpose', 'line', 'fits', 'params', 'preview']) if (!new RegExp(`(?:^|[{,\\s])['"]?${key}['"]?\\s*:`).test(top)) add('react.meta', at, `meta has no ${key}`);
     const purpose = /(?:^|[{,\s])['"]?purpose['"]?\s*:\s*['"]([^'"]*)['"]/.exec(meta)?.[1];
     if (purpose !== undefined && !PURPOSES.includes(purpose)) add('react.meta', at, `meta.purpose is one of ${PURPOSES.join(', ')}, not "${purpose}"`);
+    const params = readLiteral(meta).params;
+    if (!params || typeof params !== 'object' || Array.isArray(params)) continue;
+    for (const [name, param] of Object.entries(params)) {
+      if (!param || typeof param !== 'object' || typeof param.type !== 'string' || typeof param.doc !== 'string') {
+        add('react.param', at, `params.${name} has a type and a doc, each a string`);
+        continue;
+      }
+      if (since(spec, 'motion/0.6') && 'default' in param && !paramFits(param.type, param.default)) {
+        const value = param.default === UNKNOWN ? 'an expression' : JSON.stringify(param.default);
+        add('react.param', at, `params.${name}.default is ${value}, not a ${param.type}: a default is a value of its type, or null for none; say what it means in doc`);
+      }
+    }
   }
 }
 
