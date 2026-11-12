@@ -8,7 +8,7 @@ import {createServer} from 'node:http';
 import {existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {LOCK, getMotion, main, motionTokens, packedSha256, projectMotion, readLock, scaffold, search, share, unpack} from '../tools/hub.mjs';
+import {LOCK, forkOf, getMotion, main, motionTokens, packedSha256, projectMotion, readLock, scaffold, search, share, unpack} from '../tools/hub.mjs';
 import {tgz} from '../tools/pack.mjs';
 import {SPEC, checkMotion} from '../tools/check.mjs';
 import {resolveTokens, tokenVariables} from '../packages/runtime/tokens.js';
@@ -242,4 +242,27 @@ test('the skill names the format\'s version, and looks for a project\'s motion w
   assert.ok(skill.includes(`\`${SPEC}\``));
   assert.ok(skill.includes('`MOTION.md` at the project\'s root, or else `motion/MOTION.md`'));
   assert.ok(skill.includes('Never invent a number'));
+});
+
+test('share --pr pushes to the fork GitHub names, whatever it is called, and only to one of the signed-in account\'s', () => {
+  // a gh that answers the fork request as GitHub would, and records what it was asked
+  const bin = mkdtempSync(join(tmpdir(), 'gh-'));
+  writeFileSync(join(bin, 'gh'), '#!/bin/sh\necho "$@" >> "$GH_ASKED"\necho "$GH_FORK"\n', {mode: 0o755});
+  const was = {PATH: process.env.PATH, GH_FORK: process.env.GH_FORK, GH_ASKED: process.env.GH_ASKED};
+  process.env.PATH = `${bin}:${process.env.PATH}`;
+  process.env.GH_ASKED = join(bin, 'asked');
+  try {
+    process.env.GH_FORK = 'ana/motions';
+    assert.equal(forkOf('Ana'), 'ana/motions', 'a fork made before the rename keeps its name');
+    process.env.GH_FORK = 'ana/motionhub';
+    assert.equal(forkOf('ana'), 'ana/motionhub', 'one made since has the new one');
+    assert.match(readFileSync(process.env.GH_ASKED, 'utf8'), /^api --method POST repos\/motionhub-dev\/motions\/forks --jq \.full_name$/m);
+    for (const other of ['eve/motionhub', 'ana/motionhub/x', 'ana/', '']) {
+      process.env.GH_FORK = other;
+      assert.throws(() => forkOf('ana'), /as ana's fork/, `${other || 'nothing'} is not ana's fork`);
+    }
+  } finally {
+    for (const [k, v] of Object.entries(was)) if (v === undefined) delete process.env[k]; else process.env[k] = v;
+    rmSync(bin, {recursive: true, force: true});
+  }
 });

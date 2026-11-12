@@ -255,6 +255,18 @@ export function githubAccount() {
   return r.error || r.status !== 0 ? undefined : JSON.parse(r.stdout);
 }
 
+/**
+ * The fork of this repository the account gh is signed in as (`login`) has, `<login>/<name>`, made if it has none.
+ * GitHub answers a fork asked for again with the one there is, whatever it is called: a fork keeps the name it was made
+ * under, so one made before this repository was renamed has its old name, and one made since has its new one.
+ */
+export function forkOf(login) {
+  const fork = must('gh', ['api', '--method', 'POST', `repos/${REPO}/forks`, '--jq', '.full_name']);
+  const [owner, name, ...rest] = fork.split('/');
+  if (rest.length || owner?.toLowerCase() !== login.toLowerCase() || !/^[\w.-]+$/.test(name ?? '')) throw new Error(`GitHub gave ${fork || 'no fork'} as ${login}'s fork of ${REPO}`);
+  return fork;
+}
+
 /** A GitHub account by login, as GitHub gives it now ({login, id, …}), or undefined. */
 export function githubUser(login) {
   const r = run('gh', ['api', `users/${encodeURIComponent(login)}`]);
@@ -380,7 +392,7 @@ export async function share(dir, {pr = false, github} = {}, base = HUB) {
   const clone = mkdtempSync(join(tmpdir(), 'motionhub-'));
   try {
     const branch = `motion/${id.replace('@', '')}-${manifest.version}`;
-    run('gh', ['repo', 'fork', REPO, '--clone=false']);
+    const fork = forkOf(account.login);
     must('git', ['clone', '--quiet', `https://github.com/${REPO}.git`, clone]);
     must('git', ['checkout', '--quiet', '-b', branch], clone);
     rmSync(join(clone, 'motions', id), {recursive: true, force: true});
@@ -397,7 +409,13 @@ export async function share(dir, {pr = false, github} = {}, base = HUB) {
       must('git', ['add', join('accounts', `${login}.json`)], clone);
     }
     must('git', ['commit', '--quiet', '--signoff', '-m', what], clone);
-    must('git', ['-c', 'credential.helper=', '-c', 'credential.helper=!gh auth git-credential', 'push', '--quiet', `https://github.com/${account.login}/motions.git`, `HEAD:refs/heads/${branch}`], clone);
+    // GitHub makes a new fork in the background: a push may find it not there yet for a few seconds
+    for (let tries = 1; ; tries++) {
+      const pushed = run('git', ['-c', 'credential.helper=', '-c', 'credential.helper=!gh auth git-credential', 'push', '--quiet', `https://github.com/${fork}.git`, `HEAD:refs/heads/${branch}`], clone);
+      if (!pushed.error && pushed.status === 0) break;
+      if (tries === 5) throw new Error(`git push to ${fork} failed: ${(pushed.stderr || pushed.error?.message || '').trim()}`);
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000);
+    }
     return must('gh', ['pr', 'create', '--repo', REPO, '--head', `${account.login}:${branch}`, '--title', what, '--body', `${manifest.line.en}\n\nChecked with @motionhub/cli.`], clone);
   } finally { rmSync(clone, {recursive: true, force: true}); }
 }
