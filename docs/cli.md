@@ -76,7 +76,7 @@ npx @motionhub/cli share <dir> --pr [--github <login>]
 
 A motion through the checks its pull request will run, against what is published, then uploaded to motionhub.dev. It prints a link and a code. Open the link and sign in with GitHub; motionhub asks for no permissions. Check the motion and type the code: motionhub's GitHub App opens the pull request on your behalf, with your account and DCO sign-off recorded in an App-signed commit. The motion must have one author. Only that account can read its private draft. CLI 0.9.0 polls using a request header, never a token in the URL; motionhub.dev takes shares only from 0.9.0 and later. No git, `gh` or GitHub token is needed, so it works from a cloud agent too. `--wait` waits for the pull request, up to 30 minutes, and prints its address. A link works for a day. Shared again while your pull request is open, the new version is added to it.
 
-With `--pr` it opens the pull request itself, from your fork, with git and `gh`, signed off, as the account `gh` is signed in as. `--github <login>` alone runs the checks as that account and opens nothing. [Share a motion](../CONTRIBUTING.md) explains what happens next.
+With `--pr` it opens the pull request itself, from your fork, with git and `gh`, signed off, as the account `gh` is signed in as. It forks the repository if you have no fork, and uses the fork you have whatever it is called. `--github <login>` alone runs the checks as that account and opens nothing. [Share a motion](../CONTRIBUTING.md) explains what happens next.
 
 ## private
 
