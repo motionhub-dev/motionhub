@@ -9,7 +9,7 @@ A motion arrives as a pull request that adds `motions/@<you>/<slug>/` in the [fo
 With the [motionhub skill](skills/motionhub/SKILL.md) installed:
 
 ```sh
-npx skills add motionhub-dev/motions -g
+npx skills add motionhub-dev/motionhub -g
 ```
 
 ask your agent from the project whose look you want to share:

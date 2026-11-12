@@ -17,7 +17,7 @@ Read https://motionhub.dev/llms.txt, then make a film about "<your topic>" in th
 The [agent skill](../skills/motionhub/SKILL.md) is the same instructions, kept by your agent so it needs no first line. Install it once, for every project and every agent on your computer (Claude Code, Codex and the others [skills](https://github.com/vercel-labs/skills) knows):
 
 ```sh
-npx skills add motionhub-dev/motions -g
+npx skills add motionhub-dev/motionhub -g
 ```
 
 Leave out `-g` to install it in the current project only. Then call it by name:

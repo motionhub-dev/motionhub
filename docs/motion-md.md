@@ -133,17 +133,17 @@ To make a film in a look from motionhub, follow [Use a motion](use.md). To publi
 
 ## The definition
 
-The format is defined in the [specification](../SPEC.md): `MOTION.md` in [section 5](https://github.com/motionhub-dev/motions/blob/main/SPEC.md#5-motionmd), one file in [section 11](https://github.com/motionhub-dev/motions/blob/main/SPEC.md#11-a-motion-in-one-file) and components in [section 12](https://github.com/motionhub-dev/motions/blob/main/SPEC.md#12-react). The format is still a draft, and it only grows: a later version never changes the meaning of what an earlier one says.
+The format is defined in the [specification](../SPEC.md): `MOTION.md` in [section 5](https://github.com/motionhub-dev/motionhub/blob/main/SPEC.md#5-motionmd), one file in [section 11](https://github.com/motionhub-dev/motionhub/blob/main/SPEC.md#11-a-motion-in-one-file) and components in [section 12](https://github.com/motionhub-dev/motionhub/blob/main/SPEC.md#12-react). The format is still a draft, and it only grows: a later version never changes the meaning of what an earlier one says.
 
 ## Propose a change
 
 The format is open, and changes to it are made in the open:
 
-- **[Open an issue](https://github.com/motionhub-dev/motions/issues/new?title=MOTION.md%3A%20&body=What%20should%20change%20in%20the%20format%2C%20and%20why%3F%0A)** to say what should change and why.
-- **[Edit the specification](https://github.com/motionhub-dev/motions/edit/main/SPEC.md)** to open a pull request from your browser. Add a `Signed-off-by: Your Name <you@example.com>` line to the commit message, or the checks refuse it.
+- **[Open an issue](https://github.com/motionhub-dev/motionhub/issues/new?title=MOTION.md%3A%20&body=What%20should%20change%20in%20the%20format%2C%20and%20why%3F%0A)** to say what should change and why.
+- **[Edit the specification](https://github.com/motionhub-dev/motionhub/edit/main/SPEC.md)** to open a pull request from your browser. Add a `Signed-off-by: Your Name <you@example.com>` line to the commit message, or the checks refuse it.
 
 Or from a terminal:
 
 ```sh
-gh issue create --repo motionhub-dev/motions --title "MOTION.md: <your change>"
+gh issue create --repo motionhub-dev/motionhub --title "MOTION.md: <your change>"
 ```

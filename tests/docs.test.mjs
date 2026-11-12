@@ -26,9 +26,9 @@ test('links resolve to a page, a twin, GitHub or stay as they are', () => {
   assert.equal(resolveLink(ROOT, 'CONTRIBUTING.md', 'SPEC.md', 'md'), 'https://motionhub.dev/docs/spec.md');
   assert.equal(resolveLink(ROOT, 'packages/runtime/README.md', '../remotion/README.md'), '/docs/remotion-binding/');
   assert.equal(resolveLink(ROOT, 'docs/use.md', 'remotion.md'), '/docs/remotion/');
-  assert.equal(resolveLink(ROOT, 'skills/motionhub/SKILL.md', 'https://github.com/motionhub-dev/motions/blob/main/SPEC.md'), '/docs/spec/');
-  assert.equal(resolveLink(ROOT, 'README.md', 'LICENSE'), 'https://github.com/motionhub-dev/motions/blob/main/LICENSE');
-  assert.equal(resolveLink(ROOT, 'README.md', 'skills/motionhub'), 'https://github.com/motionhub-dev/motions/tree/main/skills/motionhub');
+  assert.equal(resolveLink(ROOT, 'skills/motionhub/SKILL.md', 'https://github.com/motionhub-dev/motionhub/blob/main/SPEC.md'), '/docs/spec/');
+  assert.equal(resolveLink(ROOT, 'README.md', 'LICENSE'), 'https://github.com/motionhub-dev/motionhub/blob/main/LICENSE');
+  assert.equal(resolveLink(ROOT, 'README.md', 'skills/motionhub'), 'https://github.com/motionhub-dev/motionhub/tree/main/skills/motionhub');
   assert.equal(resolveLink(ROOT, 'SPEC.md', 'https://semver.org'), 'https://semver.org');
   assert.equal(resolveLink(ROOT, 'SPEC.md', '#2-files'), '#2-files');
 });

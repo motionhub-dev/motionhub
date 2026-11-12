@@ -8,7 +8,7 @@ Remotion keeps [Agent Skills](https://www.remotion.dev/docs/ai/skills) that teac
 
 ```sh
 npx skills add remotion-dev/skills -g
-npx skills add motionhub-dev/motions -g
+npx skills add motionhub-dev/motionhub -g
 ```
 
 Then, in a Remotion project or an empty folder, ask:

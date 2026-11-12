@@ -17,7 +17,7 @@ Read https://motionhub.dev/llms.txt, then make a film about "<your topic>" in th
 That is all. To make it shorter, install the skill once, for every agent on your computer:
 
 ```sh
-npx skills add motionhub-dev/motions -g
+npx skills add motionhub-dev/motionhub -g
 ```
 
 then ask:

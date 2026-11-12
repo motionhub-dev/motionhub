@@ -15,7 +15,7 @@ An open format and a public catalogue: how a film looks and how it moves, writte
 **[Browse the motions](https://motionhub.dev)** · [Docs](https://motionhub.dev/docs/) · [Specification](SPEC.md)
 
 [![npm](https://img.shields.io/npm/v/@motionhub/cli?color=2A2622&label=npm)](https://www.npmjs.com/package/@motionhub/cli)
-[![check](https://github.com/motionhub-dev/motions/actions/workflows/check.yml/badge.svg)](https://github.com/motionhub-dev/motions/actions/workflows/check.yml)
+[![check](https://github.com/motionhub-dev/motionhub/actions/workflows/check.yml/badge.svg)](https://github.com/motionhub-dev/motionhub/actions/workflows/check.yml)
 [![spec](https://img.shields.io/badge/spec-motion%2F0.5-2A2622)](SPEC.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2A2622)](LICENSE)
 
@@ -55,7 +55,7 @@ Read https://motionhub.dev/llms.txt, then make a film about "<your topic>" in th
 To make it shorter, install the skill once, for every agent on your computer:
 
 ```sh
-npx skills add motionhub-dev/motions -g
+npx skills add motionhub-dev/motionhub -g
 ```
 
 Then say what you want:
@@ -185,7 +185,7 @@ Every commit is signed off (`git commit -s`); the checks refuse a pull request w
 
 ## Status
 
-Early. The format is a draft, and a new version adds to it without changing what a published version says. Proposals to change it are [issues](https://github.com/motionhub-dev/motions/issues) on this repository. The format belongs to everyone who uses it.
+Early. The format is a draft, and a new version adds to it without changing what a published version says. Proposals to change it are [issues](https://github.com/motionhub-dev/motionhub/issues) on this repository. The format belongs to everyone who uses it.
 
 Maintained by [SuoSi](https://github.com/iamsuosi).
 
