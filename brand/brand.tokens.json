@@ -16,9 +16,9 @@
       "on-accent": { "$value": { "colorSpace": "srgb", "components": [0.9843, 0.9725, 0.949], "hex": "#FBF8F2" }, "$description": "text on accent" },
       "code": { "$value": { "colorSpace": "srgb", "components": [0.1647, 0.149, 0.1333], "hex": "#2A2622" }, "$description": "the ground of a code block: the theme turned over" },
       "on-code": { "$value": { "colorSpace": "srgb", "components": [0.9529, 0.9333, 0.8941], "hex": "#F3EEE4" }, "$description": "text on code" },
-      "header": { "$value": { "colorSpace": "srgb", "components": [0.9529, 0.9333, 0.8941], "hex": "#F3EEE4" }, "$description": "the header band: paper, the brand's own ground, above the page" },
-      "header-surface": { "$value": { "colorSpace": "srgb", "components": [0.9843, 0.9725, 0.949], "hex": "#FBF8F2" }, "$description": "inputs and buttons in the header" },
-      "header-line": { "$value": { "colorSpace": "srgb", "components": [0.8667, 0.8275, 0.7647], "hex": "#DDD3C3" }, "$description": "the rule under the header" }
+      "header": { "$value": { "colorSpace": "srgb", "components": [0.9569, 0.9529, 0.9412], "hex": "#F4F3F0" }, "$description": "the header band: a quiet warm grey above the white page, the ground of the logo on its light tile and of the share card" },
+      "header-surface": { "$value": { "colorSpace": "srgb", "components": [0.9843, 0.9843, 0.9765], "hex": "#FBFBF9" }, "$description": "inputs and buttons in the header" },
+      "header-line": { "$value": { "colorSpace": "srgb", "components": [0.8863, 0.8784, 0.8588], "hex": "#E2E0DB" }, "$description": "the rule under the header" }
     },
     "dark": {
       "bg": { "$value": { "colorSpace": "srgb", "components": [0.102, 0.0902, 0.0784], "hex": "#1A1714" }, "$description": "page ground" },
