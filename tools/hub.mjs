@@ -240,7 +240,7 @@ export async function main(command, args, base = HUB) {
   return 0;
 }
 
-const REPO = 'motionhub-dev/motions';
+const REPO = 'motionhub-dev/motionhub';
 const run = (cmd, args, cwd) => spawnSync(cmd, args, {cwd, encoding: 'utf8'});
 /** A command that must succeed; its error names the step and gives its own message. */
 function must(cmd, args, cwd) {

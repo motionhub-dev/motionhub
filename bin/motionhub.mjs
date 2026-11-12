@@ -27,7 +27,7 @@ const USAGE = `usage: motionhub check [dir or MOTION.md ...] [--format-only] [--
        motionhub share <dir> [--wait]
        motionhub share <dir> --pr [--github <login>]
 
-check   a motion against the motion format (https://github.com/motionhub-dev/motions/blob/main/SPEC.md) and motionhub's
+check   a motion against the motion format (https://github.com/motionhub-dev/motionhub/blob/main/SPEC.md) and motionhub's
         rules; with no directory, the current directory when it is a motion, else every motion under ./motions/
 search  motionhub.dev's motions that have every word
 get     the newest version of a motion (@iamsuosi/lab-notebook) into ./motions/<id>/, checked against its SHA-256 and
@@ -42,7 +42,7 @@ tokens  a motion in one file's tokens as tokens.json, to standard output or --ou
 share   a motion through the checks its pull request will run, against what is published, then uploaded to
         motionhub.dev: open the link it prints, sign in with GitHub and type its code to open the pull request under
         your name (no git, gh or token needed; --wait waits for it). With --pr, open the pull request yourself from
-        your fork of github.com/motionhub-dev/motions with git and gh, signed off, as the account gh is signed in as`;
+        your fork of github.com/motionhub-dev/motionhub with git and gh, signed off, as the account gh is signed in as`;
 
 const [command, ...args] = process.argv.slice(2);
 try {

@@ -15,7 +15,7 @@
 **[浏览 motion](https://motionhub.dev)** · [文档](https://motionhub.dev/docs/) · [规范](SPEC.md)
 
 [![npm](https://img.shields.io/npm/v/@motionhub/cli?color=2A2622&label=npm)](https://www.npmjs.com/package/@motionhub/cli)
-[![check](https://github.com/motionhub-dev/motions/actions/workflows/check.yml/badge.svg)](https://github.com/motionhub-dev/motions/actions/workflows/check.yml)
+[![check](https://github.com/motionhub-dev/motionhub/actions/workflows/check.yml/badge.svg)](https://github.com/motionhub-dev/motionhub/actions/workflows/check.yml)
 [![spec](https://img.shields.io/badge/spec-motion%2F0.5-2A2622)](SPEC.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2A2622)](LICENSE)
 
@@ -57,7 +57,7 @@ Read https://motionhub.dev/llms.txt, then make a film about "<你的主题>" in 
 想再省事一点，可以安装一次 skill，电脑上所有 agent 都能用：
 
 ```sh
-npx skills add motionhub-dev/motions -g
+npx skills add motionhub-dev/motionhub -g
 ```
 
 然后直接说你想要什么：
@@ -187,7 +187,7 @@ motionhub.dev 的页面和 Worker 在一个私有仓库里，基于本仓库构�
 
 ## 状态
 
-项目还处于早期。格式目前是草案，新版本只会增加内容，不会改变已发布版本的含义。想修改格式，请在本仓库提 [issue](https://github.com/motionhub-dev/motions/issues)。格式属于每一个使用它的人。
+项目还处于早期。格式目前是草案，新版本只会增加内容，不会改变已发布版本的含义。想修改格式，请在本仓库提 [issue](https://github.com/motionhub-dev/motionhub/issues)。格式属于每一个使用它的人。
 
 由 [SuoSi](https://github.com/iamsuosi) 维护。
 

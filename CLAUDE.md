@@ -1,4 +1,4 @@
-# motionhub/motions
+# motionhub/motionhub
 
 The open motion format and the public catalogue behind motionhub.dev. Read [README.md](README.md), then [SPEC.md](SPEC.md).
 

@@ -4,7 +4,7 @@
   "description": "Search, get and check motions, reusable looks for narrated video, from motionhub.dev.",
   "keywords": ["motion", "design-tokens", "video", "agent-skills"],
   "homepage": "https://motionhub.dev",
-  "repository": {"type": "git", "url": "git+https://github.com/motionhub-dev/motions.git"},
+  "repository": {"type": "git", "url": "git+https://github.com/motionhub-dev/motionhub.git"},
   "license": "MIT",
   "type": "module",
   "engines": { "node": ">=20" },

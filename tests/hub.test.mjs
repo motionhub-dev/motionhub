@@ -256,7 +256,7 @@ test('share --pr pushes to the fork GitHub names, whatever it is called, and onl
     assert.equal(forkOf('Ana'), 'ana/motions', 'a fork made before the rename keeps its name');
     process.env.GH_FORK = 'ana/motionhub';
     assert.equal(forkOf('ana'), 'ana/motionhub', 'one made since has the new one');
-    assert.match(readFileSync(process.env.GH_ASKED, 'utf8'), /^api --method POST repos\/motionhub-dev\/motions\/forks --jq \.full_name$/m);
+    assert.match(readFileSync(process.env.GH_ASKED, 'utf8'), /^api --method POST repos\/motionhub-dev\/motionhub\/forks --jq \.full_name$/m);
     for (const other of ['eve/motionhub', 'ana/motionhub/x', 'ana/', '']) {
       process.env.GH_FORK = other;
       assert.throws(() => forkOf('ana'), /as ana's fork/, `${other || 'nothing'} is not ana's fork`);

@@ -5,7 +5,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/motionhub-dev/motions.git",
+    "url": "git+https://github.com/motionhub-dev/motionhub.git",
     "directory": "packages/remotion"
   },
   "homepage": "https://motionhub.dev",

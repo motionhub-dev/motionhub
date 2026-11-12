@@ -6,7 +6,7 @@ import {writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 
 export const SITE = 'https://motionhub.dev';
-export const REPO = 'https://github.com/motionhub-dev/motions';
+export const REPO = 'https://github.com/motionhub-dev/motionhub';
 
 export const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 export const en = (localized) => localized?.en ?? Object.values(localized ?? {})[0] ?? '';

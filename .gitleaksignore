@@ -1,6 +1,6 @@
 # Findings Gitleaks reports that are not secrets, each by its fingerprint (commit:file:rule:line). A fingerprint names
 # one finding in one commit: a real secret added later, anywhere, is still found.
 #
-# tests/admin.test.mjs (motionhub-dev/motions#86): the PEM armour around an RSA key the test generates when it runs
+# tests/admin.test.mjs (motionhub-dev/motionhub#86): the PEM armour around an RSA key the test generates when it runs
 # (crypto.subtle.generateKey), to sign a GitHub App token for a mocked GitHub. No key is written in the file.
 8ff561473a806e03ade8ef4c697aa28731032e03:tests/admin.test.mjs:private-key:707

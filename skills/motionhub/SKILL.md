@@ -5,14 +5,14 @@ description: Find a motion (a reusable look for narrated and explanatory video) 
 
 # Making a film in a motion
 
-A **motion** is a look for narrated and explanatory video, written down: how a film looks (ground, colour, type) and how it moves (how things arrive, change and leave). It holds no film: no story, script, scenes or timings. You bring the story; the motion decides how it looks and moves. The format is [SPEC.md](https://github.com/motionhub-dev/motions/blob/main/SPEC.md) (`motion/0.6`). A motion is named by its id, its creator's GitHub name and its slug: `@iamsuosi/lab-notebook`. On motionhub every id has both.
+A **motion** is a look for narrated and explanatory video, written down: how a film looks (ground, colour, type) and how it moves (how things arrive, change and leave). It holds no film: no story, script, scenes or timings. You bring the story; the motion decides how it looks and moves. The format is [SPEC.md](https://github.com/motionhub-dev/motionhub/blob/main/SPEC.md) (`motion/0.6`). A motion is named by its id, its creator's GitHub name and its slug: `@iamsuosi/lab-notebook`. On motionhub every id has both.
 
 A motion is a directory:
 
 | File | What you take from it |
 | --- | --- |
 | `motion.json` | Its scope and slug (together its id), version, name, one line, authors and licence; `lang` is the language of `MOTION.md`; `fit` is what it is for |
-| `MOTION.md` | The look in words. Five sections always: **Essence**, **Colour**, **Type**, **Motion**, **Avoid**. The format's definition: https://github.com/motionhub-dev/motions/blob/main/SPEC.md#5-motionmd |
+| `MOTION.md` | The look in words. Five sections always: **Essence**, **Colour**, **Type**, **Motion**, **Avoid**. The format's definition: https://github.com/motionhub-dev/motionhub/blob/main/SPEC.md#5-motionmd |
 | `tokens.json` | The exact values, as W3C design tokens: `color`, `font`, and often `duration` and `cubicBezier` |
 | `poster.jpg` | One frame of a film made in it |
 | `CREDITS.md` | Every font and asset it needs, with its licence and source |
@@ -96,7 +96,7 @@ To publish a look the person made (only when they ask):
 1. `npx @motionhub/cli init <slug> --github <their GitHub login>` writes `./motions/<slug>/` with every required file to fill in, as the motion `@<their login>/<slug>` (ask them for their login; with gh signed in, `--github` can be left out).
 2. Take the look from their project, never the film: the theme's colours and faces into `tokens.json` (with the durations and curves the project uses); `MOTION.md` in the five sections, saying what any film in this look shares and nothing of this film's story; `CREDITS.md` naming every face and asset with its licence; `fit` in `motion.json`, honestly: `general` only if it would carry three unrelated subjects, otherwise `topic` with the subject it is made for, or `overlay` when it draws over their own footage.
 3. `poster.jpg`: one frame of their film, a JPEG 960 to 3840 pixels wide and at most 500 KB (Remotion: `npx remotion still <composition> poster.jpg --frame=<n> --image-format=jpeg`).
-4. Optionally the reusable components, in `react/parts/` as [CONTRIBUTING.md](https://github.com/motionhub-dev/motions/blob/main/CONTRIBUTING.md) describes: React components that import only `react` and `@motionhub/runtime` (in Remotion, `useTime()` and `useVideoConfig()` from it instead of Remotion's), take what changes as props, and hold nothing of this film's story.
+4. Optionally the reusable components, in `react/parts/` as [CONTRIBUTING.md](https://github.com/motionhub-dev/motionhub/blob/main/CONTRIBUTING.md) describes: React components that import only `react` and `@motionhub/runtime` (in Remotion, `useTime()` and `useVideoConfig()` from it instead of Remotion's), take what changes as props, and hold nothing of this film's story.
 5. With their yes, `npx @motionhub/cli share motions/<slug> --wait` runs the checks its pull request will run and uploads it to motionhub.dev. No git, gh or GitHub token is needed. Give the person the link and the code it prints, exactly as printed. They open the link, sign in with GitHub, check the motion, type the code and certify the DCO, and motionhub opens the pull request under their name. The command then prints the pull request's address: give them that too. Never type the code or submit on their behalf. If they would rather use their own fork with gh, `npx @motionhub/cli share motions/<slug> --pr` does it.
 
 A motion in one file publishes the same way, from step 1. Then `npx @motionhub/cli tokens --out motions/<slug>/tokens.json` writes its values, its `name` and `lang` go into `motion.json`, and its body goes into `motions/<slug>/MOTION.md` without the front matter. The rest of `motion.json`, `CREDITS.md` and `poster.jpg` are filled in as below.
@@ -108,7 +108,7 @@ To publish a new version of a motion the person published (only when they ask, a
 3. Raise `version` in `motion.json` above the published one: the patch for a fix, the minor for something added (a component, a section), the major for a change films already made in it would not survive. A published version never changes.
 4. `npx @motionhub/cli share <dir> --wait`, as above: they open the link and submit; if their pull request for it is open already, the new version is added to it. Only the motion's sole author account can change it; updates cannot replace or add an author. Credit help in CREDITS.md. `--wait` waits up to 30 minutes.
 
-To change a motion after review notes on its pull request, read the notes (`https://api.github.com/repos/motionhub-dev/motions/issues/<n>/comments` and `.../pulls/<n>/comments`, no token needed), make the changes they ask for, and share again the same way.
+To change a motion after review notes on its pull request, read the notes (`https://api.github.com/repos/motionhub-dev/motionhub/issues/<n>/comments` and `.../pulls/<n>/comments`, no token needed), make the changes they ask for, and share again the same way.
 
 To build on someone else's motion, publish yours under your own scope, name theirs in `motion.json`'s `basedOn` (`[{"id": "@iamsuosi/lab-notebook", "version": "1.0.2"}]`) and say in `CREDITS.md` what you took and changed; only its sole author changes the original.
 
