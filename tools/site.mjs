@@ -94,6 +94,9 @@ const HEADERS = `/api/*
   X-Robots-Tag: noindex
 /play/_shared/*
   Cache-Control: public, max-age=31536000, immutable
+/play/_preview/*
+  ! Content-Security-Policy
+  Content-Security-Policy: sandbox allow-scripts; default-src 'none'; script-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; media-src 'self'; connect-src 'none'; frame-ancestors 'self' https://motionhub.dev; base-uri 'none'; form-action 'none'
 /_astro/*
   Cache-Control: public, max-age=31536000, immutable
 /llms.txt

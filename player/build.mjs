@@ -13,20 +13,15 @@ import {build} from 'esbuild';
 import {resolveTokens, tokenVariables} from '../packages/runtime/tokens.js';
 import {listMotions} from '../tools/check.mjs';
 import {CACHE as KEPT, DIST, HERE, ROOT} from './paths.mjs';
+import {AXES, ENTRY, familiesOf, googleUrl, latinBlocks, reelPlugin} from './reel-plugin.mjs';
 
 const OUT = join(DIST, 'play');
 // fonts are fetched once per face and kept here between builds
 const CACHE = join(KEPT, 'fonts');
 const RUNTIME = join(ROOT, 'packages/runtime/index.js');
 
-const GENERIC = /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|math|emoji|ui-[a-z-]+)$/;
-// faces for Chinese, Japanese and Korean are too large for a reel that shows Latin text
-const HAN = /^(Noto (Sans|Serif) (SC|TC|JP|KR)|LXGW WenKai)$/;
 const UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 
-/** The families a motion's font tokens name, generic ones and CJK faces left out */
-const familiesOf = (tokens) => [...new Set(Object.values(tokens.font ?? {}).flatMap((s) => String(s).split(',').map((f) => f.trim().replace(/^["']|["']$/g, ''))))]
-  .filter((f) => f && !GENERIC.test(f) && !HAN.test(f));
 
 /**
  * Google Fonts' stylesheet for a family: it refuses (400) a weight range a face does not span, so the common ones are tried
@@ -34,9 +29,8 @@ const familiesOf = (tokens) => [...new Set(Object.values(tokens.font ?? {}).flat
  * quietly draw in a fallback face
  */
 async function googleCss(family) {
-  const name = encodeURIComponent(family).replace(/%20/g, '+');
-  for (const axes of [':ital,wght@0,100..900;1,100..900', ':wght@100..900', ':wght@200..900', ':wght@100..800', ':wght@200..800', ':wght@300..800', ':wght@300..700', ':wght@400..700', ':wght@400;700', '']) {
-    const res = await fetch(`https://fonts.googleapis.com/css2?family=${name}${axes}&display=block`, {headers: {'user-agent': UA}});
+  for (const axes of AXES) {
+    const res = await fetch(googleUrl(family, axes), {headers: {'user-agent': UA}});
     if (res.ok) return res.text();
     if (res.status !== 400) throw new Error(`Google Fonts answers ${res.status} for ${family}`);
   }
@@ -57,8 +51,7 @@ async function faces(families, dir, motion) {
   for (const family of families.filter((name) => !own.some((f) => f.family === name))) {
     const text = await googleCss(family);
     if (!text) { missing.push(family); continue; }
-    const blocks = [...text.matchAll(/\/\*\s*([a-z-]+)\s*\*\/\s*(@font-face\s*\{[^}]*\})/g)].filter(([, subset]) => subset === 'latin').map(([, , b]) => b);
-    for (const block of blocks.length ? blocks : [text]) {
+    for (const block of latinBlocks(text)) {
       const url = /url\(([^)]+)\)/.exec(block)?.[1];
       if (!url) continue;
       const file = `${family.replace(/\W+/g, '-')}-${/font-style:\s*(\w+)/.exec(block)?.[1] ?? 'normal'}-${(/font-weight:\s*([\d ]+)/.exec(block)?.[1] ?? '400').trim().replace(/\s+/g, '-')}.woff2`;
@@ -74,15 +67,14 @@ async function faces(families, dir, motion) {
   return {css, missing};
 }
 
-const page = (name, id, version, heavy, scripts) => `<!doctype html>
+const page = (name, id, version, heavy, scripts, css = true) => `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>${name}: reel</title>
-<link rel="stylesheet" href="reel.css">
-<style>
+${css ? '<link rel="stylesheet" href="reel.css">\n' : ''}<style>
 html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
 #player, .shell { position: fixed; inset: 0; }
 .shell.idle { cursor: none; }
@@ -155,8 +147,16 @@ async function shared() {
   return {core: `/play/_shared/${hashed(dir, 'core-v1', core.outputFiles[0].contents)}`, three: `/play/_shared/${hashed(dir, 'three', three.outputFiles[0].contents)}`};
 }
 
-/** The modules a motion's script takes from the shared scripts, and the expression each is found at there */
-const FROM_CORE = {'react': 'v1.modules["react"]', 'react/jsx-runtime': 'v1.modules["react/jsx-runtime"]', '@motionhub/runtime': 'v1.modules["@motionhub/runtime"]', 'three': 'three'};
+/**
+ * The page a private motion's reel is previewed in, by its owner on motionhub.dev (player/preview.js): the shared
+ * scripts, three.js always, and the script that takes the reel the framing page built. Served under a policy of its own
+ * (tools/site.mjs, /play/_preview/*): /play/*'s, with blob: scripts and data: faces, and still no network.
+ */
+function preview({core, three}) {
+  const loader = `/play/_shared/${hashed(join(OUT, '_shared'), 'preview', readFileSync(join(HERE, 'preview.js')))}`;
+  mkdirSync(join(OUT, '_preview'), {recursive: true});
+  writeFileSync(join(OUT, '_preview/index.html'), page('A private motion', '', '', false, [core, three, loader], false));
+}
 
 async function player(id, {core, three}) {
   const dir = join(ROOT, 'motions', id), out = join(OUT, id);
@@ -169,26 +169,12 @@ async function player(id, {core, three}) {
   // a reel that imports three.js draws in 3D: its page loads three.js, and the player holds it on a weak device until it is tapped
   let heavy = false;
   const result = await build({
-    ...common([{name: 'motionhub', setup(b) {
-      // the motion's script holds the motion's code alone: what the core offers it takes from there
-      b.onResolve({filter: /^(react|react-dom|three|@motionhub\/runtime)(\/.*)?$/}, (args) => {
-        if (args.path in FROM_CORE) {
-          if (args.path === 'three') heavy = true;
-          return {path: args.path, namespace: 'core'};
-        }
-        // three.js's addons are the motion's own, and import three.js from the shared script like the motion does
-        if (/^three\/(examples\/jsm|addons)\//.test(args.path)) return undefined;
-        return {errors: [{text: `${args.path} is not something a reel can import: a reel has react, @motionhub/runtime, three and three's addons (three/addons/, three/examples/jsm/)`}]};
-      });
-      b.onLoad({filter: /.*/, namespace: 'core'}, ({path}) => ({contents: `module.exports = globalThis.__motionhubPlayer.${FROM_CORE[path]};`, loader: 'js'}));
-      b.onResolve({filter: /^motionhub:reel$/}, () => ({path: join(dir, 'react/reel.tsx')}));
-      b.onResolve({filter: /^motionhub:(tokens|sound)$/}, (args) => ({path: args.path.slice(10), namespace: 'motionhub'}));
-      // the motion's sound (react/sound.json), or none
-      b.onLoad({filter: /.*/, namespace: 'motionhub'}, ({path}) => ({contents: `export default ${path === 'sound'
-        ? (existsSync(join(dir, 'react/sound.json')) ? readFileSync(join(dir, 'react/sound.json'), 'utf8') : 'null')
-        : JSON.stringify(tokens)};`, loader: 'js'}));
-    }}]),
-    stdin: {contents: "import * as module from 'motionhub:reel';\nimport sound from 'motionhub:sound';\nimport tokens from 'motionhub:tokens';\nglobalThis.__motionhubPlayer.v1.mount({module, sound, tokens});", resolveDir: dir, loader: 'js'},
+    ...common([reelPlugin({
+      reel: {path: join(dir, 'react/reel.tsx')},
+      sound: existsSync(join(dir, 'react/sound.json')) ? readFileSync(join(dir, 'react/sound.json'), 'utf8') : null,
+      tokens, heavy: () => { heavy = true; },
+    })]),
+    stdin: {contents: ENTRY, resolveDir: dir, loader: 'js'},
   });
   // a second React or three.js in a reel's script would draw with objects the shared ones do not know
   const copied = Object.keys(result.metafile.inputs).filter((f) => /node_modules\/(react|react-dom|scheduler|three\/(build|src))\//.test(f));
@@ -202,6 +188,7 @@ const wanted = process.argv.slice(2);
 const ids = listMotions(join(ROOT, 'motions')).filter((id) => existsSync(join(ROOT, 'motions', id, 'react/reel.tsx')))
   .filter((id) => !wanted.length || wanted.includes(id)).sort();
 const scripts = await shared();
+preview(scripts);
 for (const id of ids) {
   const missing = await player(id, scripts);
   console.log(`play/${id}/${missing.length ? `  (no web font for ${missing.join(', ')}: the stack's next face draws it)` : ''}`);
