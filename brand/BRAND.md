@@ -35,12 +35,12 @@ one vermilion that belongs to the logo and to the one action a page asks for. Ev
 | `on-accent` | `#FBF8F2` | `#1A1714` | text on `accent` |
 | `code` | `#2A2622` | `#C9BEAE` | the ground of a code block: the theme turned over |
 | `on-code` | `#F3EEE4` | `#1A1714` | text on `code` |
-| `header` | `#F3EEE4` | `#1A1714` | the header band: paper, the brand's ground, above the page |
-| `header-surface` | `#FBF8F2` | `#221E1A` | inputs and buttons in the header |
-| `header-line` | `#DDD3C3` | `#3B342D` | the rule under the header |
+| `header` | `#F4F3F0` | `#1A1714` | the header band: a quiet warm grey above the page |
+| `header-surface` | `#FBFBF9` | `#221E1A` | inputs and buttons in the header |
+| `header-line` | `#E2E0DB` | `#3B342D` | the rule under the header |
 
-- The interface is ink on a quiet white page under a paper header (`header`), which is also the ground of the logo on paper,
-  the favicon's manifest and the share card. Buttons, links and focus are `text`, not a colour (`accent` aside): colour on the page is the
+- The interface is ink on a quiet white page under a quiet grey header (`header`), which is also the ground of the logo on
+  its light tile, the favicon's manifest and the share card. Buttons, links and focus are `text`, not a colour (`accent` aside): colour on the page is the
   motions' posters and samples.
 - Vermilion is three tokens with three jobs. `mark` is the logo, and the trail that asks a visitor to share a motion: the mark's balls as flat discs, stepping up in size and strength, never a gradient; `like` is a like the viewer has given; `accent` is
   the one thing a page most wants a visitor to do, at most once a page. None is a link colour or a warning.

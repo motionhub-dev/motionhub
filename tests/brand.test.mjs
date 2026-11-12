@@ -39,7 +39,7 @@ test('brand/tokens.css is what the tokens give', () => {
   const css = readFileSync(join(ROOT, 'brand/tokens.css'), 'utf8');
   assert.equal(css, tokensCss(tokens), 'run node tools/brand.mjs');
   assert.match(css, /--color-bg: #FCFCFA;/);
-  assert.match(css, /--color-header: #F3EEE4;/);
+  assert.match(css, /--color-header: #F4F3F0;/);
   assert.match(css, /--font-ui: "Inter", "Noto Sans SC",/);
   assert.match(css, /:root\[data-theme="dark"\] \{[^}]*--color-bg: #1A1714;/);
 });

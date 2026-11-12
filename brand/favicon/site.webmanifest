@@ -3,8 +3,8 @@
   "short_name": "motionhub",
   "start_url": "/",
   "display": "browser",
-  "background_color": "#F3EEE4",
-  "theme_color": "#F3EEE4",
+  "background_color": "#F4F3F0",
+  "theme_color": "#F4F3F0",
   "icons": [
     {
       "src": "/icon-192.png",
