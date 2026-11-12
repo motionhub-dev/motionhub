@@ -1,7 +1,11 @@
 # Every pull request and every push to main: the tools' own tests, every motion against SPEC.md and CONTRIBUTING.md, the
 # hub's and the players' builds, every reel played. It runs the pull request's own code, so it has no secrets and can
-# only read. motionhub.dev's site is built over this repository elsewhere (HUB.md, "Where things are"). Who may change what (accounts, authors, sign-off) is judged apart, by
-# main's own workflow: ownership.yml.
+# only read. motionhub.dev's site is built over this repository elsewhere (HUB.md, "Where things are"). Who may change
+# what (accounts, authors, sign-off) is judged apart, by main's own workflow: ownership.yml.
+#
+# A pull request skips the slower steps its files cannot reach (.github/scripts/changed.mjs): the runtime's and the
+# Remotion binding's tests, and the players' build and every reel played. The job itself always runs, since `check` is
+# a required status, and a push to main runs every step.
 name: check
 
 on:
@@ -24,13 +28,24 @@ jobs:
         with:
           node-version: 22
       - uses: ./.github/actions/security-scan
+      - name: What the pull request changes
+        id: changed
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then node .github/scripts/changed.mjs "$BASE" "$HEAD"
+          else printf 'runtime=true\nremotion=true\nplayers=true\n' >> "$GITHUB_OUTPUT"; echo "a push: every step"; fi
       - name: The checker's tests
         run: npm test
       - name: The runtime's tests
+        if: steps.changed.outputs.runtime == 'true'
         working-directory: packages/runtime
         run: npm install --no-package-lock --no-save && npm test
       # the runtime is copied in (--install-links), so the binding and it share one React
       - name: The Remotion binding's tests
+        if: steps.changed.outputs.remotion == 'true'
         working-directory: packages/remotion
         run: npm install --no-package-lock --no-save --install-links && npm test
       - name: Every motion
@@ -39,15 +54,18 @@ jobs:
         run: node tools/build.mjs
       # the faces the reels' players copy in, fetched from Google Fonts once and kept between runs
       - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        if: steps.changed.outputs.players == 'true'
         with:
           path: player/.cache/fonts
           key: fonts-${{ hashFiles('motions/**/tokens.json') }}
           restore-keys: fonts-
       - name: The players build
+        if: steps.changed.outputs.players == 'true'
         working-directory: player
         run: npm ci --no-audit --no-fund && npm run build
       # every reel opened in Chrome under the policy the site serves it with: a change to the runtime, the player or a
       # motion that breaks a reel stops here (player/smoke.mjs)
       - name: Every reel plays
+        if: steps.changed.outputs.players == 'true'
         working-directory: player
         run: npm run smoke
