@@ -10,7 +10,7 @@
   "engines": { "node": ">=20" },
   "bin": { "motionhub": "bin/motionhub.mjs" },
   "exports": { ".": "./tools/check.mjs", "./hub": "./tools/hub.mjs" },
-  "files": ["bin/", "tools/check.mjs", "tools/hub.mjs", "tools/pack.mjs", "tools/security/", "tools/artifact-cli.mjs"],
+  "files": ["bin/", "tools/check.mjs", "tools/hub.mjs", "tools/pack.mjs", "tools/security/", "tools/artifact-cli.mjs", "tools/private-cli.mjs"],
   "publishConfig": { "access": "public" },
   "scripts": {
     "check": "node tools/check.mjs",
