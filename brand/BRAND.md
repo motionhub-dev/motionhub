@@ -22,21 +22,25 @@ one vermilion that belongs to the logo and to the one action a page asks for. Ev
 
 | Token | Light | Dark | Used for |
 | --- | --- | --- | --- |
-| `bg` | `#F3EEE4` | `#1A1714` | the page: paper |
-| `surface` | `#FBF8F2` | `#221E1A` | inputs, panels on the page |
-| `surface-2` | `#EAE2D4` | `#2C2722` | selected and hover |
-| `line` | `#DDD3C3` | `#3B342D` | borders and rules |
+| `bg` | `#FCFCFA` | `#1A1714` | the page: a quiet white, so the posters carry the colour |
+| `surface` | `#F6F5F2` | `#221E1A` | inputs, panels on the page |
+| `surface-2` | `#ECEAE5` | `#2C2722` | selected and hover |
+| `line` | `#E3E0DA` | `#3B342D` | borders and rules |
 | `text` | `#2A2622` | `#F1EBE0` | headings, primary buttons |
 | `text-2` | `#4A453E` | `#D3CABC` | body copy |
-| `muted` | `#6B645A` | `#A89E90` | labels, counts, captions |
+| `muted` | `#69635A` | `#A89E90` | labels, counts, captions |
 | `mark` | `#E2442B` | `#FF6A4D` | the logo, and the trail on what asks a visitor to share a motion, and nothing else |
 | `like` | `#C24A33` | `#FF7A5E` | a like that has been given, and nothing else |
 | `accent` | `#C4381F` | `#FF6A4D` | the one call to action a page has (Copy prompt), and nothing else |
 | `on-accent` | `#FBF8F2` | `#1A1714` | text on `accent` |
 | `code` | `#2A2622` | `#C9BEAE` | the ground of a code block: the theme turned over |
 | `on-code` | `#F3EEE4` | `#1A1714` | text on `code` |
+| `header` | `#F3EEE4` | `#1A1714` | the header band: paper, the brand's ground, above the page |
+| `header-surface` | `#FBF8F2` | `#221E1A` | inputs and buttons in the header |
+| `header-line` | `#DDD3C3` | `#3B342D` | the rule under the header |
 
-- The interface is ink on paper. Buttons, links and focus are `text`, not a colour (`accent` aside): colour on the page is the
+- The interface is ink on a quiet white page under a paper header (`header`), which is also the ground of the logo on paper,
+  the favicon's manifest and the share card. Buttons, links and focus are `text`, not a colour (`accent` aside): colour on the page is the
   motions' posters and samples.
 - Vermilion is three tokens with three jobs. `mark` is the logo, and the trail that asks a visitor to share a motion: the mark's balls as flat discs, stepping up in size and strength, never a gradient; `like` is a like the viewer has given; `accent` is
   the one thing a page most wants a visitor to do, at most once a page. None is a link colour or a warning.

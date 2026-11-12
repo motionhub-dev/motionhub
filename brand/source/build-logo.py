@@ -91,7 +91,7 @@ def main(regular, italic):
         return svg(64, 64, body, 'motionhub')
 
     (out / 'icon.svg').write_text(icon(HEX['light']['text'], HEX['dark']['mark']))
-    (out / 'icon-light.svg').write_text(icon(HEX['light']['bg'], HEX['light']['mark']))
+    (out / 'icon-light.svg').write_text(icon(HEX['light']['header'], HEX['light']['mark']))
     (out / 'icon-16.svg').write_text(icon(HEX['light']['text'], HEX['dark']['mark'], one_ball=True))
     (out / 'icon-square.svg').write_text(icon(HEX['light']['text'], HEX['dark']['mark'], radius=0))
     fav = BRAND / 'favicon'
@@ -99,7 +99,7 @@ def main(regular, italic):
     (fav / 'favicon.svg').write_text(icon(HEX['light']['text'], HEX['dark']['mark']))
     (fav / 'site.webmanifest').write_text(json.dumps({
         'name': 'motionhub', 'short_name': 'motionhub', 'start_url': '/', 'display': 'browser',
-        'background_color': HEX['light']['bg'], 'theme_color': HEX['light']['bg'],
+        'background_color': HEX['light']['header'], 'theme_color': HEX['light']['header'],
         'icons': [{'src': f'/icon-{n}.png', 'sizes': f'{n}x{n}', 'type': 'image/png', 'purpose': 'any maskable'} for n in (192, 512)],
     }, indent=2) + '\n')
 
@@ -109,7 +109,7 @@ def main(regular, italic):
     cw, ch, lw = 1200, 630, 720
     lh = lw * h / w
     inner = lockup('light').split('>', 1)[1].rsplit('</svg>', 1)[0].replace('<title>motionhub</title>', '')
-    (social / 'og-default.svg').write_text(svg(cw, ch, f'<rect width="{cw}" height="{ch}" fill="{HEX["light"]["bg"]}"/>'
+    (social / 'og-default.svg').write_text(svg(cw, ch, f'<rect width="{cw}" height="{ch}" fill="{HEX["light"]["header"]}"/>'
                                                f'<svg x="{(cw - lw) / 2:.1f}" y="{(ch - lh) / 2:.1f}" width="{lw}" height="{lh:.1f}" viewBox="0 0 {w:.0f} {h:.0f}">{inner}</svg>', 'motionhub'))
 
     # raster copies for places that take no SVG, drawn by rsvg-convert (librsvg)

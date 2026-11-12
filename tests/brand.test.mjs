@@ -26,7 +26,7 @@ test('both themes name the same colours, each a DTCG colour whose components agr
 
 test('text reads on every ground at WCAG AA, the mark, a like and the accent stand out at 3:1, and text reads on the accent', () => {
   for (const [theme, c] of [['light', light], ['dark', dark]]) {
-    for (const ground of ['bg', 'surface', 'surface-2']) {
+    for (const ground of ['bg', 'surface', 'surface-2', 'header', 'header-surface']) {
       for (const ink of ['text', 'text-2', 'muted']) assert.ok(contrast(c[ink], c[ground]) >= 4.5, `${theme} ${ink} on ${ground}: ${contrast(c[ink], c[ground]).toFixed(2)}`);
       for (const ink of ['mark', 'like', 'accent']) assert.ok(contrast(c[ink], c[ground]) >= 3, `${theme} ${ink} on ${ground}: ${contrast(c[ink], c[ground]).toFixed(2)}`);
     }
@@ -38,7 +38,8 @@ test('text reads on every ground at WCAG AA, the mark, a like and the accent sta
 test('brand/tokens.css is what the tokens give', () => {
   const css = readFileSync(join(ROOT, 'brand/tokens.css'), 'utf8');
   assert.equal(css, tokensCss(tokens), 'run node tools/brand.mjs');
-  assert.match(css, /--color-bg: #F3EEE4;/);
+  assert.match(css, /--color-bg: #FCFCFA;/);
+  assert.match(css, /--color-header: #F3EEE4;/);
   assert.match(css, /--font-ui: "Inter", "Noto Sans SC",/);
   assert.match(css, /:root\[data-theme="dark"\] \{[^}]*--color-bg: #1A1714;/);
 });
