@@ -14,22 +14,35 @@ export const PLAY = join(DIST, 'play');
 const TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.woff2': 'font/woff2', '.woff': 'font/woff',
   '.ttf': 'font/ttf', '.jpg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.mp3': 'audio/mpeg', '.glb': 'model/gltf-binary'};
 
-/** The headers dist/_headers gives a path under /play/: the policy the site serves a reel with */
-function playHeaders() {
-  const headers = {};
-  let inPlay = false;
+/**
+ * The headers dist/_headers gives `path`, as Cloudflare applies them: every rule whose pattern matches, in order; a
+ * header set twice joined with a comma; `! Name` taking out what a rule before it set. So /play/_preview/ gets the
+ * policy of its own (tools/site.mjs), and every reel /play/*'s.
+ */
+export function headersFor(path) {
+  const rules = [];
   for (const line of readFileSync(join(DIST, '_headers'), 'utf8').split('\n')) {
-    if (!/^\s/.test(line)) { inPlay = line.trim() === '/play/*'; continue; }
-    const m = /^\s+([^:]+):\s*(.*)$/.exec(line);
-    if (inPlay && m) headers[m[1]] = m[2];
+    if (!line.trim()) continue;
+    if (!/^\s/.test(line)) { rules.push({pattern: line.trim(), lines: []}); continue; }
+    rules.at(-1)?.lines.push(line.trim());
   }
-  return headers;
+  const matches = (pattern) => new RegExp(`^${pattern.split('*').map((p) => p.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*')}$`).test(path);
+  const headers = new Map();
+  for (const rule of rules.filter((r) => matches(r.pattern))) for (const line of rule.lines) {
+    if (line.startsWith('! ')) { headers.delete(line.slice(2).trim().toLowerCase()); continue; }
+    const m = /^([^:]+):\s*(.*)$/.exec(line);
+    if (!m) continue;
+    const had = headers.get(m[1].toLowerCase());
+    headers.set(m[1].toLowerCase(), {name: m[1], value: had ? `${had.value}, ${m[2]}` : m[2]});
+  }
+  return Object.fromEntries([...headers.values()].map((h) => [h.name, h.value]));
 }
 
-/** The reels the build wrote: play/<id>/ and play/@<scope>/<slug>/, each with its index.html */
+/** The reels the build wrote: play/<id>/ and play/@<scope>/<slug>/, each with its index.html (not play/_shared/ or play/_preview/) */
 export function reels() {
   const ids = [];
   for (const d of readdirSync(PLAY)) {
+    if (d.startsWith('_')) continue;
     if (d.startsWith('@')) for (const s of readdirSync(join(PLAY, d))) ids.push(`${d}/${s}`);
     else ids.push(d);
   }
@@ -38,13 +51,12 @@ export function reels() {
 
 /** dist/ over HTTP on a free port, with the reels' policy on /play/: resolves to {base, close} */
 export function serve() {
-  const policy = playHeaders();
   const server = createServer((req, res) => {
     let path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
     if (path.endsWith('/')) path += 'index.html';
     const file = resolve(DIST, `.${path}`);
     if (!file.startsWith(DIST) || !existsSync(file) || !statSync(file).isFile()) { res.writeHead(404); res.end(); return; }
-    res.writeHead(200, {'content-type': TYPES[extname(file)] ?? 'application/octet-stream', ...(path.startsWith('/play/') ? policy : {})});
+    res.writeHead(200, {'content-type': TYPES[extname(file)] ?? 'application/octet-stream', ...(path.startsWith('/play/') ? headersFor(path) : {})});
     res.end(readFileSync(file));
   });
   return new Promise((done) => server.listen(0, '127.0.0.1', () => done({base: `http://127.0.0.1:${server.address().port}`, close: () => server.close()})));

@@ -5,7 +5,7 @@
   "description": "The reel player: one page per motion with a reel, built over the files tools/build.mjs writes, its smoke test and its renderer.",
   "scripts": {
     "build": "node build.mjs",
-    "smoke": "node smoke.mjs && node security.mjs",
+    "smoke": "node smoke.mjs && node security.mjs && node preview-test.mjs",
     "render": "node render.mjs"
   },
   "dependencies": {
