@@ -137,7 +137,7 @@ test('a scene\'s lines are said when they say, sharing what they leave out evenl
   assert.throws(() => times([{dur: 0}]), /dur is a number of seconds above 0/);
   // A line hidden under the one before it, or left no time, would never show: both are said.
   assert.throws(() => times([{dur: 5}, {at: 2}]), /<Line id="l1">: at is 2 s, before the line before it ends \(5 s into the scene\)/);
-  assert.throws(() => times([{at: 3}, {at: 1}]), /<Line id="l1">: at is 1 s, before the line before it ends/);
+  assert.throws(() => times([{at: 3}, {at: 1}]), /<Line id="l1">: at is 1 s, before the line before it \(at 3 s\)/);
   assert.throws(() => times([{dur: 4}, {}, {at: 4}]), /<Line id="l1">: no time is left for it before <Line id="l2"> at 4 s/);
   assert.throws(() => times([{dur: 6}, {}]), /<Line id="l1">: no time is left for it before the end of its scene \(6 s\)/);
 });

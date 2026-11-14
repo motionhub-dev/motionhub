@@ -174,7 +174,7 @@ const timeLines = (lines, start, duration) => {
   let last = -Infinity;
   for (const g of given) {
     if (g.at === undefined) continue;
-    if (g.at < last) throw new Error(`${g.where}: at is ${g.at} s, before the line before it ends (${round(last)} s into the scene)`);
+    if (g.at < last) throw new Error(`${g.where}: at is ${g.at} s, before the line before it (at ${round(last)} s)`);
     last = g.at;
   }
   const times = [];
