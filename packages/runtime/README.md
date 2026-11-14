@@ -54,8 +54,9 @@ check it scene by scene without running it:
 - **A narration**: `<Film voice="provider:name">` names the voice a film's lines are spoken in, and the engine that speaks them gives each
   voiced line's speech in its runtime (`voice: {[line id]: {seconds, words: [{text, start, end}]}}`, word times into the speech). A voiced
   line lasts as long as its speech, after a lead (0.4 s, before a scene's first line) or a hold (0.4 s, between lines) when it gives no
-  `at` (`NARRATION`); its `dur` gives way to the speech. Speech that runs past its scene's end is cut there, and the line says by how much
-  (`over`), for the engine to tell. A voiced line in the outline has `voiced` and its `words`, in the film's seconds. `useLine(id)` gives a
+  `at` (`NARRATION`); its `dur` gives way to the speech. Speech that runs past its scene's end, or into the next line that gives its `at`,
+  is cut there, and the line says by how much (`over`), for the engine to tell; lines it leaves no time are said where it ends, in none.
+  Speech never makes the outline fail, since its length is the engine's; times the author wrote that cannot all hold still do. A voiced line in the outline has `voiced` and its `words`, in the film's seconds. `useLine(id)` gives a
   line's `{start, end, words}` in its scene's time, so a picture can move with what is said; `<Film captions="words">` draws a voiced line
   word by word, each full once it is said.
 - **`<Sound src at dur trim loop volume fadeIn fadeOut duck>`**: a sound the film plays, the file `src` (a path the engine serves), from
@@ -70,7 +71,7 @@ check it scene by scene without running it:
 - `filmOutline(children, {width, height})` reads that structure from the elements themselves, without drawing them: `{seconds, scenes:
   [{id, start, duration, layers, lines, sounds}], layers, sounds, captions, voice}`, each line `{id, text, start, end}` (and, voiced,
   `voiced`, `words` and `over`) and each sound `{src, at, dur, until, trim, loop, volume, fadeIn, fadeOut,
-  duck?}` in the film's seconds (`dur` null for the whole file). `<Film>` reports it to the engine's `onFilm` while it is drawn, once for each structure (a new `onFilm` function on every
+  duck?}` in the film's seconds (`dur` null for the whole file). A line's and a word's times are in whole milliseconds. `<Film>` reports it to the engine's `onFilm` while it is drawn, once for each structure (a new `onFilm` function on every
   render is not called again for the same structure), when its value has one. A scene without an
   id or a positive duration, an id used twice (scenes, lines, layers in one scene, the film's own layers), a sound without a `src`, a line
   that starts past its scene's end or before the line before it ends, lines that would be left no time, and a time that is no number of

@@ -181,6 +181,17 @@ test('a voiced line lasts as long as its speech, after a lead or a hold, and say
   assert.equal(outline.voice, 'edge:en-US-AriaNeural');
   assert.throws(() => filmOutline([h(Scene, {key: 'a', id: 'a', duration: 1})], {speaker: 'Aria'}), /a voice is its provider and its name/);
   assert.throws(() => filmOutline([h(Scene, {key: 'a', id: 'a', duration: 1}, h(Line, {id: 'x'}, 'X'))], {voice: {x: {seconds: 0}}}), /no length of speech/);
+  // Speech is never the author's to fix: it is cut where the next line begins, and the lines it leaves no time are said in none.
+  const scene = (voice, ...lines) => filmOutline([h(Scene, {key: 'a', id: 'a', duration: 6}, ...lines.map(([id, props]) => h(Line, {key: id, id, ...props}, id)))], {voice})
+    .scenes[0].lines.map(({start, end, over}) => [start, end, over]);
+  assert.deepEqual(scene({l0: {seconds: 3}}, ['l0', {}], ['l1', {at: 2}]), [[0.4, 2, 1.4], [2, 6, undefined]]);
+  assert.deepEqual(scene({l0: {seconds: 6}}, ['l0', {}], ['l1', {}]), [[0.4, 6, 0.4], [6, 6, undefined]]);
+  // What the author wrote is still the author's: a dur that runs into the next line's at.
+  assert.throws(() => scene({}, ['l0', {dur: 5}], ['l1', {at: 2}]), /before the line before it ends/);
+  // Word times a little off are kept within the speech, and one that ends before it starts is left out.
+  const [said] = filmOutline([h(Scene, {key: 'a', id: 'a', duration: 6}, h(Line, {id: 'x', at: 0}, 'X'))],
+    {voice: {x: {seconds: 1, words: [{text: 'a', start: -0.1, end: 0.3}, {text: 'b', start: 0.5, end: 0.2}, {text: 'c', start: 0.8, end: 1.5}]}}}).scenes[0].lines;
+  assert.deepEqual(said.words, [{text: 'a', start: 0, end: 0.3}, {text: 'c', start: 0.8, end: 1}]);
 });
 
 test('useLine says when a line is said in its scene\'s time, and word captions light each word as it is said', () => {

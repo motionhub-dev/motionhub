@@ -164,8 +164,12 @@ export const NARRATION = {lead: 0.4, hold: 0.4};
 const clipOf = (where, clip) => {
   if (clip === undefined) return undefined;
   if (!clip || !(Number.isFinite(clip.seconds) && clip.seconds > 0)) throw new Error(`${where}: its voice is no length of speech`);
+  // Within the speech, and each ending after it starts: an engine's word times can be a little off.
+  const within = (t) => Math.min(clip.seconds, Math.max(0, t));
   const words = Array.isArray(clip.words)
-    ? clip.words.filter((w) => w && typeof w.text === 'string' && Number.isFinite(w.start) && Number.isFinite(w.end))
+    ? clip.words
+        .filter((w) => w && typeof w.text === 'string' && Number.isFinite(w.start) && Number.isFinite(w.end) && w.end >= w.start)
+        .map((w) => ({text: w.text, start: within(w.start), end: within(w.end)}))
     : [];
   return {seconds: clip.seconds, words};
 };
@@ -207,17 +211,21 @@ const timeLines = (lines, start, duration, voice = {}) => {
     const fixed = run.reduce((sum, g) => sum + (g.dur ?? 0) + g.gap, 0);
     const free = run.filter((g) => g.dur === undefined);
     const left = to - from - fixed;
-    // Lines that give no time would be said in none, and never shown.
-    if (free.length && left <= 1e-9) {
+    // Lines that give no time would be said in none, and never shown: the author's to fix, unless it is speech that takes the time,
+    // whose length the author does not write. Then they are said where it ends, in what is left, and none if nothing is.
+    if (free.length && left <= 1e-9 && !run.some((g) => g.clip)) {
       throw new Error(`${free[0].where}: no time is left for it before ${next < given.length ? `${given[next].where} at ${to} s` : `the end of its scene (${to} s)`}; give it an at, or shorten the lines before it`);
     }
-    const share = free.length ? left / free.length : 0;
+    const share = free.length ? Math.max(0, left) / free.length : 0;
     cursor = from;
     for (const g of run) {
-      const from = Math.min(duration, cursor + g.gap);
-      const wanted = from + (g.dur ?? share);
-      const end = Math.min(duration, wanted);
-      const at = start + from;
+      // Speech is cut where the next line that gives its at begins, or the scene ends, and says by how much (over); a dur the
+      // author wrote runs on, and one that runs into the next line is an error there.
+      const limit = g.clip ? to : duration;
+      const begin = Math.min(limit, cursor + g.gap);
+      const wanted = begin + (g.dur ?? share);
+      const end = Math.min(limit, wanted);
+      const at = start + begin;
       // In whole milliseconds, so the times read as written and add up as they should.
       times.push({
         start: round(at),
@@ -226,9 +234,9 @@ const timeLines = (lines, start, duration, voice = {}) => {
           ? {
               voiced: true,
               words: g.clip.words
-                .filter((w) => from + w.start < end)
-                .map((w) => ({text: w.text, start: round(at + w.start), end: round(at + Math.min(w.end, end - from))})),
-              ...(wanted - duration > 1e-9 ? {over: round(wanted - duration)} : {}),
+                .filter((w) => begin + w.start < end)
+                .map((w) => ({text: w.text, start: round(at + w.start), end: round(at + Math.min(w.end, end - begin))})),
+              ...(wanted - limit > 1e-9 ? {over: round(wanted - limit)} : {}),
             }
           : {}),
       });
