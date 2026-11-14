@@ -2,12 +2,12 @@
 // (@motionhub/runtime) from Remotion's own frame, so they run unchanged; <MotionFonts> loads its faces; useMotion() turns its
 // tokens into Remotion values (frames, Easing) for anything you draw yourself. For a film of scenes (@motionhub/runtime's <Film>),
 // sceneFrames() and filmMetadata() give each scene and the composition their length in frames, from the scenes, and <FilmAudio>
-// plays its sounds (<Sound>, @motionhub/runtime 0.7).
+// plays its sounds (<Sound>, @motionhub/runtime 0.7) and its narration (<Film voice>, 0.8).
 import {Fragment, createElement, useEffect, useMemo, useState} from 'react';
 import {Easing, Html5Audio, OffthreadVideo, Sequence, continueRender, delayRender, interpolate, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {MotionRoot, MotionRuntimeProvider, resolveTokens, useTokens} from '@motionhub/runtime';
 
-export {filmMetadata, filmSounds, sceneFrames, soundPlan} from './film.js';
+export {DUCK, ducked, filmMetadata, filmSounds, sceneFrames, soundPlan} from './film.js';
 import {filmSounds} from './film.js';
 export {PARAM_TYPES, paramChoices, paramDefaults, paramsSchema} from './params.js';
 
@@ -24,13 +24,14 @@ const RemotionVideo = ({src, startAt = 0, trimBefore = 0, playbackRate = 1, obje
 /**
  * Wrap the composition in it once, outside every <Sequence>, with the motion's tokens.json: `import tokens from '../motion/tokens.json'`. Its components
  * then draw by Remotion's frame: useTime() inside a <Sequence> counts from its start. `root={false}` leaves out the full-frame root that sets the
- * tokens' custom properties (--color-*, --font-*).
+ * tokens' custom properties (--color-*, --font-*). `voice`, each line's speech by id (`{seconds, words}`), times a <Film voice>'s lines by it, as
+ * the film given to filmMetadata and <FilmAudio> must.
  */
-export const MotionProvider = ({tokens, root = true, children}) => {
+export const MotionProvider = ({tokens, root = true, voice, children}) => {
   const frame = useCurrentFrame();
   const {fps, width, height} = useVideoConfig();
   const resolved = useMemo(() => resolveTokens(tokens), [tokens]);
-  const value = {useTime: sequenceSeconds, useCompositionTime: () => frame / fps, fps, width, height, tokens: resolved, Video: RemotionVideo};
+  const value = {useTime: sequenceSeconds, useCompositionTime: () => frame / fps, fps, width, height, tokens: resolved, Video: RemotionVideo, ...(voice ? {voice} : {})};
   return createElement(MotionRuntimeProvider, {value}, root ? createElement(MotionRoot, {tokens: resolved}, children) : children);
 };
 
@@ -122,8 +123,9 @@ const NO_FILM = Object.freeze({});
 
 /**
  * The sounds of the <Film> a component draws (@motionhub/runtime 0.7's <Sound>), on Remotion's: each in a Sequence from its start, an
- * <Html5Audio> of its file (a URL, or a path in public/) trimmed, looped and faded as the film says. Place it once in the composition,
- * outside the Series of scenes, so its frames are the film's: `<FilmAudio component={Main} film={film} />`.
+ * <Html5Audio> of its file (a URL, or a path in public/) trimmed, looped and faded as the film says; with `film.voice`, its narration too,
+ * the sounds with `duck` sunk under it. Place it once in the composition, outside the Series of scenes, so its frames are the film's:
+ * `<FilmAudio component={Main} film={film} />`.
  */
 export const FilmAudio = ({component, film = NO_FILM}) => {
   const plans = useMemo(() => filmSounds(component, film), [component, film]);
