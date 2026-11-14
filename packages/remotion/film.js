@@ -4,10 +4,10 @@ import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {MotionRuntimeProvider} from '@motionhub/runtime';
 
-/** The structure of the <Film> a component draws */
-function outlineOf(Component, {fps = 30, width = 1920, height = 1080, props = {}}) {
+/** The structure of the <Film> a component draws, its voiced lines timed by their speech */
+function outlineOf(Component, {fps = 30, width = 1920, height = 1080, props = {}, voice}) {
   let outline = null;
-  const value = {useTime: () => 0, useCompositionTime: () => 0, fps, width, height, tokens: {}, Video: () => null, onFilm: (o) => { outline = o; }};
+  const value = {useTime: () => 0, useCompositionTime: () => 0, fps, width, height, tokens: {}, Video: () => null, onFilm: (o) => { outline = o; }, ...(voice ? {voice} : {})};
   try {
     renderToStaticMarkup(createElement(MotionRuntimeProvider, {value}, createElement(Component, props)));
   } catch (error) {
@@ -80,8 +80,37 @@ export function soundPlan(sound, fps) {
   };
 }
 
-/** Every <Sound> of the <Film> a component draws, the film's own and its scenes', as soundPlan gives it */
+/** How a sound with `duck` sinks under the narration: down over `attack` s before a line is said, back over `release` s after it */
+export const DUCK = {attack: 0.12, release: 0.5};
+
+/** How far a ducking sound is down at `t`, the film's seconds, from 0 to 1 (its whole `duck`), by the narration's spans */
+export function ducked(spans, t) {
+  let level = 0;
+  for (const {at, until} of spans) {
+    const rise = Math.min(1, Math.max(0, (t - (at - DUCK.attack)) / DUCK.attack));
+    const fall = Math.min(1, Math.max(0, (until + DUCK.release - t) / DUCK.release));
+    level = Math.max(level, Math.min(rise, fall));
+  }
+  return level;
+}
+
+/**
+ * Every <Sound> of the <Film> a component draws, the film's own and its scenes', as soundPlan gives it; then, with `film.voice` (each line's
+ * speech by id, `{seconds, words, src}`), each voiced line's clip from where it is said until it ends, and every sound with `duck` sunk under
+ * them by that many dB.
+ */
 export function filmSounds(Component, film = {}) {
+  const fps = film.fps ?? 30;
   const outline = outlineOf(Component, film);
-  return [...(outline.sounds ?? []), ...outline.scenes.flatMap((scene) => scene.sounds ?? [])].map((sound) => soundPlan(sound, film.fps ?? 30));
+  const spoken = outline.scenes.flatMap((scene) => scene.lines ?? []).filter((line) => line.voiced && film.voice?.[line.id]?.src);
+  const spans = spoken.map((line) => ({at: line.start, until: line.end}));
+  const sounds = [...(outline.sounds ?? []), ...outline.scenes.flatMap((scene) => scene.sounds ?? [])].map((sound) => {
+    const plan = soundPlan(sound, fps);
+    if (!sound.duck || !spans.length) return plan;
+    const floor = 10 ** (-sound.duck / 20);
+    const level = plan.volume;
+    return {...plan, volume: (frame) => level(frame) * (1 - (1 - floor) * ducked(spans, (plan.from + frame) / fps))};
+  });
+  const speech = spoken.map((line) => soundPlan({src: film.voice[line.id].src, at: line.start, dur: null, until: line.end, trim: 0, loop: false, volume: 0, fadeIn: 0, fadeOut: 0}, fps));
+  return [...sounds, ...speech];
 }

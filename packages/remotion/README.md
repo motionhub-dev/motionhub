@@ -80,8 +80,22 @@ outside the `Series`, so its frames are the film's. Each sound is a `Sequence` f
 file (a URL, or a path in `public/`), trimmed, looped and faded as the film says, its level in dB a gain. Above 0 dB, Remotion amplifies
 when it renders; its preview and Player hold a volume at 1 unless `useWebAudioApi` is set, which needs the file served with CORS, so the
 binding leaves it off. A sound without `dur` that does not loop plays its file to its end or to the end of where it sits; its fade out is
-heard only when it lasts that long, since the binding does not read the file. A sound's `duck` is not applied: it waits for a narration.
-`filmSounds(Main, film)` gives the same in frames, for code of your own. It needs Remotion 4.0.530 or later, the first whose
+heard only when it lasts that long, since the binding does not read the file. `filmSounds(Main, film)` gives the same in frames, for code
+of your own.
+
+A narrated film (`<Film voice>`, `@motionhub/runtime` 0.8) gives each spoken line's speech by id, `{seconds, words, src}`: the engine
+that spoke it knows them (Open Motion Studio keeps them in a project's `voice/`). Pass it to the provider, which times the lines by it, and
+in the `film` that `filmMetadata` and `<FilmAudio>` read, so the scenes' lengths and the sound agree:
+
+```tsx
+import voice from './voice.json'; // {"intro-1": {"seconds": 1.8, "words": [...], "src": "voice/9f86d081884c7d65.mp3"}}
+const film = {fps: 30, width: 1920, height: 1080, voice};
+// <MotionProvider tokens={{}} voice={voice}> … <FilmAudio component={Main} film={film} /> … </MotionProvider>
+```
+
+`<FilmAudio>` then plays each voiced line's clip (`src`, a path in `public/`) from where the line is said until it ends, and a sound with
+`duck` sinks that many dB under it, down over 0.12 s before a line and back over 0.5 s after it (`DUCK`, `ducked(spans, t)`), as Open
+Motion Studio mixes it. It needs Remotion 4.0.530 or later, the first whose
 `<Html5Audio>` takes `durationInFrames`.
 
 ## A component's parameters in Remotion Studio

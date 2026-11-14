@@ -3,7 +3,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createElement as h} from 'react';
-import {Film, Scene, Sound, useTokens} from '@motionhub/runtime';
+import {Film, Line, Scene, Sound, useTokens} from '@motionhub/runtime';
 import {filmMetadata, filmSounds, sceneFrames, soundPlan} from './film.js';
 import {z} from 'zod';
 import {paramDefaults, paramsSchema} from './params.js';
@@ -52,6 +52,25 @@ test('a film\'s sounds play in Remotion\'s frames where the film places them, tr
   const short = soundPlan({src: 'x.mp3', at: 0, dur: 1, until: 5, trim: 0, loop: false, volume: 0, fadeIn: 1, fadeOut: 1}, 30);
   assert.ok(Math.abs(short.volume(15) - 1) < 1e-9);
   assert.deepEqual(filmSounds(filmOf([['a', 1]])), [], 'a film with no sounds plays none');
+});
+
+test('a narrated film plays each voiced line\'s clip where it is said, and sinks a ducking sound under it', () => {
+  const Main = () => h(Film, {voice: 'openai:nova'},
+    h(Sound, {src: 'media/bed.mp3', loop: true, volume: -6, duck: 12}),
+    h(Sound, {src: 'media/room.mp3', loop: true, volume: -20}),
+    h(Scene, {id: 'a', duration: 4}, h(Line, {id: 'l1'}, 'Heat moves uphill.'), h(Line, {id: 'l2'}, 'Unspoken yet.')));
+  const voice = {l1: {seconds: 1.5, words: [{text: 'Heat', start: 0, end: 0.4}], src: 'voice/0123456789abcdef.mp3'}};
+  const [bed, room, said, ...rest] = filmSounds(Main, {fps: 30, voice});
+  assert.equal(rest.length, 0, 'a line with no speech plays nothing');
+  // Voiced, the line is said 0.4 s in, for its 1.5 s.
+  assert.deepEqual({...said, volume: undefined}, {src: 'voice/0123456789abcdef.mp3', from: 12, durationInFrames: 45, trimBefore: 0, sourceFrames: null, loop: false, volume: undefined});
+  assert.equal(said.volume(10), 1);
+  const level = 10 ** (-6 / 20);
+  assert.ok(Math.abs(bed.volume(1) - level) < 1e-9, 'before the line, at its own level');
+  assert.ok(Math.abs(bed.volume(30) - level * 10 ** (-12 / 20)) < 1e-9, 'under the line, 12 dB down');
+  assert.ok(Math.abs(bed.volume(90) - level) < 1e-9, 'back after its release');
+  assert.ok(Math.abs(room.volume(30) - 10 ** (-20 / 20)) < 1e-9, 'a sound without duck stays');
+  assert.equal(filmSounds(Main, {fps: 30}).length, 2, 'with no speech given, only the sounds play');
 });
 
 const META = {params: {
