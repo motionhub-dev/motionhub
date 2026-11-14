@@ -19,7 +19,7 @@ You do not use this package on its own: an engine binding provides it.
 | `<Sequence from duration>`, `interpolate(t, input, output, {easing})`, `Easing` | As Remotion's, in seconds: a span whose children count time from its start, a value mapped through a curve, and the curves (`Easing.bezier` takes a cubicBezier token). For composing components, as a reel does |
 | `<MotionRoot tokens>` | A full-frame box carrying the tokens as CSS custom properties |
 | `<MotionScope tokens root>` | Its children drawn in another motion, on the engine's clock: `useTokens()` under it gives that motion's tokens (a `tokens.json`, or tokens already resolved), set as custom properties on a full-frame root (`root={false}` leaves it out). A film in several motions wraps each scene, or each part of a frame, in one |
-| `<Film>`, `<Scene id duration>`, `<Layer id x y w h z>`, `<Line id text>` | A film made of scenes, for an engine that plays a whole film rather than one component: below |
+| `<Film>`, `<Scene id duration>`, `<Layer id x y w h z>`, `<Line id text>`, `<Sound src at …>` | A film made of scenes, for an engine that plays a whole film rather than one component: below |
 | `resolveTokens(dtcg)`, `tokenVariables(tokens)` | `tokens.json` (W3C design tokens) as values, and those values as custom properties: `--color-ink`, `--font-display`, `--duration-light`, `--easing-light`, `--caption-size` |
 
 A component colours with `var(--color-<name>)` and sets type with `var(--font-<name>)`, reads its time from `useTime()`, never from a clock, a timer or `Math.random`, and takes what changes (words, a progress from 0 to 1, a video's `src`) as props. So the same moment draws the same picture every time.
@@ -48,14 +48,21 @@ check it scene by scene without running it:
   every scene, on the film's clock, and no scene's layer may take its id, since a picked element is told by its layer.
 - **`<Line id text>`**: what a scene says, its words as children (`text` where the caption differs). It draws nothing; an engine may speak
   it or caption it.
+- **`<Sound src at dur trim loop volume fadeIn fadeOut duck>`**: a sound the film plays, the file `src` (a path the engine serves), from
+  `at` seconds of its scene, or of the film when it is one of `<Film>`'s own; `dur` seconds of it, from `trim` seconds into the file (the
+  whole file when left out); with `loop`, again and again to the end of its scene or of the film; at `volume` dB (0 is the file as it is),
+  faded in and out over `fadeIn` and `fadeOut` seconds, and `duck` dB lower while a narration speaks. It never plays past the end of its
+  scene (or the film). It draws nothing: the engine plays it from the structure, so a `<Sound>` is a child of `<Film>` or a `<Scene>`.
 - Anything else among `<Film>`'s children is drawn across the whole film.
 - `<FilmScene id>` around a film draws its scene `id` alone, on the engine's clock, with the film's own layers on the film's: for an
   engine that places each scene itself. A Remotion project exported from the Open Motion Studio puts each scene in a `Series.Sequence`
   this way, so the scenes are named clips on Remotion Studio's timeline. A scene the film does not have is an error.
 - `filmOutline(children, {width, height})` reads that structure from the elements themselves, without drawing them: `{seconds, scenes:
-  [{id, start, duration, layers, lines}], layers}`. `<Film>` reports it to the engine's `onFilm` while it is drawn, once for each structure (a new `onFilm` function on every
+  [{id, start, duration, layers, lines, sounds}], layers, sounds}`, each sound `{src, at, dur, until, trim, loop, volume, fadeIn, fadeOut,
+  duck?}` in the film's seconds (`dur` null for the whole file). `<Film>` reports it to the engine's `onFilm` while it is drawn, once for each structure (a new `onFilm` function on every
   render is not called again for the same structure), when its value has one. A scene without an
-  id or a positive duration, and an id used twice (scenes, lines, layers in one scene, the film's own layers), is an error.
+  id or a positive duration, an id used twice (scenes, lines, layers in one scene, the film's own layers), and a sound without a `src`
+  or with a time that is no number of seconds, is an error.
 
 ## Sound
 

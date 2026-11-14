@@ -49,11 +49,17 @@ export declare const Sequence: FC<{from?: number; duration?: number; children?: 
 
 /** A box of the frame, in its pixels */
 export type LayerBox = {id: string; x: number; y: number; w: number; h: number; z: number};
-/** A <Film>'s structure: its length, its scenes in order (each from `start` seconds), and its own layers, drawn across every scene */
+/**
+ * A <Sound> as the engine plays it, in the film's seconds: from `at`, `dur` seconds of the file from `trim` (null: the whole file, or with
+ * `loop` until `until`), never past `until` (the end of its scene, or of the film); `volume` and `duck` in dB, fades in seconds
+ */
+export type FilmSound = {src: string; at: number; dur: number | null; until: number; trim: number; loop: boolean; volume: number; fadeIn: number; fadeOut: number; duck?: number};
+/** A <Film>'s structure: its length, its scenes in order (each from `start` seconds), and its own layers and sounds, across every scene */
 export type FilmOutline = {
   seconds: number;
-  scenes: {id: string; start: number; duration: number; layers: LayerBox[]; lines: {id: string; text: string}[]}[];
+  scenes: {id: string; start: number; duration: number; layers: LayerBox[]; lines: {id: string; text: string}[]; sounds: FilmSound[]}[];
   layers: LayerBox[];
+  sounds: FilmSound[];
 };
 export declare function filmOutline(children: ReactNode, frame?: {width?: number; height?: number}): FilmOutline;
 /** Its <Scene>s laid end to end, each drawn in its span on its own clock; anything else drawn across them all */
@@ -65,3 +71,8 @@ export declare const Layer: FC<{id: string; x?: number; y?: number; w?: number; 
 export declare const FilmScene: FC<{id: string; children?: ReactNode}>;
 /** What a scene says; it draws nothing */
 export declare const Line: FC<{id: string; text?: string; children?: ReactNode}>;
+/**
+ * A sound the film plays, from `at` seconds of its scene (or the film), `dur` seconds of it from `trim` into the file, looped with `loop`, at
+ * `volume` dB, faded over `fadeIn`/`fadeOut` seconds, `duck` dB lower under a narration. It draws nothing; the engine plays it
+ */
+export declare const Sound: FC<{src: string; at?: number; dur?: number; trim?: number; loop?: boolean; volume?: number; fadeIn?: number; fadeOut?: number; duck?: number}>;

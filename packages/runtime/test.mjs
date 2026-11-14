@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {createElement as h} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {Fragment} from 'react';
-import {Caption, Easing, Film, FilmScene, Layer, Line, MotionRuntimeProvider, MotionScope, Scene, Sequence, filmOutline, interpolate, useTime, resolveTokens, seededRandom, tokenVariables, useCompositionTime, useCurrentFrame, useTokens, useVideoConfig} from './index.js';
+import {Caption, Easing, Film, FilmScene, Layer, Line, MotionRuntimeProvider, MotionScope, Scene, Sequence, Sound, filmOutline, interpolate, useTime, resolveTokens, seededRandom, tokenVariables, useCompositionTime, useCurrentFrame, useTokens, useVideoConfig} from './index.js';
 
 test('a seed draws the same stream every time, and another seed another one', () => {
   const take = (seed) => { const r = seededRandom(seed); return [r(), r(), r()]; };
@@ -84,10 +84,11 @@ test('a Film reads its structure from its elements: scenes end to end, their lay
   assert.deepEqual(filmOutline(children, {width: 1280, height: 720}), {
     seconds: 6.5,
     scenes: [
-      {id: 'intro', start: 0, duration: 2.5, layers: [{id: 'title', x: 0, y: 300, w: 1280, h: 400, z: 0}], lines: [{id: 'l1', text: 'Heat moves uphill'}]},
-      {id: 'how', start: 2.5, duration: 4, layers: [], lines: [{id: 'l2', text: 'Shown words'}]},
+      {id: 'intro', start: 0, duration: 2.5, layers: [{id: 'title', x: 0, y: 300, w: 1280, h: 400, z: 0}], lines: [{id: 'l1', text: 'Heat moves uphill'}], sounds: []},
+      {id: 'how', start: 2.5, duration: 4, layers: [], lines: [{id: 'l2', text: 'Shown words'}], sounds: []},
     ],
     layers: [{id: 'logo', x: 40, y: 40, w: 200, h: 80, z: 2}],
+    sounds: [],
   });
   for (const [bad, message] of [
     [[], /at least one <Scene>/],
@@ -98,6 +99,28 @@ test('a Film reads its structure from its elements: scenes end to end, their lay
     [[h(Scene, {key: 1, id: 'a', duration: 1}), h(Scene, {key: 2, id: 'a', duration: 1})], /two scenes are called "a"/],
     [[h(Scene, {key: 1, id: 'a', duration: 1}, h(Line, {id: 'x'}), h(Line, {id: 'x'}))], /two lines are called "x"/],
   ]) assert.throws(() => filmOutline(bad), message);
+});
+
+test('a Film reads its sounds in the film\'s seconds: a scene\'s from its start and to its end, the film\'s own across it all', () => {
+  const outline = filmOutline([
+    h(Sound, {key: 'bed', src: 'media/bed.mp3', loop: true, volume: -12, fadeIn: 1, fadeOut: 2, duck: 6}),
+    h(Scene, {key: 'a', id: 'a', duration: 2}),
+    h(Scene, {key: 'b', id: 'b', duration: 3}, h(Sound, {src: 'media/whoosh.wav', at: 0.4, dur: 1.5, trim: 0.2, volume: -6})),
+  ]);
+  assert.deepEqual(outline.sounds, [{src: 'media/bed.mp3', at: 0, dur: null, until: 5, trim: 0, loop: true, volume: -12, fadeIn: 1, fadeOut: 2, duck: 6}]);
+  assert.deepEqual(outline.scenes[0].sounds, []);
+  assert.deepEqual(outline.scenes[1].sounds, [{src: 'media/whoosh.wav', at: 2.4, dur: 1.5, until: 5, trim: 0.2, loop: false, volume: -6, fadeIn: 0, fadeOut: 0}]);
+  const scene = (props) => [h(Scene, {key: 'a', id: 'a', duration: 2}, h(Sound, props))];
+  for (const [props, message] of [
+    [{}, /needs a src/],
+    [{src: 'a.mp3', at: -1}, /at is a number of seconds from 0/],
+    [{src: 'a.mp3', dur: 0}, /dur is a number of seconds above 0/],
+    [{src: 'a.mp3', fadeIn: Number.NaN}, /fadeIn is a number of seconds/],
+    [{src: 'a.mp3', volume: '-6'}, /volume is in dB/],
+    [{src: 'a.mp3', duck: -3}, /duck is how many dB/],
+  ]) assert.throws(() => filmOutline(scene(props)), message);
+  assert.doesNotMatch(renderToStaticMarkup(h(MotionRuntimeProvider, {value: {useTime: () => 0, useCompositionTime: () => 0, fps: 30, width: 1, height: 1}},
+    h(Film, null, h(Scene, {id: 'a', duration: 1}, h(Sound, {src: 'media/x.mp3'}))))), /x\.mp3/, 'a sound draws nothing');
 });
 
 test('a Film draws the scene whose span holds the time, on its own clock, holds the last at the end', () => {

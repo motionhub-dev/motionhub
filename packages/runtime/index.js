@@ -123,11 +123,43 @@ const named = (what, id) => {
   return id;
 };
 
+/** A finite number of seconds from `min` (above it when `above`), or `fallback` when left out */
+const seconds = (where, name, value, fallback, {min = 0, above = false} = {}) => {
+  if (value === undefined) return fallback;
+  if (!(Number.isFinite(value) && (above ? value > min : value >= min))) throw new Error(`${where}: ${name} is a number of seconds ${above ? 'above' : 'from'} ${min}`);
+  return value;
+};
+
+/**
+ * A <Sound> as an engine plays it, in the film's time: from `at` (its parent's start, a scene's or the film's, plus its own `at`), for
+ * `dur` seconds of its file (null: the whole file, or with `loop` until `until`), never past `until` (the end of its scene, or of the film).
+ */
+const sound = (e, start, until) => {
+  const {src, at, dur, trim, loop = false, volume = 0, fadeIn, fadeOut, duck} = e.props;
+  if (typeof src !== 'string' || !src) throw new Error('a <Sound> needs a src: the file it plays');
+  const where = `<Sound src="${src}">`;
+  if (!Number.isFinite(volume)) throw new Error(`${where}: volume is in dB, 0 for the file as it is`);
+  if (duck !== undefined && !(Number.isFinite(duck) && duck >= 0)) throw new Error(`${where}: duck is how many dB it drops under a narration, 0 or more`);
+  return {
+    src,
+    at: start + seconds(where, 'at', at, 0),
+    dur: seconds(where, 'dur', dur, null, {above: true}),
+    until,
+    trim: seconds(where, 'trim', trim, 0),
+    loop: loop === true,
+    volume,
+    fadeIn: seconds(where, 'fadeIn', fadeIn, 0),
+    fadeOut: seconds(where, 'fadeOut', fadeOut, 0),
+    ...(duck !== undefined ? {duck} : {}),
+  };
+};
+
 /**
  * The structure of a <Film>'s children, read from the elements themselves without drawing them, so it is known before the first frame:
- * `{seconds, scenes: [{id, start, duration, layers, lines}], layers}`, a layer `{id, x, y, w, h, z}` in the frame's pixels (a box left out
- * fills the frame), a line `{id, text}`. `layers` are the film's own, drawn across every scene. A scene without an id or a positive
- * duration, and an id used twice where it must be unique, are errors.
+ * `{seconds, scenes: [{id, start, duration, layers, lines, sounds}], layers, sounds}`, a layer `{id, x, y, w, h, z}` in the frame's pixels (a
+ * box left out fills the frame), a line `{id, text}`, a sound `{src, at, dur, until, trim, loop, volume, fadeIn, fadeOut, duck?}` in the
+ * film's seconds. `layers` and `sounds` are the film's own, across every scene. A scene without an id or a positive duration, an id used
+ * twice where it must be unique, and a sound with no file or a time that is no number of seconds, are errors.
  */
 export function filmOutline(children, {width = 1920, height = 1080} = {}) {
   const box = (e) => ({id: named('Layer', e.props.id), x: e.props.x ?? 0, y: e.props.y ?? 0, w: e.props.w ?? width, h: e.props.h ?? height, z: e.props.z ?? 0});
@@ -141,6 +173,8 @@ export function filmOutline(children, {width = 1920, height = 1080} = {}) {
   };
   const scenes = [];
   const layers = [];
+  // The film's own sounds wait for its length, which is known once every scene is read.
+  const own = [];
   let start = 0;
   for (const e of elements(children)) {
     if (!isValidElement(e)) continue;
@@ -150,10 +184,13 @@ export function filmOutline(children, {width = 1920, height = 1080} = {}) {
       if (!(Number.isFinite(duration) && duration > 0)) throw new Error(`<Scene id="${id}"> needs its duration in seconds: duration={4}`);
       const inner = elements(e.props.children).filter(isValidElement);
       const lines = inner.filter((c) => c.type === Line).map((c) => ({id: named('Line', c.props.id), text: c.props.text ?? words(c.props.children)}));
-      scenes.push({id, start, duration, layers: unique(`layers in scene "${id}"`, inner.filter((c) => c.type === Layer).map(box)), lines});
+      const sounds = inner.filter((c) => c.type === Sound).map((c) => sound(c, start, start + duration));
+      scenes.push({id, start, duration, layers: unique(`layers in scene "${id}"`, inner.filter((c) => c.type === Layer).map(box)), lines, sounds});
       start += duration;
     } else if (e.type === Layer) {
       layers.push(box(e));
+    } else if (e.type === Sound) {
+      own.push(e);
     }
   }
   if (!scenes.length) throw new Error('a <Film> needs at least one <Scene>');
@@ -165,7 +202,7 @@ export function filmOutline(children, {width = 1920, height = 1080} = {}) {
     const taken = scene.layers.find((layer) => layers.some((own) => own.id === layer.id));
     if (taken) throw new Error(`scene "${scene.id}" has a layer called "${taken.id}", the name of one of the film's own layers`);
   }
-  return {seconds: start, scenes, layers};
+  return {seconds: start, scenes, layers, sounds: own.map((e) => sound(e, 0, start))};
 }
 
 /**
@@ -231,6 +268,14 @@ export const Layer = ({id, x = 0, y = 0, w, h, z = 0, style, children}) => {
 
 /** What a scene says: its words (the children, or `text` where the caption differs). It draws nothing; an engine may speak or caption it */
 export const Line = () => null;
+
+/**
+ * A sound the film plays: the file `src`, from `at` seconds of its scene (of the film, for one of the film's own), `dur` seconds of it from
+ * `trim` seconds into the file (the whole file without `dur`; with `loop`, again and again to the end of its scene or the film), at `volume`
+ * dB (0: as the file is), faded in and out over `fadeIn` and `fadeOut` seconds, and `duck` dB lower while a narration speaks. It draws
+ * nothing: the engine plays it, from the film's structure.
+ */
+export const Sound = () => null;
 
 /** The ground a motion's components expect: the tokens as custom properties, filling the frame */
 export const MotionRoot = ({tokens, style, children}) => createElement('div', {
