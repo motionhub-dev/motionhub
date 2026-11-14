@@ -123,6 +123,9 @@ const named = (what, id) => {
   return id;
 };
 
+/** Seconds as an error says them */
+const round = (value) => Math.round(value * 1000) / 1000;
+
 /** A finite number of seconds from `min` (above it when `above`), or `fallback` when left out */
 const seconds = (where, name, value, fallback, {min = 0, above = false} = {}) => {
   if (value === undefined) return fallback;
@@ -165,8 +168,15 @@ const timeLines = (lines, start, duration) => {
     const where = `<Line id="${e.props.id}">`;
     const at = seconds(where, 'at', e.props.at, undefined);
     if (at !== undefined && at >= duration) throw new Error(`${where}: at is ${at} s, past the end of its scene (${duration} s)`);
-    return {at, dur: seconds(where, 'dur', e.props.dur, undefined, {above: true})};
+    return {where, at, dur: seconds(where, 'dur', e.props.dur, undefined, {above: true})};
   });
+  // Lines are said in the order they are written.
+  let last = -Infinity;
+  for (const g of given) {
+    if (g.at === undefined) continue;
+    if (g.at < last) throw new Error(`${g.where}: at is ${g.at} s, before the line before it (at ${round(last)} s)`);
+    last = g.at;
+  }
   const times = [];
   let cursor = 0;
   for (let i = 0; i < given.length;) {
@@ -174,11 +184,18 @@ const timeLines = (lines, start, duration) => {
     let next = i + 1;
     while (next < given.length && given[next].at === undefined) next++;
     const from = given[i].at ?? cursor;
+    // Lines are said one after another: one that starts before the one before it ends would be hidden under it.
+    if (from < cursor - 1e-9) throw new Error(`${given[i].where}: at is ${from} s, before the line before it ends (${round(cursor)} s into the scene)`);
     const to = next < given.length ? given[next].at : duration;
     const run = given.slice(i, next);
     const fixed = run.reduce((sum, g) => sum + (g.dur ?? 0), 0);
-    const free = run.filter((g) => g.dur === undefined).length;
-    const share = free ? Math.max(0, to - from - fixed) / free : 0;
+    const free = run.filter((g) => g.dur === undefined);
+    const left = to - from - fixed;
+    // Lines that give no time would be said in none, and never shown.
+    if (free.length && left <= 1e-9) {
+      throw new Error(`${free[0].where}: no time is left for it before ${next < given.length ? `${given[next].where} at ${to} s` : `the end of its scene (${to} s)`}; give it an at, or shorten the lines before it`);
+    }
+    const share = free.length ? left / free.length : 0;
     cursor = from;
     for (const g of run) {
       const end = Math.min(duration, cursor + (g.dur ?? share));
@@ -354,7 +371,9 @@ export const MotionScope = ({tokens, root = true, children}) => {
  * it is said, fading in and out, and nothing at other times.
  */
 export const Caption = ({line, children, opacity = 1, style}) => {
+  // Both read before anything branches, so a caption calls the same hooks with a line or without.
   const said = useContext(Said);
+  const c = useTokens().caption ?? {};
   if (line !== undefined) {
     const spoken = said?.lines.find((l) => l.id === line);
     if (!spoken) throw new Error(`<Caption line="${line}">: ${said ? 'the film has no line by that id' : 'a caption of a line is drawn inside a <Film>'}`);
@@ -362,7 +381,6 @@ export const Caption = ({line, children, opacity = 1, style}) => {
     if (fade <= 0) return null;
     return createElement(Caption, {opacity: opacity * fade, style}, children ?? spoken.text);
   }
-  const c = useTokens().caption ?? {};
   const py = c['padding-y'] ?? 10, pad = `${py}px ${c['padding-x'] ?? 26}px`;
   const rule = c['rule-left']
     ? createElement('div', {style: {position: 'absolute', left: 0, top: py * 0.6, bottom: py * 0.6, width: 4, borderRadius: 2, background: c['rule-left']}})
