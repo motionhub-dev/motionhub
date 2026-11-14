@@ -3,8 +3,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createElement as h} from 'react';
-import {Film, Scene, useTokens} from '@motionhub/runtime';
-import {filmMetadata, sceneFrames} from './film.js';
+import {Film, Scene, Sound, useTokens} from '@motionhub/runtime';
+import {filmMetadata, filmSounds, sceneFrames, soundPlan} from './film.js';
 import {z} from 'zod';
 import {paramDefaults, paramsSchema} from './params.js';
 
@@ -32,6 +32,26 @@ test('a scene shorter than a frame, a component that draws no Film, and one that
   assert.throws(() => filmMetadata(() => h('div')), /draws no <Film>/);
   const Inked = () => h('i', null, useTokens().color.ink);
   assert.throws(() => sceneFrames(() => h(Film, null, h(Scene, {id: 'a', duration: 1}, h(Inked)))), /off the page, at its start, to learn its scenes: .*<MotionScope>/);
+});
+
+test('a film\'s sounds play in Remotion\'s frames where the film places them, trimmed, looped and faded as it says', () => {
+  const Main = () => h(Film, null,
+    h(Sound, {src: 'media/bed.mp3', loop: true, volume: -12, fadeIn: 1, fadeOut: 2}),
+    h(Scene, {id: 'a', duration: 2}),
+    h(Scene, {id: 'b', duration: 3}, h(Sound, {src: 'media/hit.wav', at: 0.5, trim: 0.1, dur: 0.4, volume: 6})));
+  const [bed, hit] = filmSounds(Main, {fps: 30});
+  assert.deepEqual({...bed, volume: undefined}, {src: 'media/bed.mp3', from: 0, durationInFrames: 150, trimBefore: 0, sourceFrames: null, loop: true, volume: undefined});
+  assert.deepEqual({...hit, volume: undefined}, {src: 'media/hit.wav', from: 75, durationInFrames: 12, trimBefore: 3, sourceFrames: 12, loop: false, volume: undefined});
+  const quiet = 10 ** (-12 / 20);
+  assert.equal(bed.volume(0), 0);
+  assert.ok(Math.abs(bed.volume(15) - quiet / 2) < 1e-9, 'half way through its fade in');
+  assert.ok(Math.abs(bed.volume(60) - quiet) < 1e-9);
+  assert.ok(Math.abs(bed.volume(120) - quiet / 2) < 1e-9, 'half way through its fade out, which ends with the film');
+  assert.ok(Math.abs(hit.volume(5) - 10 ** (6 / 20)) < 1e-9, 'louder than the file');
+  // Fades longer than the sound shrink together: each half of it.
+  const short = soundPlan({src: 'x.mp3', at: 0, dur: 1, until: 5, trim: 0, loop: false, volume: 0, fadeIn: 1, fadeOut: 1}, 30);
+  assert.ok(Math.abs(short.volume(15) - 1) < 1e-9);
+  assert.deepEqual(filmSounds(filmOf([['a', 1]])), [], 'a film with no sounds plays none');
 });
 
 const META = {params: {

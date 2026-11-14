@@ -17,6 +17,13 @@ type FilmOf<P> = {fps?: number; width?: number; height?: number; props?: P};
 export declare function sceneFrames<P extends object>(Component: FC<P>, film?: FilmOf<P>): Record<string, number>;
 /** A composition's metadata for a component that draws a <Film>: its length in frames from the scenes; with `ids`, the scenes must be those, in order */
 export declare function filmMetadata<P extends object>(Component: FC<P>, film?: FilmOf<P>, ids?: string[]): {durationInFrames: number; fps: number; width: number; height: number};
+/** A <Sound> of a film in Remotion's frames: a Sequence from `from` for `durationInFrames`, the file from `trimBefore` frames, `sourceFrames` of it (null: the rest), looped or once, at `volume(frame)` */
+export type SoundPlan = {src: string; from: number; durationInFrames: number; trimBefore: number; sourceFrames: number | null; loop: boolean; volume(frame: number): number};
+export declare function soundPlan(sound: import('@motionhub/runtime').FilmSound, fps: number): SoundPlan;
+/** Every <Sound> of the <Film> a component draws, as soundPlan gives it */
+export declare function filmSounds<P extends object>(Component: FC<P>, film?: FilmOf<P>): SoundPlan[];
+/** The film's sounds on Remotion's: place it once, outside the Series of scenes */
+export declare const FilmAudio: FC<{component: FC<any>; film?: FilmOf<any>}>;
 export declare const MotionFonts: FC<{han?: boolean}>;
 export declare function families(tokens: Tokens | undefined): string[];
 export declare function useMotion(): {
