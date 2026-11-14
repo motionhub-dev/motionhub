@@ -40,7 +40,8 @@ export declare const Video: FC<VideoProps>;
 export declare const MotionRoot: FC<{tokens?: Tokens; style?: CSSProperties; children?: ReactNode}>;
 /** Its children drawn in another motion: its tokens (a tokens.json, or resolved), keeping the engine's time; one per scene or part of a frame */
 export declare const MotionScope: FC<{tokens: unknown; root?: boolean; children?: ReactNode}>;
-export declare const Caption: FC<{children?: ReactNode; opacity?: number; style?: CSSProperties}>;
+/** One spoken line, styled by the caption tokens; with `line`, that line of the film's, while it is said */
+export declare const Caption: FC<{line?: string; children?: ReactNode; opacity?: number; style?: CSSProperties}>;
 
 export type EasingFn = (x: number) => number;
 export declare const Easing: {linear: EasingFn; bezier(x1: number, y1: number, x2: number, y2: number): EasingFn; inOutSine: EasingFn; outCubic: EasingFn; outQuart: EasingFn; inOutCubic: EasingFn; outBack: EasingFn};
@@ -49,19 +50,34 @@ export declare const Sequence: FC<{from?: number; duration?: number; children?: 
 
 /** A box of the frame, in its pixels */
 export type LayerBox = {id: string; x: number; y: number; w: number; h: number; z: number};
-/** A <Film>'s structure: its length, its scenes in order (each from `start` seconds), and its own layers, drawn across every scene */
+/**
+ * A <Sound> as the engine plays it, in the film's seconds: from `at`, `dur` seconds of the file from `trim` (null: the whole file, or with
+ * `loop` until `until`), never past `until` (the end of its scene, or of the film); `volume` and `duck` in dB, fades in seconds
+ */
+export type FilmSound = {src: string; at: number; dur: number | null; until: number; trim: number; loop: boolean; volume: number; fadeIn: number; fadeOut: number; duck?: number};
+/** A <Film>'s structure: its length, its scenes in order (each from `start` seconds), and its own layers and sounds, across every scene */
 export type FilmOutline = {
   seconds: number;
-  scenes: {id: string; start: number; duration: number; layers: LayerBox[]; lines: {id: string; text: string}[]}[];
+  scenes: {id: string; start: number; duration: number; layers: LayerBox[]; lines: FilmLine[]; sounds: FilmSound[]}[];
   layers: LayerBox[];
+  sounds: FilmSound[];
+  /** Whether the film draws its lines as captions */
+  captions: boolean;
 };
-export declare function filmOutline(children: ReactNode, frame?: {width?: number; height?: number}): FilmOutline;
-/** Its <Scene>s laid end to end, each drawn in its span on its own clock; anything else drawn across them all */
-export declare const Film: FC<{children?: ReactNode}>;
+/** A line of a scene, and when it is said, in the film's seconds */
+export type FilmLine = {id: string; text: string; start: number; end: number};
+export declare function filmOutline(children: ReactNode, frame?: {width?: number; height?: number; captions?: boolean}): FilmOutline;
+/** Its <Scene>s laid end to end, each drawn in its span on its own clock; anything else drawn across them all; with `captions`, its lines as captions */
+export declare const Film: FC<{captions?: boolean; children?: ReactNode}>;
 export declare const Scene: FC<{id: string; duration: number; children?: ReactNode}>;
 /** A box of the frame (`x`, `y`, `w`, `h` in pixels, the whole frame when left out), stacked by `z`, shown for its whole scene */
 export declare const Layer: FC<{id: string; x?: number; y?: number; w?: number; h?: number; z?: number; style?: CSSProperties; children?: ReactNode}>;
 /** The <Film> under it drawn as its scene `id` alone, on the engine's clock (its own layers on the film's), for an engine that places each scene */
 export declare const FilmScene: FC<{id: string; children?: ReactNode}>;
-/** What a scene says; it draws nothing */
-export declare const Line: FC<{id: string; text?: string; children?: ReactNode}>;
+/** What a scene says, from `at` seconds into it for `dur` seconds (shared evenly when left out); it draws nothing */
+export declare const Line: FC<{id: string; text?: string; at?: number; dur?: number; children?: ReactNode}>;
+/**
+ * A sound the film plays, from `at` seconds of its scene (or the film), `dur` seconds of it from `trim` into the file, looped with `loop`, at
+ * `volume` dB, faded over `fadeIn`/`fadeOut` seconds, `duck` dB lower under a narration. It draws nothing; the engine plays it
+ */
+export declare const Sound: FC<{src: string; at?: number; dur?: number; trim?: number; loop?: boolean; volume?: number; fadeIn?: number; fadeOut?: number; duck?: number}>;
