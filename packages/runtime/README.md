@@ -65,7 +65,8 @@ check it scene by scene without running it:
   duck?}` in the film's seconds (`dur` null for the whole file). `<Film>` reports it to the engine's `onFilm` while it is drawn, once for each structure (a new `onFilm` function on every
   render is not called again for the same structure), when its value has one. A scene without an
   id or a positive duration, an id used twice (scenes, lines, layers in one scene, the film's own layers), a sound without a `src`, a line
-  that starts past its scene's end, and a time that is no number of seconds, is an error.
+  that starts past its scene's end or before the line before it ends, lines that would be left no time, and a time that is no number of
+  seconds, is an error.
 
 ## Sound
 
