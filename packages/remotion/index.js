@@ -117,12 +117,15 @@ export function useMotion() {
   return {tokens, fps, frames, ease, progress};
 }
 
+/** A film that says nothing of its frame, the same each render, so FilmAudio reads the film's sounds once */
+const NO_FILM = Object.freeze({});
+
 /**
  * The sounds of the <Film> a component draws (@motionhub/runtime 0.7's <Sound>), on Remotion's: each in a Sequence from its start, an
  * <Html5Audio> of its file (a URL, or a path in public/) trimmed, looped and faded as the film says. Place it once in the composition,
  * outside the Series of scenes, so its frames are the film's: `<FilmAudio component={Main} film={film} />`.
  */
-export const FilmAudio = ({component, film = {}}) => {
+export const FilmAudio = ({component, film = NO_FILM}) => {
   const plans = useMemo(() => filmSounds(component, film), [component, film]);
   return createElement(Fragment, null, plans.map((plan, i) =>
     createElement(Sequence, {key: i, from: plan.from, durationInFrames: plan.durationInFrames, layout: 'none', name: plan.src},

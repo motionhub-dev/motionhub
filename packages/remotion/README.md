@@ -77,9 +77,12 @@ the film follows by itself; a scene added, taken out or moved is an error until 
 
 A film's `<Sound>`s (`@motionhub/runtime` 0.7) play with `<FilmAudio component={Main} film={film} />`, placed once inside the provider and
 outside the `Series`, so its frames are the film's. Each sound is a `Sequence` from where the film places it with an `<Html5Audio>` of its
-file (a URL, or a path in `public/`), trimmed, looped and faded as the film says, its level in dB a gain (Remotion amplifies above 0 dB).
-A sound without `dur` that does not loop plays its file to its end or to the end of where it sits; its fade out is heard only when it
-lasts that long, since the binding does not read the file. `filmSounds(Main, film)` gives the same in frames, for code of your own.
+file (a URL, or a path in `public/`), trimmed, looped and faded as the film says, its level in dB a gain. Above 0 dB, Remotion amplifies
+when it renders; its preview and Player hold a volume at 1 unless `useWebAudioApi` is set, which needs the file served with CORS, so the
+binding leaves it off. A sound without `dur` that does not loop plays its file to its end or to the end of where it sits; its fade out is
+heard only when it lasts that long, since the binding does not read the file. A sound's `duck` is not applied: it waits for a narration.
+`filmSounds(Main, film)` gives the same in frames, for code of your own. It needs Remotion 4.0.530 or later, the first whose
+`<Html5Audio>` takes `durationInFrames`.
 
 ## A component's parameters in Remotion Studio
 
