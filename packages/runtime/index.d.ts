@@ -28,6 +28,8 @@ export type MotionRuntime = {
   Video?: FC<VideoProps>;
   /** called with a <Film>'s structure when it is drawn */
   onFilm?(outline: FilmOutline): void;
+  /** Each voiced line's speech, by line id: how long it is and its words, each from and to seconds into it */
+  voice?: Record<string, {seconds: number; words?: {text: string; start: number; end: number}[]}>;
 };
 export declare const MotionRuntimeProvider: FC<{value: MotionRuntime; children?: ReactNode}>;
 
@@ -41,7 +43,7 @@ export declare const MotionRoot: FC<{tokens?: Tokens; style?: CSSProperties; chi
 /** Its children drawn in another motion: its tokens (a tokens.json, or resolved), keeping the engine's time; one per scene or part of a frame */
 export declare const MotionScope: FC<{tokens: unknown; root?: boolean; children?: ReactNode}>;
 /** One spoken line, styled by the caption tokens; with `line`, that line of the film's, while it is said */
-export declare const Caption: FC<{line?: string; children?: ReactNode; opacity?: number; style?: CSSProperties}>;
+export declare const Caption: FC<{line?: string; words?: boolean; children?: ReactNode; opacity?: number; style?: CSSProperties}>;
 
 export type EasingFn = (x: number) => number;
 export declare const Easing: {linear: EasingFn; bezier(x1: number, y1: number, x2: number, y2: number): EasingFn; inOutSine: EasingFn; outCubic: EasingFn; outQuart: EasingFn; inOutCubic: EasingFn; outBack: EasingFn};
@@ -61,14 +63,31 @@ export type FilmOutline = {
   scenes: {id: string; start: number; duration: number; layers: LayerBox[]; lines: FilmLine[]; sounds: FilmSound[]}[];
   layers: LayerBox[];
   sounds: FilmSound[];
-  /** Whether the film draws its lines as captions */
-  captions: boolean;
+  /** Whether the film draws its lines as captions, whole or word by word */
+  captions: boolean | 'words';
+  /** The film's voice, `provider:name`, or null */
+  voice: string | null;
 };
-/** A line of a scene, and when it is said, in the film's seconds */
-export type FilmLine = {id: string; text: string; start: number; end: number};
-export declare function filmOutline(children: ReactNode, frame?: {width?: number; height?: number; captions?: boolean}): FilmOutline;
-/** Its <Scene>s laid end to end, each drawn in its span on its own clock; anything else drawn across them all; with `captions`, its lines as captions */
-export declare const Film: FC<{captions?: boolean; children?: ReactNode}>;
+/** A word of a voiced line, and when it is said */
+export type FilmWord = {text: string; start: number; end: number};
+/**
+ * A line of a scene, and when it is said, in the film's seconds; a voiced one with its words, and `over`, the seconds of its speech
+ * past its scene's end
+ */
+export type FilmLine = {id: string; text: string; start: number; end: number; voiced?: true; words?: FilmWord[]; over?: number};
+/** How long a scene waits before its first spoken line, and between spoken lines, in seconds */
+export declare const NARRATION: {lead: number; hold: number};
+/** When a line is said, in its scene's time (as useTime() counts there), with its words where it is voiced */
+export declare function useLine(id: string): {start: number; end: number; words: FilmWord[]};
+export declare function filmOutline(
+  children: ReactNode,
+  frame?: {width?: number; height?: number; captions?: boolean | 'words'; voice?: MotionRuntime['voice']; speaker?: string},
+): FilmOutline;
+/**
+ * Its <Scene>s laid end to end, each drawn in its span on its own clock; anything else drawn across them all; with `captions`, its lines as
+ * captions (`"words"`: word by word, where they are voiced); `voice`, the voice its lines are spoken in (`provider:name`)
+ */
+export declare const Film: FC<{captions?: boolean | 'words'; voice?: string; children?: ReactNode}>;
 export declare const Scene: FC<{id: string; duration: number; children?: ReactNode}>;
 /** A box of the frame (`x`, `y`, `w`, `h` in pixels, the whole frame when left out), stacked by `z`, shown for its whole scene */
 export declare const Layer: FC<{id: string; x?: number; y?: number; w?: number; h?: number; z?: number; style?: CSSProperties; children?: ReactNode}>;
