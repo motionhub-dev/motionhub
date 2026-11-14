@@ -84,11 +84,12 @@ test('a Film reads its structure from its elements: scenes end to end, their lay
   assert.deepEqual(filmOutline(children, {width: 1280, height: 720}), {
     seconds: 6.5,
     scenes: [
-      {id: 'intro', start: 0, duration: 2.5, layers: [{id: 'title', x: 0, y: 300, w: 1280, h: 400, z: 0}], lines: [{id: 'l1', text: 'Heat moves uphill'}], sounds: []},
-      {id: 'how', start: 2.5, duration: 4, layers: [], lines: [{id: 'l2', text: 'Shown words'}], sounds: []},
+      {id: 'intro', start: 0, duration: 2.5, layers: [{id: 'title', x: 0, y: 300, w: 1280, h: 400, z: 0}], lines: [{id: 'l1', text: 'Heat moves uphill', start: 0, end: 2.5}], sounds: []},
+      {id: 'how', start: 2.5, duration: 4, layers: [], lines: [{id: 'l2', text: 'Shown words', start: 2.5, end: 6.5}], sounds: []},
     ],
     layers: [{id: 'logo', x: 40, y: 40, w: 200, h: 80, z: 2}],
     sounds: [],
+    captions: false,
   });
   for (const [bad, message] of [
     [[], /at least one <Scene>/],
@@ -121,6 +122,37 @@ test('a Film reads its sounds in the film\'s seconds: a scene\'s from its start 
   ]) assert.throws(() => filmOutline(scene(props)), message);
   assert.doesNotMatch(renderToStaticMarkup(h(MotionRuntimeProvider, {value: {useTime: () => 0, useCompositionTime: () => 0, fps: 30, width: 1, height: 1}},
     h(Film, null, h(Scene, {id: 'a', duration: 1}, h(Sound, {src: 'media/x.mp3'}))))), /x\.mp3/, 'a sound draws nothing');
+});
+
+test('a scene\'s lines are said when they say, sharing what they leave out evenly', () => {
+  const times = (lines, duration = 6) =>
+    filmOutline([h(Scene, {key: 'a', id: 'a', duration: 1}), h(Scene, {key: 'b', id: 'b', duration}, ...lines.map((props, i) => h(Line, {key: i, id: `l${i}`, ...props}, 'Words')))])
+      .scenes[1].lines.map(({start, end}) => [start, end]);
+  // In the film's seconds: the scene starts at 1.
+  assert.deepEqual(times([{}, {}, {}]), [[1, 3], [3, 5], [5, 7]]);
+  assert.deepEqual(times([{at: 1}, {}]), [[2, 4.5], [4.5, 7]]);
+  assert.deepEqual(times([{dur: 1}, {}, {at: 4, dur: 0.5}, {}]), [[1, 2], [2, 5], [5, 5.5], [5.5, 7]]);
+  assert.deepEqual(times([{dur: 10}]), [[1, 7]], 'a line never runs past its scene');
+  assert.throws(() => times([{at: 6}]), /past the end of its scene/);
+  assert.throws(() => times([{dur: 0}]), /dur is a number of seconds above 0/);
+});
+
+test('a Film with captions draws the line being said over everything, and a Caption draws one line while it is said', () => {
+  const at = (t, film) => renderToStaticMarkup(h(MotionRuntimeProvider, {value: {useTime: () => t, useCompositionTime: () => t, fps: 30, width: 1920, height: 1080}}, film));
+  const film = (props, ...extra) => h(Film, props,
+    h(Scene, {id: 'a', duration: 4}, h(Line, {id: 'l1'}, 'Heat moves'), h(Line, {id: 'l2', text: 'uphill.'}, 'up the hill'), ...extra),
+    h(Scene, {id: 'b', duration: 2}));
+  assert.match(at(1, film({captions: true})), /z-index:2147483647.*>Heat moves</);
+  assert.match(at(3, film({captions: true})), />uphill\.</, 'its text where the caption differs');
+  assert.doesNotMatch(at(5, film({captions: true})), /Heat moves|uphill/, 'no line is said in the second scene');
+  assert.doesNotMatch(at(1, film({})), /Heat moves/, 'no captions unless the film asks');
+  assert.match(at(1, film({captions: true})), /opacity:1/);
+  assert.match(at(0.075, film({captions: true})), /opacity:0\.5/, 'it fades in');
+  const own = (t) => at(t, film({}, h(Layer, {id: 'own'}, h(Caption, {line: 'l2'}))));
+  assert.match(own(3), />uphill\.</);
+  assert.doesNotMatch(own(1), /uphill/);
+  assert.throws(() => at(1, film({}, h(Caption, {line: 'nope'}))), /the film has no line by that id/);
+  assert.throws(() => renderToStaticMarkup(h(MotionRuntimeProvider, {value: {useTime: () => 0, useCompositionTime: () => 0, fps: 30, width: 1, height: 1}}, h(Caption, {line: 'l1'}))), /drawn inside a <Film>/);
 });
 
 test('a Film draws the scene whose span holds the time, on its own clock, holds the last at the end', () => {
