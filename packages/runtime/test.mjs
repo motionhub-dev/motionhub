@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {createElement as h} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {Fragment} from 'react';
-import {Caption, Easing, Film, FilmScene, Layer, Line, MotionRuntimeProvider, MotionScope, Scene, Sequence, Sound, filmOutline, interpolate, useTime, resolveTokens, seededRandom, tokenVariables, useCompositionTime, useCurrentFrame, useTokens, useVideoConfig} from './index.js';
+import {Caption, Easing, Film, FilmScene, Layer, Line, MotionRuntimeProvider, MotionScope, Scene, Sequence, Sound, filmOutline, useLine, interpolate, useTime, resolveTokens, seededRandom, tokenVariables, useCompositionTime, useCurrentFrame, useTokens, useVideoConfig} from './index.js';
 
 test('a seed draws the same stream every time, and another seed another one', () => {
   const take = (seed) => { const r = seededRandom(seed); return [r(), r(), r()]; };
@@ -90,6 +90,7 @@ test('a Film reads its structure from its elements: scenes end to end, their lay
     layers: [{id: 'logo', x: 40, y: 40, w: 200, h: 80, z: 2}],
     sounds: [],
     captions: false,
+    voice: null,
   });
   for (const [bad, message] of [
     [[], /at least one <Scene>/],
@@ -158,6 +159,55 @@ test('a Film with captions draws the line being said over everything, and a Capt
   assert.doesNotMatch(own(1), /uphill/);
   assert.throws(() => at(1, film({}, h(Caption, {line: 'nope'}))), /the film has no line by that id/);
   assert.throws(() => renderToStaticMarkup(h(MotionRuntimeProvider, {value: {useTime: () => 0, useCompositionTime: () => 0, fps: 30, width: 1, height: 1}}, h(Caption, {line: 'l1'}))), /drawn inside a <Film>/);
+});
+
+test('a voiced line lasts as long as its speech, after a lead or a hold, and says when it runs past its scene', () => {
+  const words = [{text: 'Heat', start: 0, end: 0.4}, {text: 'moves', start: 0.5, end: 0.9}];
+  const voice = {l1: {seconds: 1, words}, l2: {seconds: 2, words: []}, l4: {seconds: 3, words: [{text: 'Late', start: 0, end: 2.5}]}};
+  const outline = filmOutline([
+    h(Scene, {key: 'a', id: 'a', duration: 1}),
+    h(Scene, {key: 'b', id: 'b', duration: 6}, h(Line, {id: 'l1'}, 'Heat moves'), h(Line, {id: 'l2'}, 'uphill'), h(Line, {id: 'l3'}, 'Unvoiced')),
+    h(Scene, {key: 'c', id: 'c', duration: 2}, h(Line, {id: 'l4'}, 'Late')),
+  ], {voice, speaker: 'edge:en-US-AriaNeural'});
+  const [l1, l2, l3] = outline.scenes[1].lines;
+  // The scene starts at 1: l1 after a 0.4 s lead, l2 after a 0.4 s hold, and l3, unvoiced, shares what is left.
+  assert.deepEqual([l1.start, l1.end], [1.4, 2.4]);
+  assert.deepEqual(l1.words, [{text: 'Heat', start: 1.4, end: 1.8}, {text: 'moves', start: 1.9, end: 2.3}]);
+  assert.deepEqual([l2.start, l2.end, l2.voiced], [2.8, 4.8, true]);
+  assert.deepEqual([l3.start, l3.end, l3.voiced, l3.words], [4.8, 7, undefined, undefined]);
+  const [l4] = outline.scenes[2].lines;
+  assert.deepEqual([l4.start, l4.end, l4.over], [7.4, 9, 1.4], 'cut at its scene\'s end, and how much did not fit');
+  assert.deepEqual(l4.words, [{text: 'Late', start: 7.4, end: 9}]);
+  assert.equal(outline.voice, 'edge:en-US-AriaNeural');
+  assert.throws(() => filmOutline([h(Scene, {key: 'a', id: 'a', duration: 1})], {speaker: 'Aria'}), /a voice is its provider and its name/);
+  assert.throws(() => filmOutline([h(Scene, {key: 'a', id: 'a', duration: 1}, h(Line, {id: 'x'}, 'X'))], {voice: {x: {seconds: 0}}}), /no length of speech/);
+  // Speech is never the author's to fix: it is cut where the next line begins, and the lines it leaves no time are said in none.
+  const scene = (voice, ...lines) => filmOutline([h(Scene, {key: 'a', id: 'a', duration: 6}, ...lines.map(([id, props]) => h(Line, {key: id, id, ...props}, id)))], {voice})
+    .scenes[0].lines.map(({start, end, over}) => [start, end, over]);
+  assert.deepEqual(scene({l0: {seconds: 3}}, ['l0', {}], ['l1', {at: 2}]), [[0.4, 2, 1.4], [2, 6, undefined]]);
+  assert.deepEqual(scene({l0: {seconds: 6}}, ['l0', {}], ['l1', {}]), [[0.4, 6, 0.4], [6, 6, undefined]]);
+  // What the author wrote is still the author's: a dur that runs into the next line's at.
+  assert.throws(() => scene({}, ['l0', {dur: 5}], ['l1', {at: 2}]), /before the line before it ends/);
+  // Word times a little off are kept within the speech, and one that ends before it starts is left out.
+  const [said] = filmOutline([h(Scene, {key: 'a', id: 'a', duration: 6}, h(Line, {id: 'x', at: 0}, 'X'))],
+    {voice: {x: {seconds: 1, words: [{text: 'a', start: -0.1, end: 0.3}, {text: 'b', start: 0.5, end: 0.2}, {text: 'c', start: 0.8, end: 1.5}]}}}).scenes[0].lines;
+  assert.deepEqual(said.words, [{text: 'a', start: 0, end: 0.3}, {text: 'c', start: 0.8, end: 1}]);
+});
+
+test('useLine says when a line is said in its scene\'s time, and word captions light each word as it is said', () => {
+  const voice = {l1: {seconds: 1, words: [{text: 'Heat', start: 0, end: 0.4}, {text: 'moves', start: 0.5, end: 0.9}]}};
+  const When = () => {
+    const {start, end, words} = useLine('l1');
+    return h('i', null, `${start} ${end} ${words.map((w) => w.start).join(',')}`);
+  };
+  const at = (t, captions) => renderToStaticMarkup(h(MotionRuntimeProvider, {value: {useTime: () => t, useCompositionTime: () => t, fps: 30, width: 1920, height: 1080, voice}},
+    h(Film, {captions}, h(Scene, {id: 'a', duration: 2}), h(Scene, {id: 'b', duration: 3}, h(Line, {id: 'l1'}, 'Heat moves'), h(Layer, {id: 'x'}, h(When))))));
+  assert.match(at(2.5, false), /<i>0.4 1.4 0.4,0.9<\/i>/, 'in scene b\'s time, which starts at 2');
+  const lit = at(2.7, 'words');
+  assert.match(lit, /<span style="opacity:1">Heat<\/span><span style="opacity:0.35"> moves<\/span>/);
+  assert.match(at(3.0, 'words'), /<span style="opacity:1"> moves<\/span>/);
+  assert.match(at(2.7, true), />Heat moves</, 'whole, without words');
+  assert.throws(() => renderToStaticMarkup(h(MotionRuntimeProvider, {value: {useTime: () => 0, useCompositionTime: () => 0, fps: 30, width: 1, height: 1}}, h(When))), /a line is read inside a <Film>/);
 });
 
 test('a Film draws the scene whose span holds the time, on its own clock, holds the last at the end', () => {

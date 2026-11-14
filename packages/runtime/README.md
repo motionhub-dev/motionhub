@@ -51,6 +51,14 @@ check it scene by scene without running it:
   (without one, an equal share of the time to the next line that gives its `at`, or to the scene's end), so lines that give no time share
   their scene evenly. `<Film captions>` draws the line being said as a `<Caption>`, over everything, fading in and out; `<Caption line="id">`
   draws one line's caption where a component wants it, while that line is said.
+- **A narration**: `<Film voice="provider:name">` names the voice a film's lines are spoken in, and the engine that speaks them gives each
+  voiced line's speech in its runtime (`voice: {[line id]: {seconds, words: [{text, start, end}]}}`, word times into the speech). A voiced
+  line lasts as long as its speech, after a lead (0.4 s, before a scene's first line) or a hold (0.4 s, between lines) when it gives no
+  `at` (`NARRATION`); its `dur` gives way to the speech. Speech that runs past its scene's end, or into the next line that gives its `at`,
+  is cut there, and the line says by how much (`over`), for the engine to tell; lines it leaves no time are said where it ends, in none.
+  Speech never makes the outline fail, since its length is the engine's; times the author wrote that cannot all hold still do. A voiced line in the outline has `voiced` and its `words`, in the film's seconds. `useLine(id)` gives a
+  line's `{start, end, words}` in its scene's time, so a picture can move with what is said; `<Film captions="words">` draws a voiced line
+  word by word, each full once it is said.
 - **`<Sound src at dur trim loop volume fadeIn fadeOut duck>`**: a sound the film plays, the file `src` (a path the engine serves), from
   `at` seconds of its scene, or of the film when it is one of `<Film>`'s own; `dur` seconds of it, from `trim` seconds into the file (the
   whole file when left out); with `loop`, again and again to the end of its scene or of the film; at `volume` dB (0 is the file as it is),
@@ -61,8 +69,9 @@ check it scene by scene without running it:
   engine that places each scene itself. A Remotion project exported from the Open Motion Studio puts each scene in a `Series.Sequence`
   this way, so the scenes are named clips on Remotion Studio's timeline. A scene the film does not have is an error.
 - `filmOutline(children, {width, height})` reads that structure from the elements themselves, without drawing them: `{seconds, scenes:
-  [{id, start, duration, layers, lines, sounds}], layers, sounds, captions}`, each line `{id, text, start, end}` and each sound `{src, at, dur, until, trim, loop, volume, fadeIn, fadeOut,
-  duck?}` in the film's seconds (`dur` null for the whole file). `<Film>` reports it to the engine's `onFilm` while it is drawn, once for each structure (a new `onFilm` function on every
+  [{id, start, duration, layers, lines, sounds}], layers, sounds, captions, voice}`, each line `{id, text, start, end}` (and, voiced,
+  `voiced`, `words` and `over`) and each sound `{src, at, dur, until, trim, loop, volume, fadeIn, fadeOut,
+  duck?}` in the film's seconds (`dur` null for the whole file). A line's and a word's times are in whole milliseconds. `<Film>` reports it to the engine's `onFilm` while it is drawn, once for each structure (a new `onFilm` function on every
   render is not called again for the same structure), when its value has one. A scene without an
   id or a positive duration, an id used twice (scenes, lines, layers in one scene, the film's own layers), a sound without a `src`, a line
   that starts past its scene's end or before the line before it ends, lines that would be left no time, and a time that is no number of
@@ -72,4 +81,4 @@ check it scene by scene without running it:
 
 `@motionhub/runtime/sound` synthesises a motion's sound, with no React and no audio API: `renderSound({seconds, cues, sound, rate})` returns mono samples from the motion's `react/sound.json` (a bed at a tempo, and a voice for each role: `land`, `move`, `draw`, `count`, `cut`, `out`) and a list of cues (`[{at, role, dur}]`, a reel's `export const cues`). The same input gives the same samples, so a player plays them and a renderer can write them to a WAV for Remotion's `<Audio>` or a HyperFrames track.
 
-An engine binding passes `<MotionRuntimeProvider value>` an object with `useTime` and `useCompositionTime` (hooks returning seconds), `fps`, `width`, `height`, `tokens` (resolved), if it plays video `Video`, and, if it wants a `<Film>`'s structure, `onFilm(outline)`.
+An engine binding passes `<MotionRuntimeProvider value>` an object with `useTime` and `useCompositionTime` (hooks returning seconds), `fps`, `width`, `height`, `tokens` (resolved), if it plays video `Video`, if it wants a `<Film>`'s structure, `onFilm(outline)`, and, if it speaks the film's lines, `voice`.

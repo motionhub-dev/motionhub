@@ -157,18 +157,38 @@ const sound = (e, start, until) => {
   };
 };
 
+/** How long a scene waits before its first spoken line, and between spoken lines, in seconds */
+export const NARRATION = {lead: 0.4, hold: 0.4};
+
+/** A line's clip as the engine gives it (`voice[id]`): its length in seconds and its words, each from and to seconds into it */
+const clipOf = (where, clip) => {
+  if (clip === undefined) return undefined;
+  if (!clip || !(Number.isFinite(clip.seconds) && clip.seconds > 0)) throw new Error(`${where}: its voice is no length of speech`);
+  // Within the speech, and each ending after it starts: an engine's word times can be a little off.
+  const within = (t) => Math.min(clip.seconds, Math.max(0, t));
+  const words = Array.isArray(clip.words)
+    ? clip.words
+        .filter((w) => w && typeof w.text === 'string' && Number.isFinite(w.start) && Number.isFinite(w.end) && w.end >= w.start)
+        .map((w) => ({text: w.text, start: within(w.start), end: within(w.end)}))
+    : [];
+  return {seconds: clip.seconds, words};
+};
+
 /**
  * When each of a scene's lines is said, `start` and `end` in the film's seconds. A line's `at` is seconds into its scene,
  * and without one it starts where the line before it ends (the first, at the scene's start); a line without `dur` takes an
  * equal share of the time to the next line that gives its `at`, or to the scene's end. So lines that give no time share
- * their scene evenly.
+ * their scene evenly. A line the engine has a voice for (`voice[id]`) lasts as long as its speech, after a lead (the first)
+ * or a hold (the rest) when it gives no `at`; speech that runs past the scene's end is cut there, and `over` says by how much.
  */
-const timeLines = (lines, start, duration) => {
-  const given = lines.map((e) => {
+const timeLines = (lines, start, duration, voice = {}) => {
+  const given = lines.map((e, i) => {
     const where = `<Line id="${e.props.id}">`;
     const at = seconds(where, 'at', e.props.at, undefined);
     if (at !== undefined && at >= duration) throw new Error(`${where}: at is ${at} s, past the end of its scene (${duration} s)`);
-    return {where, at, dur: seconds(where, 'dur', e.props.dur, undefined, {above: true})};
+    const clip = clipOf(where, voice[e.props.id]);
+    if (clip) return {where, at, dur: clip.seconds, gap: at === undefined ? (i === 0 ? NARRATION.lead : NARRATION.hold) : 0, clip};
+    return {where, at, dur: seconds(where, 'dur', e.props.dur, undefined, {above: true}), gap: 0};
   });
   // Lines are said in the order they are written.
   let last = -Infinity;
@@ -188,18 +208,38 @@ const timeLines = (lines, start, duration) => {
     if (from < cursor - 1e-9) throw new Error(`${given[i].where}: at is ${from} s, before the line before it ends (${round(cursor)} s into the scene)`);
     const to = next < given.length ? given[next].at : duration;
     const run = given.slice(i, next);
-    const fixed = run.reduce((sum, g) => sum + (g.dur ?? 0), 0);
+    const fixed = run.reduce((sum, g) => sum + (g.dur ?? 0) + g.gap, 0);
     const free = run.filter((g) => g.dur === undefined);
     const left = to - from - fixed;
-    // Lines that give no time would be said in none, and never shown.
-    if (free.length && left <= 1e-9) {
+    // Lines that give no time would be said in none, and never shown: the author's to fix, unless it is speech that takes the time,
+    // whose length the author does not write. Then they are said where it ends, in what is left, and none if nothing is.
+    if (free.length && left <= 1e-9 && !run.some((g) => g.clip)) {
       throw new Error(`${free[0].where}: no time is left for it before ${next < given.length ? `${given[next].where} at ${to} s` : `the end of its scene (${to} s)`}; give it an at, or shorten the lines before it`);
     }
-    const share = free.length ? left / free.length : 0;
+    const share = free.length ? Math.max(0, left) / free.length : 0;
     cursor = from;
     for (const g of run) {
-      const end = Math.min(duration, cursor + (g.dur ?? share));
-      times.push({start: start + cursor, end: start + end});
+      // Speech is cut where the next line that gives its at begins, or the scene ends, and says by how much (over); a dur the
+      // author wrote runs on, and one that runs into the next line is an error there.
+      const limit = g.clip ? to : duration;
+      const begin = Math.min(limit, cursor + g.gap);
+      const wanted = begin + (g.dur ?? share);
+      const end = Math.min(limit, wanted);
+      const at = start + begin;
+      // In whole milliseconds, so the times read as written and add up as they should.
+      times.push({
+        start: round(at),
+        end: round(start + end),
+        ...(g.clip
+          ? {
+              voiced: true,
+              words: g.clip.words
+                .filter((w) => begin + w.start < end)
+                .map((w) => ({text: w.text, start: round(at + w.start), end: round(at + Math.min(w.end, end - begin))})),
+              ...(wanted - limit > 1e-9 ? {over: round(wanted - limit)} : {}),
+            }
+          : {}),
+      });
       cursor = end;
     }
     i = next;
@@ -214,7 +254,10 @@ const timeLines = (lines, start, duration) => {
  * film's seconds. `layers` and `sounds` are the film's own, across every scene. A scene without an id or a positive duration, an id used
  * twice where it must be unique, and a sound with no file or a time that is no number of seconds, are errors.
  */
-export function filmOutline(children, {width = 1920, height = 1080, captions = false} = {}) {
+export function filmOutline(children, {width = 1920, height = 1080, captions = false, voice = {}, speaker} = {}) {
+  if (speaker !== undefined && !(typeof speaker === 'string' && /^[\w.-]+:\S+$/.test(speaker))) {
+    throw new Error(`<Film voice="${speaker}">: a voice is its provider and its name, as voice="edge:en-US-AriaNeural"`);
+  }
   const box = (e) => ({id: named('Layer', e.props.id), x: e.props.x ?? 0, y: e.props.y ?? 0, w: e.props.w ?? width, h: e.props.h ?? height, z: e.props.z ?? 0});
   const unique = (what, items) => {
     const seen = new Set();
@@ -237,7 +280,7 @@ export function filmOutline(children, {width = 1920, height = 1080, captions = f
       if (!(Number.isFinite(duration) && duration > 0)) throw new Error(`<Scene id="${id}"> needs its duration in seconds: duration={4}`);
       const inner = elements(e.props.children).filter(isValidElement);
       const said = inner.filter((c) => c.type === Line);
-      const times = timeLines(said, start, duration);
+      const times = timeLines(said, start, duration, voice ?? {});
       const lines = said.map((c, i) => ({id: named('Line', c.props.id), text: c.props.text ?? words(c.props.children), ...times[i]}));
       const sounds = inner.filter((c) => c.type === Sound).map((c) => sound(c, start, start + duration));
       scenes.push({id, start, duration, layers: unique(`layers in scene "${id}"`, inner.filter((c) => c.type === Layer).map(box)), lines, sounds});
@@ -257,7 +300,14 @@ export function filmOutline(children, {width = 1920, height = 1080, captions = f
     const taken = scene.layers.find((layer) => layers.some((own) => own.id === layer.id));
     if (taken) throw new Error(`scene "${scene.id}" has a layer called "${taken.id}", the name of one of the film's own layers`);
   }
-  return {seconds: start, scenes, layers, sounds: own.map((e) => sound(e, 0, start)), captions: captions === true};
+  return {
+    seconds: start,
+    scenes,
+    layers,
+    sounds: own.map((e) => sound(e, 0, start)),
+    captions: captions === true || captions === 'words' ? captions : false,
+    voice: speaker ?? null,
+  };
 }
 
 /**
@@ -265,12 +315,12 @@ export function filmOutline(children, {width = 1920, height = 1080, captions = f
  * at the film's end), and anything else among its children (a <Layer>, a background) drawn across them all. It reports its structure
  * (filmOutline) to the engine's `onFilm`, if the engine has one, while it is drawn: the engine learns the length from the scenes.
  */
-export const Film = ({captions = false, children}) => {
+export const Film = ({captions = false, voice, children}) => {
   const r = runtime();
   // Read on every frame (it is cheap: a film's children are new elements each frame), and reported while drawing, once for each
   // structure, whether or not the engine's onFilm is the same function each time: an engine that renders the film once, off the
   // page, learns it before the first frame is shown.
-  const outline = filmOutline(children, {...r, captions});
+  const outline = filmOutline(children, {...r, captions, voice: r.voice, speaker: voice});
   const reported = JSON.stringify(outline);
   const onFilm = r.onFilm;
   useMemo(() => onFilm?.(JSON.parse(reported)), [reported]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -284,7 +334,7 @@ export const Film = ({captions = false, children}) => {
   const engine = only === null ? r : {...r, useTime: r.useCompositionTime};
   // The film's time, for its lines: the engine's, or, drawn as one scene, that scene's start on from the engine's.
   const now = only === null ? t : (outline.scenes.find((scene) => scene.id === only)?.start ?? 0) + t;
-  const lines = outline.scenes.flatMap((scene) => scene.lines);
+  const lines = outline.scenes.flatMap((scene) => scene.lines.map((line) => ({...line, scene: scene.start})));
   const spoken = lines.find((line) => now >= line.start && now < line.end);
   let index = 0;
   return createElement(Runtime.Provider, {value: engine}, createElement(InFilm.Provider, {value: true}, createElement(Said.Provider, {value: {lines, now}}, elements(children).map((e) => {
@@ -297,11 +347,23 @@ export const Film = ({captions = false, children}) => {
     const value = {...r, useTime: () => r.useTime() - scene.start};
     return createElement(Runtime.Provider, {key, value}, e);
   }), captions && spoken ? createElement('div', {key: 'captions', style: {position: 'absolute', inset: 0, zIndex: 2147483647, pointerEvents: 'none'}},
-    createElement(Caption, {line: spoken.id})) : null)));
+    createElement(Caption, {line: spoken.id, words: outline.captions === 'words'})) : null)));
 };
 
 /** The film's lines and its time, for a <Caption line> anywhere in it */
 const Said = createContext(null);
+
+/**
+ * When a line of the film is said, in the time of its scene (as useTime() counts there): `{start, end, words}`, each word `{text, start,
+ * end}` where the engine has its voice (none otherwise). So a picture can move with what is said: `const {start} = useLine('intro-1')`.
+ */
+export const useLine = (id) => {
+  const said = useContext(Said);
+  const line = said?.lines.find((l) => l.id === id);
+  if (!line) throw new Error(`useLine("${id}"): ${said ? 'the film has no line by that id' : 'a line is read inside a <Film>'}`);
+  const shift = (t) => round(t - line.scene);
+  return {start: shift(line.start), end: shift(line.end), words: (line.words ?? []).map((w) => ({text: w.text, start: shift(w.start), end: shift(w.end)}))};
+};
 /** How long a line's caption takes to come and go, in seconds */
 const CAPTION_FADE = 0.15;
 
@@ -370,7 +432,7 @@ export const MotionScope = ({tokens, root = true, children}) => {
  * `opacity` fades it; it stays a function of what you pass. With `line`, the id of one of its <Film>'s lines, it draws that line's words while
  * it is said, fading in and out, and nothing at other times.
  */
-export const Caption = ({line, children, opacity = 1, style}) => {
+export const Caption = ({line, words = false, children, opacity = 1, style}) => {
   // Both read before anything branches, so a caption calls the same hooks with a line or without.
   const said = useContext(Said);
   const c = useTokens().caption ?? {};
@@ -379,7 +441,11 @@ export const Caption = ({line, children, opacity = 1, style}) => {
     if (!spoken) throw new Error(`<Caption line="${line}">: ${said ? 'the film has no line by that id' : 'a caption of a line is drawn inside a <Film>'}`);
     const fade = Math.min(1, (said.now - spoken.start) / CAPTION_FADE, (spoken.end - said.now) / CAPTION_FADE);
     if (fade <= 0) return null;
-    return createElement(Caption, {opacity: opacity * fade, style}, children ?? spoken.text);
+    // Word by word, where the line is voiced: each word full once it is said, the rest waiting faint.
+    const shown = words && spoken.words?.length
+      ? spoken.words.map((w, i) => createElement('span', {key: i, style: {opacity: said.now >= w.start ? 1 : 0.35}}, `${i ? ' ' : ''}${w.text}`))
+      : spoken.text;
+    return createElement(Caption, {opacity: opacity * fade, style}, children ?? shown);
   }
   const py = c['padding-y'] ?? 10, pad = `${py}px ${c['padding-x'] ?? 26}px`;
   const rule = c['rule-left']
