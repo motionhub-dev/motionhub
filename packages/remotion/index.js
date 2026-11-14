@@ -1,12 +1,14 @@
 // @motionhub/remotion: a motion in Remotion. <MotionProvider> gives a motion's React components the runtime they draw with
 // (@motionhub/runtime) from Remotion's own frame, so they run unchanged; <MotionFonts> loads its faces; useMotion() turns its
 // tokens into Remotion values (frames, Easing) for anything you draw yourself. For a film of scenes (@motionhub/runtime's <Film>),
-// sceneFrames() and filmMetadata() give each scene and the composition their length in frames, from the scenes.
-import {createElement, useEffect, useMemo, useState} from 'react';
-import {Easing, OffthreadVideo, Sequence, continueRender, delayRender, interpolate, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
+// sceneFrames() and filmMetadata() give each scene and the composition their length in frames, from the scenes, and <FilmAudio>
+// plays its sounds (<Sound>, @motionhub/runtime 0.7).
+import {Fragment, createElement, useEffect, useMemo, useState} from 'react';
+import {Easing, Html5Audio, OffthreadVideo, Sequence, continueRender, delayRender, interpolate, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {MotionRoot, MotionRuntimeProvider, resolveTokens, useTokens} from '@motionhub/runtime';
 
-export {filmMetadata, sceneFrames} from './film.js';
+export {filmMetadata, filmSounds, sceneFrames, soundPlan} from './film.js';
+import {filmSounds} from './film.js';
 export {PARAM_TYPES, paramChoices, paramDefaults, paramsSchema} from './params.js';
 
 const sequenceSeconds = () => useCurrentFrame() / useVideoConfig().fps;
@@ -114,3 +116,25 @@ export function useMotion() {
   const progress = (frame, start, duration, easing) => interpolate(frame, [start, start + frames(duration)], [0, 1], {easing: easing ? ease(easing) : undefined, extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
   return {tokens, fps, frames, ease, progress};
 }
+
+/** A film that says nothing of its frame, the same each render, so FilmAudio reads the film's sounds once */
+const NO_FILM = Object.freeze({});
+
+/**
+ * The sounds of the <Film> a component draws (@motionhub/runtime 0.7's <Sound>), on Remotion's: each in a Sequence from its start, an
+ * <Html5Audio> of its file (a URL, or a path in public/) trimmed, looped and faded as the film says. Place it once in the composition,
+ * outside the Series of scenes, so its frames are the film's: `<FilmAudio component={Main} film={film} />`.
+ */
+export const FilmAudio = ({component, film = NO_FILM}) => {
+  const plans = useMemo(() => filmSounds(component, film), [component, film]);
+  return createElement(Fragment, null, plans.map((plan, i) =>
+    createElement(Sequence, {key: i, from: plan.from, durationInFrames: plan.durationInFrames, layout: 'none', name: plan.src},
+      createElement(Html5Audio, {
+        src: /^[a-z][a-z0-9+.-]*:/i.test(plan.src) ? plan.src : staticFile(plan.src),
+        trimBefore: plan.trimBefore,
+        ...(plan.sourceFrames !== null ? {durationInFrames: plan.sourceFrames} : {}),
+        loop: plan.loop,
+        loopVolumeCurveBehavior: 'extend',
+        volume: plan.volume,
+      }))));
+};
