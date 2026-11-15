@@ -1,0 +1,37 @@
+# After a push to main, ask motionhub-dev/motionhub-web to verify this commit and pin it. The App
+# is installed only on that repository, with Actions write and nothing else. This workflow mints a
+# token that asks for that permission again, refuses anything broader, and dispatches upstream.yml
+# with no inputs: the site looks up main itself, and a bot there may not choose the commit. The
+# site's own half-hour schedule remains the fallback. Re-run a failed job from the Actions tab;
+# this file has no workflow_dispatch, so a branch's copy of it cannot be run with these secrets.
+# This repository holds no production credential.
+name: site
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site
+  cancel-in-progress: true
+
+jobs:
+  notify:
+    if: github.repository == 'motionhub-dev/motionhub' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+      - name: Tell the site that main moved
+        env:
+          SITE_APP_ID: ${{ secrets.SITE_APP_ID }}
+          SITE_APP_PRIVATE_KEY: ${{ secrets.SITE_APP_PRIVATE_KEY }}
+        run: node .github/scripts/site-dispatch.mjs

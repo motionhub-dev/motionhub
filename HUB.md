@@ -24,6 +24,7 @@ Security boundaries, production activation and recovery are in [security operati
 | `player/` | The reel player and its build: one page and one script per motion with a reel, under `/play/<id>/`, with its smoke test and renderer, and its own `package.json`. What a reel's script is made of is `player/reel-plugin.mjs`, with no dependencies, shared by this build and by a browser: the site's preview of a private motion builds its reel there, with the same esbuild, and plays it in `/play/_preview/` (`player/preview.js`), under a policy of its own that adds only `blob:` scripts and `data:` faces (React, three.js, esbuild, Chrome's driver). It writes into the hub's `dist/`, or the directory `MOTIONHUB_DIST` names |
 | `.github/workflows/check.yml` | On every pull request and push to main: the tools' tests, every motion against the rules, the hub's and the players' builds, every reel played. It runs the pull request's own code, with no secrets |
 | `.github/workflows/ownership.yml` | On every pull request, who may change what: the accounts it records, the motions it adds, changes or takes out against its author's account, and a sign-off on every commit. Links in a pull request, or more files or commits than GitHub lists, fail it. It runs on `pull_request_target`, so it is always main's copy running main's checker, and it reads the pull request's files as data, never running them |
+| `.github/workflows/site.yml` | On a push to main: ask motionhub-dev/motionhub-web to verify this commit and pin it (`upstream.yml` there). It mints a short-lived token from a GitHub App installed only on that repository with Actions write, passes no commit, and holds no production credential. The site's own schedule does the same when this does not run |
 | `.github/CODEOWNERS` | Every path, including executable motions and account records, requires a maintainer review |
 | `skills/motionhub/SKILL.md` | The generic skill: how any agent chooses a motion, fetches it and makes a film in it. `/llms.txt` is the same text, followed by the index of the docs |
 
@@ -31,7 +32,7 @@ The repository keeps text, code and posters only: no video.
 
 ## What motionhub.dev serves
 
-A static site, rebuilt from the main branch whenever it changes and every six hours.
+A static site, rebuilt from the main branch whenever it changes and every six hours. A push to this repository's main asks the site to verify that commit and move its pin (`.github/workflows/site.yml`). The site's own schedule does the same when that call does not land.
 
 | Path | What it is |
 | --- | --- |
