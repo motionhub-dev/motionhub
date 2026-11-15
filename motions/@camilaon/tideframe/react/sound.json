@@ -1,0 +1,16 @@
+{
+  "bpm": 96,
+  "root": 220,
+  "kit": ["hat", "rim", "chip", "pad"],
+  "roles": {
+    "land": [
+      {"voice": "click", "lo": 1800, "hi": 6400, "len": 0.02, "gain": 0.7},
+      {"voice": "tone", "freq": 660, "len": 0.08, "gain": 0.25}
+    ],
+    "move": {"voice": "swish", "lo": 400, "hi": 2400, "rise": 0.35, "gain": 0.35},
+    "draw": {"voice": "scratch", "lo": 2200, "hi": 7000, "gain": 0.45},
+    "count": {"voice": "marimba", "freq": 880, "len": 0.35, "gain": 0.7},
+    "cut": {"voice": "click", "lo": 2400, "hi": 8000, "len": 0.018, "gain": 0.8},
+    "out": {"voice": "chime", "freq": 880, "len": 0.9, "gain": 0.45}
+  }
+}
