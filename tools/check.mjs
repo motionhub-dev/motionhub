@@ -24,8 +24,8 @@
 // main's checker reading a pull request's files (.github/workflows/ownership.yml). `--signoff` names a pull request's
 // commits as GitHub lists them, each of which must be signed off. `--removed` judges a published motion a pull request
 // takes out or moves away: only its sole author may. `--submitter` prints the account a pull request motionhub's
-// GitHub App opened was submitted by (its commits' Motionhub-Submitted-By line). `--head` is that pull request's
-// branch, and it must start with `share/`. Exit status 1 when any issue is found.
+// GitHub App opened was submitted by (its commits' Motionhub-Submitted-By line). `--head`, when given, is that
+// pull request's branch and must start with `share/`. Omitting it leaves the two-argument call working. Exit status 1 when any issue is found.
 
 import {readFileSync, readdirSync, statSync, lstatSync, existsSync} from 'node:fs';
 import {join, basename, dirname, resolve, relative, extname} from 'node:path';
@@ -928,12 +928,13 @@ export function unsigned(commits) {
 /**
  * Who submitted a pull request that motionhub's GitHub App opened for them (site/github-app.mjs): the account its
  * commits name in a `Motionhub-Submitted-By: <id> <login>` line. Every commit that carries one names the same account,
- * and at least one does; else {error}. `ref` is the pull request's head branch, and it must start with `share/`:
- * only the app can write to such a branch (the submission ruleset). ownership.yml asks only for the app's own pull
- * requests from a share/ branch of this repository, and passes that ref here.
+ * and at least one does; else {error}. `ref`, when given, is the pull request's head branch and must start with
+ * `share/`: only the app can write to such a branch (the submission ruleset). Omitting it keeps the two-argument
+ * call the site already uses. ownership.yml asks only for the app's own pull requests from a share/ branch of this
+ * repository, and passes that ref with `--head`.
  */
 export function submitter(commits, app, ref) {
-  if (typeof ref !== 'string' || !ref.startsWith('share/')) return {error: 'a submission is taken only from a branch whose name starts with share/'};
+  if (ref !== undefined && (typeof ref !== 'string' || !ref.startsWith('share/'))) return {error: 'a submission is taken only from a branch whose name starts with share/'};
   if (!Array.isArray(commits) || !commits.length || !app || commits.some((c) => !appCommit(c, app)
     || !/^Motionhub-Submitted-By: \S+ \S+\s*$/m.test(c.commit?.message ?? ''))) {
     return {error: 'every submission commit must be verified by GitHub, made by the expected app, and name its submitter'};

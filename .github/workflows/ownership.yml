@@ -81,8 +81,8 @@ jobs:
       # a pull request motionhub's GitHub App opened for someone (sharing from motionhub.dev, site/submissions.mjs) is
       # theirs: the app names them in its commits. Taken only from the app's own pull request on a share/ branch of this
       # repository, which no one but the app can write to (the "submission branches: app only" ruleset): that is what
-      # lets a commit GitHub made for the app (web-flow) count as the app's. Anyone else's line is ignored. The checker
-      # requires the same share/ prefix (--head), so the rule is in the code the workflow runs, not only in this if
+      # lets a commit GitHub made for the app (web-flow) count as the app's. Anyone else's line is ignored. --head
+      # passes the branch, and the checker then requires the same share/ prefix. A call that omits the branch still works
       - name: An App pull request comes from a share/ branch
         if: >-
           github.event.pull_request.user.type == 'Bot' && vars.MOTIONHUB_BOT != '' &&

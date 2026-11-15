@@ -624,5 +624,6 @@ test('a pull request motionhub opened for someone is theirs: every commit that n
   assert.ok(trusted([c(by, 'web-flow', 'motionhub[bot]', {verified: true, reason: 'unknown_key'})]).error, 'verified for another reason');
   assert.ok(trusted([c(by)], 'motion/ana-plain-ink-1.0.0').error, 'a branch outside share/');
   assert.ok(trusted([c(by)], 'share').error, 'the prefix includes the slash');
-  assert.ok(submitter([c(by)], 'motionhub[bot]').error, 'no branch');
+  assert.ok(trusted([c(by)], '').error, 'an empty branch');
+  assert.deepEqual(submitter([c(by)], 'motionhub[bot]'), {id: 7, login: 'ana'}, 'omitting the branch keeps the two-argument call');
 });
