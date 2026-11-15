@@ -134,7 +134,7 @@ npx @motionhub/cli init <slug> --github <you>   # ./motions/<slug>/ with every r
 npx @motionhub/cli share motions/<slug>         # the checks, then a link: sign in with GitHub to open the pull request
 ```
 
-No git, gh or GitHub token is needed: the link opens the pull request under your name. `--pr` opens it from your fork with gh instead.
+No git, gh or GitHub token is needed: open the link and sign in with GitHub. motionhub's GitHub App opens the pull request under your name.
 
 Your motion is published as `@<your GitHub name>/<slug>`, and building on someone else's motion is welcome. [CONTRIBUTING.md](CONTRIBUTING.md) has what is accepted and how it is reviewed.
 

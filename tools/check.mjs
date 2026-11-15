@@ -6,7 +6,7 @@
 //   node tools/check.mjs --accounts-was <dir> [--accounts <dir>]
 //   node tools/check.mjs --removed --was <motion.json> --author <github-login> --author-id <github-id> [--accounts <dir>]
 //   node tools/check.mjs --signoff <commits.json>
-//   node tools/check.mjs --submitter <commits.json>
+//   node tools/check.mjs --submitter <commits.json> --head <branch>
 //   npx @motionhub/cli check ...                  the same, from the published package (bin/motionhub.mjs)
 //
 // With no directory it checks the current directory when it is a motion, else every motion under ./motions/ (a scoped
@@ -24,7 +24,8 @@
 // main's checker reading a pull request's files (.github/workflows/ownership.yml). `--signoff` names a pull request's
 // commits as GitHub lists them, each of which must be signed off. `--removed` judges a published motion a pull request
 // takes out or moves away: only its sole author may. `--submitter` prints the account a pull request motionhub's
-// GitHub App opened was submitted by (its commits' Motionhub-Submitted-By line). Exit status 1 when any issue is found.
+// GitHub App opened was submitted by (its commits' Motionhub-Submitted-By line). `--head`, when given, is that
+// pull request's branch and must start with `share/`. Omitting it leaves the two-argument call working. Exit status 1 when any issue is found.
 
 import {readFileSync, readdirSync, statSync, lstatSync, existsSync} from 'node:fs';
 import {join, basename, dirname, resolve, relative, extname} from 'node:path';
@@ -132,10 +133,10 @@ export function checkMotion(dir, {hub = true, author, authorId, was, accounts, c
   checkPlace(dir, manifest, add, accounts, catalogue);
   if (hub) checkHub(dir, manifest, {...who, catalogue, was}, add);
   if (hub && was) checkUpdate(manifest, was, who, add);
-  // shared through motionhub.dev (share without --pr), each file that is not text is a call of its own to GitHub
+  // shared through motionhub.dev, each file that is not text is a call of its own to GitHub
   if (shared) {
     const binary = walk(dir).filter((f) => !f.endsWith('/') && !isText(readFileSync(join(dir, f))));
-    if (binary.length > SHARED_BINARIES) add('hub.share', '.', `${binary.length} files that are not text (pictures, fonts, sounds): shared through motionhub.dev a motion holds at most ${SHARED_BINARIES}; open its pull request yourself with --pr`);
+    if (binary.length > SHARED_BINARIES) add('hub.share', '.', `${binary.length} files that are not text (pictures, fonts, sounds): shared through motionhub.dev a motion holds at most ${SHARED_BINARIES}`);
   }
   return issues;
 }
@@ -736,7 +737,7 @@ function checkHub(dir, manifest, {author, authorId, accounts, catalogue, was}, a
     for (const name of new Set(logins.filter((l) => typeof l === 'string' && GITHUB.test(l)).map((l) => l.toLowerCase()))) {
       if (accounts.has(name)) continue;
       const mine = author && name === author.toLowerCase() && authorId !== undefined;
-      add('hub.account', 'motion.json', `${name} is not recorded: add accounts/${name}.json with ${mine ? `{"login": "${name}", "id": ${authorId}}` : `{"login": "${name}", "id": <the numeric id of that GitHub account>}`} (npx @motionhub/cli share --pr adds it)`);
+      add('hub.account', 'motion.json', `${name} is not recorded: add accounts/${name}.json with ${mine ? `{"login": "${name}", "id": ${authorId}}` : `{"login": "${name}", "id": <the numeric id of that GitHub account>}`} (the pull request motionhub.dev opens records it)`);
     }
   }
   let total = 0, count = 0;
@@ -927,10 +928,13 @@ export function unsigned(commits) {
 /**
  * Who submitted a pull request that motionhub's GitHub App opened for them (site/github-app.mjs): the account its
  * commits name in a `Motionhub-Submitted-By: <id> <login>` line. Every commit that carries one names the same account,
- * and at least one does; else {error}. ownership.yml asks only for the app's own pull requests from a share/ branch
- * of this repository, which no one but the app can write to.
+ * and at least one does; else {error}. `ref`, when given, is the pull request's head branch and must start with
+ * `share/`: only the app can write to such a branch (the submission ruleset). Omitting it keeps the two-argument
+ * call the site already uses. ownership.yml asks only for the app's own pull requests from a share/ branch of this
+ * repository, and passes that ref with `--head`.
  */
-export function submitter(commits, app) {
+export function submitter(commits, app, ref) {
+  if (ref !== undefined && (typeof ref !== 'string' || !ref.startsWith('share/'))) return {error: 'a submission is taken only from a branch whose name starts with share/'};
   if (!Array.isArray(commits) || !commits.length || !app || commits.some((c) => !appCommit(c, app)
     || !/^Motionhub-Submitted-By: \S+ \S+\s*$/m.test(c.commit?.message ?? ''))) {
     return {error: 'every submission commit must be verified by GitHub, made by the expected app, and name its submitter'};
@@ -952,7 +956,7 @@ export async function main(args) {
   const value = (flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : undefined; };
   const author = value('--author'), authorId = value('--author-id'), wasPath = value('--was'), accountsWas = value('--accounts-was');
   if (value('--submitter') !== undefined) {
-    const who = submitter(JSON.parse(readFileSync(value('--submitter'), 'utf8')), process.env.MOTIONHUB_BOT);
+    const who = submitter(JSON.parse(readFileSync(value('--submitter'), 'utf8')), process.env.MOTIONHUB_BOT, value('--head'));
     if (who.error) { console.error(who.error); return 1; }
     console.log(`${who.id} ${who.login}`);
     return 0;
@@ -980,7 +984,7 @@ export async function main(args) {
     console.log(`taken out, ${issues.length} issue(s)`);
     return issues.length ? 1 : 0;
   }
-  let dirs = args.filter((a, i) => !a.startsWith('--') && !['--author', '--author-id', '--was', '--accounts', '--accounts-was', '--signoff', '--submitter'].includes(args[i - 1]));
+  let dirs = args.filter((a, i) => !a.startsWith('--') && !['--author', '--author-id', '--was', '--accounts', '--accounts-was', '--signoff', '--submitter', '--head'].includes(args[i - 1]));
   let count = 0;
   const whole = !dirs.length;
   if (whole) {

@@ -136,7 +136,7 @@ npx @motionhub/cli init <slug> --github <你>   # 生成 ./motions/<slug>/，含
 npx @motionhub/cli share motions/<slug>        # 跑一遍 pull request 会跑的检查，然后给出链接：用 GitHub 登录即可开 pull request
 ```
 
-不需要 git、gh 或 GitHub token：打开链接、输入终端显示的验证码，pull request 就以你的名义打开。想用 gh 从自己的 fork 开，加 `--pr`。
+不需要 git、gh 或 GitHub token：打开链接、用 GitHub 登录、输入终端显示的验证码。motionhub 的 GitHub App 会以你的名义打开 pull request。
 
 你的 motion 会以 `@<你的 GitHub 用户名>/<slug>` 发布，也欢迎在别人的 motion 基础上继续创作。接受什么、怎么审核，见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 

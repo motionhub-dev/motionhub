@@ -8,7 +8,7 @@
 //   motionhub private push <dir> | list | delete <id>[@<version>]
 //   motionhub init <slug> [--github <login>]
 //   motionhub tokens [MOTION.md] [--out <file>]
-//   motionhub share <dir> [--wait] | motionhub share <dir> --pr [--github <login>]
+//   motionhub share <dir> [--wait]
 
 import {artifactCli} from '../tools/artifact-cli.mjs';
 import {readFileSync} from 'node:fs';
@@ -25,7 +25,6 @@ const USAGE = `usage: motionhub check [dir or MOTION.md ...] [--format-only] [--
        motionhub init <slug> [--github <login>]
        motionhub tokens [MOTION.md] [--out <file>]
        motionhub share <dir> [--wait]
-       motionhub share <dir> --pr [--github <login>]
 
 check   a motion against the motion format (https://github.com/motionhub-dev/motionhub/blob/main/SPEC.md) and motionhub's
         rules; with no directory, the current directory when it is a motion, else every motion under ./motions/
@@ -40,9 +39,9 @@ init    a new motion @<you>/<slug> in ./motions/<slug>/, every required file but
 tokens  a motion in one file's tokens as tokens.json, to standard output or --out; with no file, the project's
         (./MOTION.md, else ./motion/MOTION.md)
 share   a motion through the checks its pull request will run, against what is published, then uploaded to
-        motionhub.dev: open the link it prints, sign in with GitHub and type its code to open the pull request under
-        your name (no git, gh or token needed; --wait waits for it). With --pr, open the pull request yourself from
-        your fork of github.com/motionhub-dev/motionhub with git and gh, signed off, as the account gh is signed in as`;
+        motionhub.dev: open the link it prints, sign in with GitHub and type its code. motionhub's GitHub App opens
+        the pull request from a share/ branch (no git, gh or token needed; --wait waits for it). This is the only way
+        to submit; --pr and a fork are refused`;
 
 const [command, ...args] = process.argv.slice(2);
 try {
