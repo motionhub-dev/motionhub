@@ -12,7 +12,7 @@ import {plan} from '../.github/scripts/changed.mjs';
 const ALL = {runtime: true, remotion: true, players: true}, NONE = {runtime: false, remotion: false, players: false};
 
 test('documents, records and the command line skip every slow step', () => {
-  assert.deepEqual(plan(['SPEC.md', 'docs/cli.md', 'accounts/ana.json', 'catalogs.json', 'tools/hub.mjs', 'tools/private-cli.mjs', 'bin/motionhub.mjs', 'tests/hub.test.mjs', 'skills/motionhub/SKILL.md', '.github/workflows/publish.yaml', 'brand/BRAND.md']), NONE);
+  assert.deepEqual(plan(['SPEC.md', 'docs/cli.md', 'accounts/ana.json', 'catalogs.json', 'tools/hub.mjs', 'tools/private-cli.mjs', 'bin/motionhub.mjs', 'tests/hub.test.mjs', 'skills/motionhub/SKILL.md', '.github/workflows/publish.yaml', '.github/workflows/site.yml', '.github/scripts/site-dispatch.mjs', 'brand/BRAND.md']), NONE);
 });
 
 test('a motion, the player, the hub\'s build or its policy plays every reel', () => {
