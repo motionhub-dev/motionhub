@@ -14,7 +14,8 @@
         "@iamsuosi/night-diagram",
         "@iamsuosi/earth-block",
         "@iamsuosi/plumb-line",
-        "@iamsuosi/drafting-table"
+        "@iamsuosi/drafting-table",
+        "@camilaon/tideframe"
       ]
     },
     {
@@ -25,7 +26,8 @@
         "@iamsuosi/stage-light",
         "@iamsuosi/field-atlas",
         "@iamsuosi/lab-notebook",
-        "@iamsuosi/red-pencil"
+        "@iamsuosi/red-pencil",
+        "@camilaon/tideframe"
       ]
     },
     {

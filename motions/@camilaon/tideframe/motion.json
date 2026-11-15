@@ -1,0 +1,42 @@
+{
+  "spec": "motion/0.6",
+  "scope": "camilaon",
+  "slug": "tideframe",
+  "version": "1.0.0",
+  "name": {
+    "en": "Tideframe",
+    "zh-CN": "潮框"
+  },
+  "line": {
+    "en": "A tide-navy operations frame: a flat schematic a green current runs through, a glass status board, and headlines that lock tight.",
+    "zh-CN": "潮青底的运维画框：绿色电流跑过平面示意图，旁边是玻璃状态板，标题收紧后锁定。"
+  },
+  "authors": [
+    {
+      "name": "camilaon",
+      "github": "camilaon"
+    }
+  ],
+  "license": {
+    "text": "CC-BY-4.0",
+    "code": "MIT"
+  },
+  "lang": "en",
+  "tags": [
+    "infrastructure",
+    "schematic",
+    "kinetic",
+    "dark",
+    "product"
+  ],
+  "fit": {
+    "for": {
+      "en": "Software infrastructure and product systems: pipelines, queues, regions and models, as a live schematic with a status board and one kinetic claim.",
+      "zh-CN": "软件基础设施与产品系统：流水线、队列、区域和模型，画成带状态板和一句动势标题的实时示意图。"
+    },
+    "not": {
+      "en": "Printed pages marked in pencil, marker notes on footage, maps, isometric factories, and cursor walkthroughs of an app.",
+      "zh-CN": "铅笔批改的印刷页、叠在素材上的马克笔、地图、等距工厂，以及用光标带人走一遍应用的教程。"
+    }
+  }
+}
