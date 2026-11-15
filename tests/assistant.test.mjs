@@ -27,22 +27,20 @@ const inputs = (c = context()) => {
   writeFileSync(output, JSON.stringify({summary: 'Advice @org/team', comments: [], patch: '', repo: 'evil/repo', number: 999}));
   return [input, output];
 };
-test('comment publication ignores model-selected targets and uses only the captured PR', async () => {
+test('an issue comment is published only to the captured issue', async () => {
   const calls = [];
-  globalThis.fetch = async (url, init) => {
-    calls.push({url, init});
-    return Response.json(init.method === 'POST' ? {} : {state: 'open', head: {sha: 'original-sha'}});
-  };
-  await publish(...inputs());
-  assert.equal(calls.length, 2);
-  assert.equal(calls[1].url, 'https://api.github.com/repos/owner/repo/issues/1/comments');
-  assert.ok(!JSON.parse(calls[1].init.body).body.includes('@org'));
+  globalThis.fetch = async (url, init) => { calls.push({url, init}); return Response.json({}); };
+  await publish(...inputs({...context(), isPR: false, head: null}));
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, 'https://api.github.com/repos/owner/repo/issues/1/comments');
+  assert.equal(calls[0].init.method, 'POST');
+  assert.ok(!JSON.parse(calls[0].init.body).body.includes('@org'));
 });
-test('a changed PR head prevents all comment writes', async () => {
+test('a pull request context publishes nothing', async () => {
   const calls = [];
-  globalThis.fetch = async (url, init) => { calls.push(init.method); return Response.json({state: 'open', head: {sha: 'new-sha'}}); };
+  globalThis.fetch = async (url, init) => { calls.push(init?.method ?? 'GET'); return Response.json({}); };
   await publish(...inputs());
-  assert.deepEqual(calls, ['GET']);
+  assert.deepEqual(calls, []);
 });
 test('inference has no tools, no GitHub token in its prompt, and writes only validated data', async () => {
   let request;
@@ -58,6 +56,11 @@ test('inference has no tools, no GitHub token in its prompt, and writes only val
   assert.ok(!JSON.stringify(request).includes('synthetic-token'));
   assert.ok(!JSON.stringify(request).includes('synthetic-api-key'));
   assert.deepEqual(JSON.parse(readFileSync(output)), {summary: 'Advice', comments: [], patch: ''});
+});
+test('prepare refuses a pull request, so this path cannot review one', async () => {
+  writeFileSync(process.env.GITHUB_EVENT_PATH, JSON.stringify({issue: {number: 1}, sender: {login: 'maintainer'}, comment: {body: '@claude look at this pull request', author_association: 'OWNER'}}));
+  globalThis.fetch = async (url) => Response.json(String(url).endsWith('/permission') ? {permission: 'admin'} : {title: 'Add a motion', body: '', pull_request: {url: 'https://api.github.com/repos/owner/repo/pulls/1'}});
+  await assert.rejects(prepare(join(root, 'context.json')));
 });
 test('a forged author association does not replace a live repository permission check', async () => {
   writeFileSync(process.env.GITHUB_EVENT_PATH, JSON.stringify({issue: {number: 1}, sender: {login: 'outsider'}, comment: {body: '/review', author_association: 'OWNER'}}));

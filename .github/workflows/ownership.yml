@@ -37,6 +37,7 @@ jobs:
       AUTHOR: ${{ github.event.pull_request.user.login }}
       MOTIONHUB_BOT: ${{ vars.MOTIONHUB_BOT }}
       AUTHOR_ID: ${{ github.event.pull_request.user.id }}
+      HEAD_REF: ${{ github.event.pull_request.head.ref }}
     steps:
       - name: Main, whose checker judges
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -80,7 +81,17 @@ jobs:
       # a pull request motionhub's GitHub App opened for someone (sharing from motionhub.dev, site/submissions.mjs) is
       # theirs: the app names them in its commits. Taken only from the app's own pull request on a share/ branch of this
       # repository, which no one but the app can write to (the "submission branches: app only" ruleset): that is what
-      # lets a commit GitHub made for the app (web-flow) count as the app's. Anyone else's line is ignored
+      # lets a commit GitHub made for the app (web-flow) count as the app's. Anyone else's line is ignored. The checker
+      # requires the same share/ prefix (--head), so the rule is in the code the workflow runs, not only in this if
+      - name: An App pull request comes from a share/ branch
+        if: >-
+          github.event.pull_request.user.type == 'Bot' && vars.MOTIONHUB_BOT != '' &&
+          github.event.pull_request.user.login == vars.MOTIONHUB_BOT &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          startsWith(github.event.pull_request.head.ref, 'share/') == false
+        run: |
+          echo "A pull request from $MOTIONHUB_BOT is a submission only when its branch starts with share/."
+          exit 1
       - name: Who submitted it, when motionhub opened it for them
         if: >-
           github.event.pull_request.user.type == 'Bot' && vars.MOTIONHUB_BOT != '' &&
@@ -88,7 +99,7 @@ jobs:
           github.event.pull_request.head.repo.full_name == github.repository &&
           startsWith(github.event.pull_request.head.ref, 'share/')
         run: |
-          who=$(node tools/check.mjs --submitter "$RUNNER_TEMP/commits.json")
+          who=$(node tools/check.mjs --submitter "$RUNNER_TEMP/commits.json" --head "$HEAD_REF") || exit 1
           echo "Submitted by $who"
           # names of their own: the job's env (AUTHOR, AUTHOR_ID) would win over GITHUB_ENV's
           echo "SUBMITTER_ID=${who%% *}" >> "$GITHUB_ENV"

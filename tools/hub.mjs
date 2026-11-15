@@ -1,6 +1,6 @@
 // motionhub.dev from the command line, with no dependencies: search its index, get a motion into the project (its
 // package checked against the SHA-256 the index gives, unpacked with no link and no path outside the motion), start a
-// new motion, and share one by pull request (HUB.md, CONTRIBUTING.md). A project keeps its motions in ./motions/
+// new motion, and share one through motionhub.dev (HUB.md, CONTRIBUTING.md). A project keeps its motions in ./motions/
 // (SPEC.md §13) and records what it took from the hub in ./motions.lock.json (docs/cli.md).
 //
 //   motionhub search [words ...]                one line per motion that has every word in its id, names, line, fit or tags
@@ -17,16 +17,12 @@
 //   motionhub share <dir> [--wait]              the pull request's checks, then the motion uploaded to motionhub.dev and a
 //                                               link (and a code) where the person signs in with GitHub and opens the
 //                                               pull request; nothing of git, gh or a GitHub token is needed here. With
-//                                               --wait, waits for the pull request and prints its address
-//   motionhub share <dir> --pr [--github <login>]
-//                                               the pull request from the fork of the account gh is signed in as, with
-//                                               git (--github must then name that account); --github alone runs the
-//                                               checks as that account and opens nothing
+//                                               --wait, waits for the pull request and prints its address. --pr and
+//                                               --github are refused: a fork is not a way to submit
 
 import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
-import {tmpdir} from 'node:os';
+import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {dirname, join, relative, resolve} from 'node:path';
 import {gunzipSync} from 'node:zlib';
 import {ID, SPEC, checkMotion, expandTokens, listMotions, motionId, parseFrontMatter, place} from './check.mjs';
@@ -199,10 +195,13 @@ export async function main(command, args, base = HUB) {
     return 0;
   }
   if (command === 'share') {
-    if (!slug) { console.error('usage: motionhub share <dir> [--wait] | motionhub share <dir> --pr [--github <login>]'); return 2; }
-    // through motionhub.dev unless asked for gh and a fork (--pr), or only for the checks as someone (--github)
-    if (args.includes('--pr') || value('--github')) console.log(await share(resolve(slug), {pr: args.includes('--pr'), github: value('--github')}, base));
-    else console.log(await shareLink(resolve(slug), {wait: args.includes('--wait'), log: (l) => console.log(l)}, base));
+    // a fork pull request fails ownership (it will not check out fork code). The only submission is the site intake
+    if (args.includes('--pr') || args.includes('--github')) {
+      console.error('share submits only through motionhub.dev. Run `motionhub share <dir>` (add --wait to wait for the pull request), open the link it prints and sign in with GitHub: motionhub\'s GitHub App opens the pull request from a share/ branch. --pr forked this repository with your own GitHub token and is removed, because those pull requests fail the ownership check. --github on share is removed; `motionhub check <dir> --author <login>` runs the checks as that account.');
+      return 2;
+    }
+    if (!slug) { console.error('usage: motionhub share <dir> [--wait]'); return 2; }
+    console.log(await shareLink(resolve(slug), {wait: args.includes('--wait'), log: (l) => console.log(l)}, base));
     return 0;
   }
   if (command === 'init') {
@@ -240,31 +239,12 @@ export async function main(command, args, base = HUB) {
   return 0;
 }
 
-const REPO = 'motionhub-dev/motionhub';
 const run = (cmd, args, cwd) => spawnSync(cmd, args, {cwd, encoding: 'utf8'});
-/** A command that must succeed; its error names the step and gives its own message. */
-function must(cmd, args, cwd) {
-  const r = run(cmd, args, cwd);
-  if (r.error || r.status !== 0) throw new Error(`${cmd} ${args.slice(0, 2).join(' ')} failed: ${(r.stderr || r.error?.message || '').trim()}`);
-  return r.stdout.trim();
-}
 
 /** The GitHub account gh is signed in as, or undefined. */
 export function githubAccount() {
   const r = run('gh', ['api', 'user']);
   return r.error || r.status !== 0 ? undefined : JSON.parse(r.stdout);
-}
-
-/**
- * The fork of this repository the account gh is signed in as (`login`) has, `<login>/<name>`, made if it has none.
- * GitHub answers a fork asked for again with the one there is, whatever it is called: a fork keeps the name it was made
- * under, so one made before this repository was renamed has its old name, and one made since has its new one.
- */
-export function forkOf(login) {
-  const fork = must('gh', ['api', '--method', 'POST', `repos/${REPO}/forks`, '--jq', '.full_name']);
-  const [owner, name, ...rest] = fork.split('/');
-  if (rest.length || owner?.toLowerCase() !== login.toLowerCase() || !/^[\w.-]+$/.test(name ?? '')) throw new Error(`GitHub gave ${fork || 'no fork'} as ${login}'s fork of ${REPO}`);
-  return fork;
 }
 
 /** A GitHub account by login, as GitHub gives it now ({login, id, …}), or undefined. */
@@ -366,56 +346,4 @@ export async function shareLink(dir, {wait = false, log = () => {}, ask = 5000, 
     if (s.status === 'expired') throw new Error('the share link expired before it was submitted: share again');
   }
   return `Not submitted yet; the link still works until ${body.expires}: ${body.url}`;
-}
-
-/**
- * Check a motion for the hub as its pull request will be checked, under the person's GitHub account and against what
- * is published for its id; with `pr`, fork this repository, commit it signed off as the person's git identity and
- * open the pull request from their fork. Nothing is published without `pr`.
- */
-export async function share(dir, {pr = false, github} = {}, base = HUB) {
-  // the pull request is made by whoever gh is signed in as, so --github may only name that account; without --pr it says whose checks to run
-  const signedIn = github && !pr ? undefined : githubAccount();
-  if (pr && !signedIn?.login) throw new Error('opening the pull request needs gh signed in as you: gh auth login');
-  if (pr && github && signedIn.login.toLowerCase() !== github.toLowerCase()) throw new Error(`gh is signed in as ${signedIn.login}, not ${github}: the pull request would be theirs. Sign in as ${github} (gh auth login), or leave out --github`);
-  const account = signedIn ?? (github ? {login: github} : undefined);
-  if (!account?.login) throw new Error('sharing needs your GitHub account: sign in with gh (gh auth login), or pass --github <login>');
-  const manifest = JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8'));
-  const id = motionId(manifest);
-  const published = (await index(base)).find((m) => m.slug === id);
-  const was = published ? await (await get(`${base}/m/${id}/motion.json`)).json() : undefined;
-  const accounts = await sharingAccounts(base, manifest, was);
-  const issues = checkMotion(dir, {author: account.login, authorId: account.id, was, accounts, catalogue: place(dir).catalogue});
-  if (issues.length) throw new Error(`${dir} does not pass the hub's checks:\n${issues.map((i) => `${i.at}  ${i.code}  ${i.message}`).join('\n')}`);
-  const what = `${published ? 'Update' : 'Add'} ${manifest.name.en} ${manifest.version}`;
-  if (!pr) return `${id} ${manifest.version} passes the hub's checks as ${account.login}${published ? `, after ${published.version}` : ''}. Nothing is published yet: run again with --pr to open "${what}" on github.com/${REPO}.`;
-  const clone = mkdtempSync(join(tmpdir(), 'motionhub-'));
-  try {
-    const branch = `motion/${id.replace('@', '')}-${manifest.version}`;
-    const fork = forkOf(account.login);
-    must('git', ['clone', '--quiet', `https://github.com/${REPO}.git`, clone]);
-    must('git', ['checkout', '--quiet', '-b', branch], clone);
-    rmSync(join(clone, 'motions', id), {recursive: true, force: true});
-    cpSync(dir, join(clone, 'motions', id), {recursive: true});
-    must('git', ['add', join('motions', id)], clone);
-    // every login the motion names is recorded with its account's id (accounts/, CONTRIBUTING.md), once
-    for (const login of new Set([manifest.scope, ...manifest.authors.map((a) => a.github)].filter(Boolean).map((l) => l.toLowerCase()))) {
-      const file = join(clone, 'accounts', `${login}.json`);
-      if (existsSync(file)) continue;
-      const user = login === account.login.toLowerCase() ? account : githubUser(login);
-      if (!Number.isSafeInteger(user?.id)) throw new Error(`GitHub has no account ${login}: check the scope and authors in motion.json`);
-      mkdirSync(dirname(file), {recursive: true});
-      writeFileSync(file, `${JSON.stringify({login, id: user.id})}\n`);
-      must('git', ['add', join('accounts', `${login}.json`)], clone);
-    }
-    must('git', ['commit', '--quiet', '--signoff', '-m', what], clone);
-    // GitHub makes a new fork in the background: a push may find it not there yet for a few seconds
-    for (let tries = 1; ; tries++) {
-      const pushed = run('git', ['-c', 'credential.helper=', '-c', 'credential.helper=!gh auth git-credential', 'push', '--quiet', `https://github.com/${fork}.git`, `HEAD:refs/heads/${branch}`], clone);
-      if (!pushed.error && pushed.status === 0) break;
-      if (tries === 5) throw new Error(`git push to ${fork} failed: ${(pushed.stderr || pushed.error?.message || '').trim()}`);
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000);
-    }
-    return must('gh', ['pr', 'create', '--repo', REPO, '--head', `${account.login}:${branch}`, '--title', what, '--body', `${manifest.line.en}\n\nChecked with @motionhub/cli.`], clone);
-  } finally { rmSync(clone, {recursive: true, force: true}); }
 }

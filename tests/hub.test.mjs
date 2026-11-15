@@ -8,7 +8,7 @@ import {createServer} from 'node:http';
 import {existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {LOCK, forkOf, getMotion, main, motionTokens, packedSha256, projectMotion, readLock, scaffold, search, share, unpack} from '../tools/hub.mjs';
+import {LOCK, getMotion, main, motionTokens, packedSha256, projectMotion, readLock, scaffold, search, shareLink, unpack} from '../tools/hub.mjs';
 import {tgz} from '../tools/pack.mjs';
 import {SPEC, checkMotion} from '../tools/check.mjs';
 import {resolveTokens, tokenVariables} from '../packages/runtime/tokens.js';
@@ -174,30 +174,33 @@ test('init starts a motion of the project\'s own in motions/<slug>/', async () =
 /** The smallest JPEG the checker reads: its size, and nothing to decode. */
 const jpeg = (w, h) => Buffer.concat([Buffer.from([0xff, 0xd8]), Buffer.from([0xff, 0xc0, 0x00, 0x11, 0x08, h >> 8, h & 255, w >> 8, w & 255, 0x03, 1, 0x22, 0, 2, 0x11, 1, 3, 0x11, 1]), Buffer.from([0xff, 0xd9])]);
 
-test('a new motion starts as every required file but the poster, and shares only as its own author and above what is published', async () => {
+test('a new motion starts as every required file but the poster, and share uploads it only above what is published', async () => {
   // where init puts it (motions/<slug>/ in a project): judged by the hub's accounts, but not as if it were the catalogue
   const dir = join(mkdtempSync(join(tmpdir(), 'init-')), 'motions', 'plain-ink');
   for (const [path, data] of scaffold('plain-ink', {login: 'ana', name: 'Ana'})) { mkdirSync(join(dir, path, '..'), {recursive: true}); writeFileSync(join(dir, path), data); }
   writeFileSync(join(dir, 'poster.jpg'), jpeg(1920, 1080));
   let published;
   const server = createServer((req, res) => {
-    if (req.url === '/api/motions.json') res.end(JSON.stringify({spec: 'motion/0.1', motions: published ? [published.row] : []}));
-    else if (req.url === '/api/accounts.json') res.end(JSON.stringify({ana: 42}));
-    else if (req.url === '/m/@ana/plain-ink/motion.json') res.end(JSON.stringify(published.manifest));
-    else { res.statusCode = 404; res.end(); }
+    const done = () => {
+      if (req.url === '/api/motions.json') res.end(JSON.stringify({spec: 'motion/0.1', motions: published ? [published.row] : []}));
+      else if (req.url === '/api/accounts.json') res.end(JSON.stringify({ana: 42}));
+      else if (req.url === '/m/@ana/plain-ink/motion.json') res.end(JSON.stringify(published.manifest));
+      else if (req.method === 'POST' && req.url === '/api/submissions') res.end(JSON.stringify({id: 's1', url: 'https://motionhub.dev/share/s1', code: '123456', poll: 'poll-token', expires: 'tomorrow'}));
+      else { res.statusCode = 404; res.end(); }
+    };
+    req.on('data', () => {});
+    req.on('end', done);
   });
   await new Promise((done) => server.listen(0, '127.0.0.1', done));
   const base = `http://127.0.0.1:${server.address().port}`;
   try {
     assert.equal(JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8')).scope, 'ana', 'a new motion is scoped to its author');
-    assert.match(await share(dir, {github: 'ana'}, base), /@ana\/plain-ink 1\.0\.0 passes the hub's checks as ana\. Nothing is published yet/);
-    await assert.rejects(share(dir, {github: 'bo'}, base), /hub\.author[\s\S]*hub\.scope/);
+    assert.match(await shareLink(dir, {}, base), /@ana\/plain-ink 1\.0\.0 passes the checks and is uploaded[\s\S]*https:\/\/motionhub\.dev\/share\/s1[\s\S]*123456/);
     const manifest = JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8'));
     published = {manifest, row: {...pkg('plain-ink').row, slug: '@ana/plain-ink', version: '1.0.0', authors: manifest.authors}};
-    await assert.rejects(share(dir, {github: 'ana'}, base), /hub\.version/);
+    await assert.rejects(shareLink(dir, {}, base), /hub\.version/);
     writeFileSync(join(dir, 'motion.json'), JSON.stringify({...manifest, version: '1.0.1'}));
-    assert.match(await share(dir, {github: 'ana'}, base), /after 1\.0\.0/);
-    await assert.rejects(share(dir, {github: 'ana', pr: true}, base), /gh signed in|gh is signed in as/, 'a pull request is never opened for an account gh is not signed in as');
+    assert.match(await shareLink(dir, {}, base), /after 1\.0\.0/);
   } finally { server.close(); }
 });
 
@@ -244,25 +247,16 @@ test('the skill names the format\'s version, and looks for a project\'s motion w
   assert.ok(skill.includes('Never invent a number'));
 });
 
-test('share --pr pushes to the fork GitHub names, whatever it is called, and only to one of the signed-in account\'s', () => {
-  // a gh that answers the fork request as GitHub would, and records what it was asked
-  const bin = mkdtempSync(join(tmpdir(), 'gh-'));
-  writeFileSync(join(bin, 'gh'), '#!/bin/sh\necho "$@" >> "$GH_ASKED"\necho "$GH_FORK"\n', {mode: 0o755});
-  const was = {PATH: process.env.PATH, GH_FORK: process.env.GH_FORK, GH_ASKED: process.env.GH_ASKED};
-  process.env.PATH = `${bin}:${process.env.PATH}`;
-  process.env.GH_ASKED = join(bin, 'asked');
-  try {
-    process.env.GH_FORK = 'ana/motions';
-    assert.equal(forkOf('Ana'), 'ana/motions', 'a fork made before the rename keeps its name');
-    process.env.GH_FORK = 'ana/motionhub';
-    assert.equal(forkOf('ana'), 'ana/motionhub', 'one made since has the new one');
-    assert.match(readFileSync(process.env.GH_ASKED, 'utf8'), /^api --method POST repos\/motionhub-dev\/motionhub\/forks --jq \.full_name$/m);
-    for (const other of ['eve/motionhub', 'ana/motionhub/x', 'ana/', '']) {
-      process.env.GH_FORK = other;
-      assert.throws(() => forkOf('ana'), /as ana's fork/, `${other || 'nothing'} is not ana's fork`);
-    }
-  } finally {
-    for (const [k, v] of Object.entries(was)) if (v === undefined) delete process.env[k]; else process.env[k] = v;
-    rmSync(bin, {recursive: true, force: true});
+test('share refuses --pr and --github, and the help no longer offers a fork', async () => {
+  const help = execFileSync(process.execPath, [BIN, '--help'], {encoding: 'utf8'});
+  assert.doesNotMatch(help, /share <dir> --pr/);
+  assert.match(help, /--pr and a fork are refused/);
+  assert.match(help, /share\/ branch/);
+  const project = mkdtempSync(join(tmpdir(), 'share-'));
+  for (const args of [['motions/plain-ink', '--pr'], ['--pr'], ['motions/plain-ink', '--github', 'ana'], ['--github', 'ana']]) {
+    const r = await inDir(project, 'share', args);
+    assert.equal(r.status, 2, args.join(' '));
+    assert.match(r.out, /motionhub\.dev/, args.join(' '));
+    assert.match(r.out, /share\/ branch/, args.join(' '));
   }
 });

@@ -1,31 +1,23 @@
-# @claude provides advice and optional patch data. It cannot execute code, push, approve, merge or deploy.
+# @claude on an issue (not a pull request) provides advice. It cannot execute code, push, approve, merge, deploy or review a pull request.
 name: claude
 on:
   issue_comment:
     types: [created]
-  pull_request_review_comment:
-    types: [created]
-  pull_request_review:
-    types: [submitted]
   issues:
     types: [opened]
 permissions:
   contents: read
   issues: write
-  pull-requests: read
 concurrency:
-  group: claude-${{ github.event.issue.number || github.event.pull_request.number }}
+  group: claude-${{ github.event.issue.number }}
   cancel-in-progress: true
 jobs:
   advise:
     if: |
-      vars.CLAUDE_ENABLED == 'true' && vars.CLAUDE_MODEL != '' && (
+      vars.CLAUDE_ENABLED == 'true' && vars.CLAUDE_MODEL != '' &&
+      !github.event.issue.pull_request && (
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') &&
         contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') &&
-        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') &&
-        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association)) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) &&
         contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)))
     uses: ./.github/workflows/claude-task.yml
