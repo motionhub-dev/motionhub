@@ -1,0 +1,33 @@
+{
+  "spec": "motion/0.6",
+  "scope": "iamsuosi",
+  "slug": "share-test",
+  "version": "1.0.0",
+  "name": {
+    "en": "Share Test"
+  },
+  "line": {
+    "en": "A plain test look, ink on warm paper with one red mark, made to check sharing from motionhub.dev end to end."
+  },
+  "authors": [
+    {
+      "name": "iamsuosi",
+      "github": "iamsuosi"
+    }
+  ],
+  "license": {
+    "text": "CC-BY-4.0",
+    "code": "MIT"
+  },
+  "tags": [
+    "test"
+  ],
+  "fit": {
+    "for": {
+      "en": "Short explainers with one idea per scene: a title, a few labelled shapes and one highlighted point."
+    },
+    "not": {
+      "en": "Dense data, footage, or anything that needs more than one accent colour."
+    }
+  }
+}
