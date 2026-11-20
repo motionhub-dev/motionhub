@@ -1,4 +1,4 @@
-// Tell motionhub-dev/motionhub-web that this repository's main moved. A GitHub App installed only
+// Tell motionhubdev/motionhub-web that this repository's main moved. A GitHub App installed only
 // on that repository, with Actions write and nothing else, mints a token that asks for Actions
 // write again. The token is used only to dispatch .github/workflows/upstream.yml on main, with no
 // inputs: the site looks up main itself and pins a commit only after it has built, tested and
@@ -11,7 +11,7 @@ import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const API = 'https://api.github.com';
-export const SITE = 'motionhub-dev/motionhub-web';
+export const SITE = 'motionhubdev/motionhub-web';
 export const WORKFLOW = 'upstream.yml';
 
 const b64url = (bytes) => Buffer.from(bytes).toString('base64url');

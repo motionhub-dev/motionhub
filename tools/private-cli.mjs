@@ -10,7 +10,7 @@
 //   motionhub get <id> --private [--out <dir>]    your newest version into ./motions/<id>/ (tools/hub.mjs), recorded in
 //                                                 ./motions.lock.json as private, so `motionhub get` takes it back signed in
 //
-// The service is motionhub.dev's /api/private/ (motionhub-dev/motionhub-web, site/private-motions.mjs).
+// The service is motionhub.dev's /api/private/ (motionhubdev/motionhub-web, site/private-motions.mjs).
 
 import {existsSync, readFileSync} from 'node:fs';
 import {join, resolve} from 'node:path';

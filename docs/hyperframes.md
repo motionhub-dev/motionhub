@@ -8,7 +8,7 @@ HyperFrames keeps skills that teach an agent to make a HyperFrames video; motion
 
 ```sh
 npx hyperframes skills update
-npx skills add motionhub-dev/motionhub -g
+npx skills add motionhubdev/motionhub -g
 ```
 
 The first installs HyperFrames' core skills, as [its README](https://github.com/heygen-com/hyperframes#readme) recommends for agents. Then, in a HyperFrames project or an empty folder, ask:
