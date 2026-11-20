@@ -1,6 +1,6 @@
 // Private motions from the command line (tools/private-cli.mjs, tools/hub.mjs get --private): the real motionhub
 // command in a child process, signed in with a token in a home of its own, against motionhub.dev's /api/private/ as a
-// stand-in fetch records and answers it (motionhub-dev/motionhub-web site/private-motions.mjs is the service).
+// stand-in fetch records and answers it (motionhubdev/motionhub-web site/private-motions.mjs is the service).
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {execFile} from 'node:child_process';

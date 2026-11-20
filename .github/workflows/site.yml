@@ -1,4 +1,4 @@
-# After a push to main, ask motionhub-dev/motionhub-web to verify this commit and pin it. The App
+# After a push to main, ask motionhubdev/motionhub-web to verify this commit and pin it. The App
 # is installed only on that repository, with Actions write and nothing else. This workflow mints a
 # token that asks for that permission again, refuses anything broader, and dispatches upstream.yml
 # with no inputs: the site looks up main itself, and a bot there may not choose the commit. The
@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   notify:
-    if: github.repository == 'motionhub-dev/motionhub' && github.ref == 'refs/heads/main'
+    if: github.repository == 'motionhubdev/motionhub' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

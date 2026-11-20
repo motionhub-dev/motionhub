@@ -26,7 +26,7 @@ const USAGE = `usage: motionhub check [dir or MOTION.md ...] [--format-only] [--
        motionhub tokens [MOTION.md] [--out <file>]
        motionhub share <dir> [--wait]
 
-check   a motion against the motion format (https://github.com/motionhub-dev/motionhub/blob/main/SPEC.md) and motionhub's
+check   a motion against the motion format (https://github.com/motionhubdev/motionhub/blob/main/SPEC.md) and motionhub's
         rules; with no directory, the current directory when it is a motion, else every motion under ./motions/
 search  motionhub.dev's motions that have every word
 get     the newest version of a motion (@iamsuosi/lab-notebook) into ./motions/<id>/, checked against its SHA-256 and

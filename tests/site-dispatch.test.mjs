@@ -1,11 +1,11 @@
-// What asks motionhub-dev/motionhub-web to look at main (.github/scripts/site-dispatch.mjs): an Actions-write
+// What asks motionhubdev/motionhub-web to look at main (.github/scripts/site-dispatch.mjs): an Actions-write
 // token for that repository alone, a dispatch with no commit, and a refusal before anything broader is sent.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createVerify, generateKeyPairSync, randomBytes} from 'node:crypto';
 import {acceptedToken, actionsWriteOnly, appJwt, dispatchBody, notify, tokenBody} from '../.github/scripts/site-dispatch.mjs';
 
-const SITE = 'motionhub-dev/motionhub-web';
+const SITE = 'motionhubdev/motionhub-web';
 const pem = () => generateKeyPairSync('rsa', {modulusLength: 2048}).privateKey.export({type: 'pkcs1', format: 'pem'});
 // Built at runtime so the source holds no token prefix.
 const minted = () => `${String.fromCharCode(103, 104, 115)}_${randomBytes(24).toString('hex')}`;
@@ -59,8 +59,8 @@ test('a token is sent only for the site with Actions write, and a refusal never 
   const bad = [
     {...good, token: ''},
     {...good, repository_selection: 'all'},
-    {...good, repositories: [{full_name: SITE}, {full_name: 'motionhub-dev/motionhub'}]},
-    {...good, repositories: [{full_name: 'motionhub-dev/motionhub'}]},
+    {...good, repositories: [{full_name: SITE}, {full_name: 'motionhubdev/motionhub'}]},
+    {...good, repositories: [{full_name: 'motionhubdev/motionhub'}]},
     {...good, permissions: {...good.permissions, contents: 'write'}},
   ];
   for (const body of bad) {
@@ -150,7 +150,7 @@ test('notify does not dispatch a broader token, the catalogue, a redirect or a m
   const catalogue = scripted({
     token, repository_selection: 'selected',
     permissions: {actions: 'write', metadata: 'read'},
-    repositories: [{full_name: 'motionhub-dev/motionhub'}],
+    repositories: [{full_name: 'motionhubdev/motionhub'}],
   });
   await assert.rejects(() => notify(env, catalogue.doFetch), /some other repository/);
   assert.equal(catalogue.urls.some((url) => url.includes('/dispatches')), false);
